@@ -7,6 +7,7 @@ const PairingEngine = require('../core/pairing_engine');
 const InventoryManager = require('../core/inventory_manager');
 const ProcurementEngine = require('../core/procurement_engine');
 const VintageIntelligenceService = require('../core/vintage_intelligence');
+const wineGuidanceService = require('../core/wine_guidance_service');
 const Database = require('../database/connection');
 
 // Initialize engines
@@ -493,10 +494,14 @@ router.get('/wines', asyncHandler(async (req, res) => {
         params.push(parseInt(limit), parseInt(offset));
         
         const wines = await db.all(query, params);
+        const enrichedWines = wines.map(wine => ({
+            ...wine,
+            ...wineGuidanceService.getGuidance(wine)
+        }));
 
         res.json({
             success: true,
-            data: wines
+            data: enrichedWines
         });
     } catch (error) {
         res.status(500).json({
@@ -543,13 +548,15 @@ router.get('/wines/:id', asyncHandler(async (req, res) => {
         const db = Database.getInstance();
         
         // Get wine details
-        const wine = await db.get('SELECT * FROM Wines WHERE id = ?', [id]);
-        if (!wine) {
+        const wineRecord = await db.get('SELECT * FROM Wines WHERE id = ?', [id]);
+        if (!wineRecord) {
             return res.status(404).json({
                 success: false,
                 error: 'Wine not found'
             });
         }
+
+        const guidance = wineGuidanceService.getGuidance(wineRecord);
         
         // Get vintages
         const vintages = await db.all(`
@@ -575,10 +582,11 @@ router.get('/wines/:id', asyncHandler(async (req, res) => {
         res.json({
             success: true,
             data: {
-                ...wine,
-                quality_score: wine.quality_score ?? primaryVintage.quality_score ?? null,
-                weather_score: wine.weather_score ?? primaryVintage.weather_score ?? null,
-                critic_score: wine.critic_score ?? primaryVintage.critic_score ?? null,
+                ...wineRecord,
+                ...guidance,
+                quality_score: wineRecord.quality_score ?? primaryVintage.quality_score ?? null,
+                weather_score: wineRecord.weather_score ?? primaryVintage.weather_score ?? null,
+                critic_score: wineRecord.critic_score ?? primaryVintage.critic_score ?? null,
                 total_stock: totalStock,
                 total_value: Number(totalValue.toFixed(2)),
                 avg_cost_per_bottle: averageCost,
