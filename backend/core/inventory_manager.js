@@ -8,8 +8,9 @@ const VintageIntelligenceService = require('./vintage_intelligence');
 const InventoryIntakeProcessor = require('./inventory_intake_processor');
 
 class InventoryManager {
-    constructor(database) {
+    constructor(database, learningEngine = null) {
         this.db = database || Database.getInstance();
+        this.learningEngine = learningEngine;
         this.vintageIntelligence = new VintageIntelligenceService(this.db);
         this.intakeProcessor = new InventoryIntakeProcessor();
     }
@@ -860,7 +861,7 @@ class InventoryManager {
 
     async recordTransaction(transactionData) {
         await this.db.run(`
-            INSERT INTO Ledger (vintage_id, location, transaction_type, quantity, 
+            INSERT INTO Ledger (vintage_id, location, transaction_type, quantity,
                                unit_cost, total_cost, reference_id, notes, created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
@@ -868,6 +869,24 @@ class InventoryManager {
             transactionData.quantity, transactionData.unit_cost, transactionData.total_cost,
             transactionData.reference_id, transactionData.notes, transactionData.created_by
         ]);
+    }
+
+    async captureLearningConsumption(event) {
+        if (!this.learningEngine) {
+            return;
+        }
+
+        try {
+            await this.learningEngine.recordConsumptionEvent({
+                vintage_id: event.vintage_id,
+                quantity: Math.abs(event.quantity),
+                location: event.location,
+                event_type: event.event_type,
+                metadata: event.metadata || {}
+            });
+        } catch (error) {
+            console.warn('Unable to record learning signal for inventory movement:', error.message);
+        }
     }
     
     /**
@@ -946,7 +965,15 @@ class InventoryManager {
                 notes,
                 created_by
             });
-            
+
+            await this.captureLearningConsumption({
+                vintage_id,
+                quantity,
+                location,
+                event_type: 'consume',
+                metadata: { notes, created_by }
+            });
+
             return {
                 success: true,
                 message: `Consumed ${quantity} bottle(s)`,
@@ -1003,7 +1030,15 @@ class InventoryManager {
                 notes,
                 created_by
             });
-            
+
+            await this.captureLearningConsumption({
+                vintage_id,
+                quantity,
+                location,
+                event_type: 'receive',
+                metadata: { reference_id, notes, created_by }
+            });
+
             return {
                 success: true,
                 message: `Received ${quantity} bottle(s)`,
