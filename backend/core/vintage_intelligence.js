@@ -33,7 +33,19 @@ class VintageIntelligenceService {
      */
     async enrichWineData(wineData) {
         console.log(`Enriching wine data for ${wineData.name} ${wineData.year}`);
-        
+
+        const buildReturnPayload = (baseData = {}, enrichment = {}, resolvedVintageId = null) => {
+            const payload = { ...baseData, ...enrichment };
+
+            if (resolvedVintageId) {
+                payload.id = resolvedVintageId;
+            } else if ('id' in payload) {
+                delete payload.id;
+            }
+
+            return payload;
+        };
+
         try {
             const wineRecordId = wineData.wine_id || wineData.id;
             const vintageRecordId = wineData.vintage_id || (wineData.wine_id ? wineData.id : null);
@@ -41,15 +53,18 @@ class VintageIntelligenceService {
             // Extract region and year information
             const region = this.normalizeRegion(wineData.region || wineData.country);
             const year = parseInt(wineData.year) || new Date().getFullYear();
-            
+
             // Skip if already processed
             const cacheKey = `${region}_${year}`;
             if (this.processedVintages.has(cacheKey)) {
                 console.log(`Using cached analysis for ${region} ${year}`);
-                return {
-                    ...wineData,
-                    weatherAnalysis: this.processedVintages.get(cacheKey)
-                };
+                return buildReturnPayload(
+                    wineData,
+                    {
+                        weatherAnalysis: this.processedVintages.get(cacheKey)
+                    },
+                    vintageRecordId || wineData.vintage_id
+                );
             }
 
             // Perform weather analysis
@@ -85,21 +100,27 @@ class VintageIntelligenceService {
                 console.warn('Could not determine vintage ID for enrichment update; skipping database write.');
             }
 
-            return {
-                ...wineData,
-                wine_id: wineRecordId,
-                vintage_id: vintageRecordId || wineData.vintage_id,
-                ...enrichedData
-            };
-            
+            return buildReturnPayload(
+                {
+                    ...wineData,
+                    wine_id: wineRecordId,
+                    vintage_id: vintageRecordId || wineData.vintage_id
+                },
+                enrichedData,
+                vintageRecordId || wineData.vintage_id
+            );
+
         } catch (error) {
             console.error('Error enriching wine data:', error.message);
-            return {
-                ...wineData,
-                weatherAnalysis: null,
-                vintageSummary: 'Weather analysis unavailable for this vintage.',
-                enrichmentError: error.message
-            };
+            return buildReturnPayload(
+                wineData,
+                {
+                    weatherAnalysis: null,
+                    vintageSummary: 'Weather analysis unavailable for this vintage.',
+                    enrichmentError: error.message
+                },
+                wineData.vintage_id
+            );
         }
     }
 
