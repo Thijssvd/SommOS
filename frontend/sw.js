@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sommos-v2';
+const CACHE_NAME = 'sommos-v3';
 const STATIC_CACHE_URLS = [
   '/',
   '/index.html',
@@ -11,10 +11,10 @@ const STATIC_CACHE_URLS = [
   '/icons/favicon-32x32.svg'
 ];
 
-const API_CACHE_URLS = [
-  '/api/system/health',
-  '/api/inventory/stock'
-];
+// Only allow caching of lightweight API responses to avoid large data prefetches
+const CACHEABLE_API_PATHS = new Set([
+  '/api/system/health'
+]);
 
 // Install event
 self.addEventListener('install', event => {
@@ -50,36 +50,58 @@ self.addEventListener('activate', event => {
 
 // Fetch event - Network first, then cache
 self.addEventListener('fetch', event => {
-  // Skip non-GET requests
   if (event.request.method !== 'GET') {
     return;
   }
 
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
+  const isApiRequest = requestUrl.pathname.startsWith('/api/');
+  const canCacheResponse = !isApiRequest || CACHEABLE_API_PATHS.has(requestUrl.pathname);
+
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        // If we got a response, add it to cache
-        if (response.ok) {
+        if (response.ok && canCacheResponse) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseClone);
-            });
+            .then(cache => cache.put(event.request, responseClone));
         }
         return response;
       })
-      .catch(() => {
-        // Network failed, try cache
-        return caches.match(event.request)
-          .then(response => {
-            if (response) {
-              return response;
+      .catch(async () => {
+        if (canCacheResponse) {
+          const cachedResponse = await caches.match(event.request);
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+        }
+
+        if (isApiRequest) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Offline or server unavailable'
+            }),
+            {
+              status: 503,
+              headers: { 'Content-Type': 'application/json' }
             }
-            // If not in cache and it's an HTML page, return index.html for SPA routing
-            if (event.request.headers.get('accept').includes('text/html')) {
-              return caches.match('/index.html');
-            }
-          });
+          );
+        }
+
+        const acceptHeader = event.request.headers.get('accept') || '';
+        if (acceptHeader.includes('text/html')) {
+          const fallback = await caches.match('/index.html');
+          if (fallback) {
+            return fallback;
+          }
+        }
+
+        return Response.error();
       })
   );
 });
