@@ -33,20 +33,38 @@ class VintageIntelligenceService {
      */
     async enrichWineData(wineData) {
         console.log(`Enriching wine data for ${wineData.name} ${wineData.year}`);
-        
+
+        const buildReturnPayload = (baseData = {}, enrichment = {}, resolvedVintageId = null) => {
+            const payload = { ...baseData, ...enrichment };
+
+            if (resolvedVintageId) {
+                payload.id = resolvedVintageId;
+            } else if ('id' in payload) {
+                delete payload.id;
+            }
+
+            return payload;
+        };
+
         try {
+            const wineRecordId = wineData.wine_id || wineData.id;
+            const vintageRecordId = wineData.vintage_id || (wineData.wine_id ? wineData.id : null);
+
             // Extract region and year information
             const region = this.normalizeRegion(wineData.region || wineData.country);
             const year = parseInt(wineData.year) || new Date().getFullYear();
-            
+
             // Skip if already processed
             const cacheKey = `${region}_${year}`;
             if (this.processedVintages.has(cacheKey)) {
                 console.log(`Using cached analysis for ${region} ${year}`);
-                return {
-                    ...wineData,
-                    weatherAnalysis: this.processedVintages.get(cacheKey)
-                };
+                return buildReturnPayload(
+                    wineData,
+                    {
+                        weatherAnalysis: this.processedVintages.get(cacheKey)
+                    },
+                    vintageRecordId || wineData.vintage_id
+                );
             }
 
             // Perform weather analysis
@@ -72,25 +90,37 @@ class VintageIntelligenceService {
                 procurementRec,
                 enrichedAt: new Date().toISOString()
             };
-            
+
             this.processedVintages.set(cacheKey, enrichedData);
-            
-            // Update database with enriched information
-            await this.updateVintageData(wineData.id, enrichedData);
-            
-            return {
-                ...wineData,
-                ...enrichedData
-            };
-            
+
+            // Update database with enriched information when possible
+            if (vintageRecordId) {
+                await this.updateVintageData(vintageRecordId, enrichedData);
+            } else {
+                console.warn('Could not determine vintage ID for enrichment update; skipping database write.');
+            }
+
+            return buildReturnPayload(
+                {
+                    ...wineData,
+                    wine_id: wineRecordId,
+                    vintage_id: vintageRecordId || wineData.vintage_id
+                },
+                enrichedData,
+                vintageRecordId || wineData.vintage_id
+            );
+
         } catch (error) {
             console.error('Error enriching wine data:', error.message);
-            return {
-                ...wineData,
-                weatherAnalysis: null,
-                vintageSummary: 'Weather analysis unavailable for this vintage.',
-                enrichmentError: error.message
-            };
+            return buildReturnPayload(
+                wineData,
+                {
+                    weatherAnalysis: null,
+                    vintageSummary: 'Weather analysis unavailable for this vintage.',
+                    enrichmentError: error.message
+                },
+                wineData.vintage_id
+            );
         }
     }
 
@@ -288,15 +318,15 @@ Focus on how weather influenced this specific vintage's style and drinking chara
     /**
      * Update vintage data in database
      */
-    async updateVintageData(wineId, enrichedData) {
+    async updateVintageData(vintageId, enrichedData) {
         try {
             // Update Vintages table with weather-adjusted quality score
             await this.db.run(`
-                UPDATE Vintages 
-                SET weather_score = ?, 
+                UPDATE Vintages
+                SET weather_score = ?,
                     quality_score = ?,
                     production_notes = ?
-                WHERE wine_id = ?
+                WHERE id = ?
             `, [
                 enrichedData.weatherAnalysis.overallScore,
                 enrichedData.qualityScore,
@@ -309,10 +339,10 @@ Focus on how weather influenced this specific vintage's style and drinking chara
                     },
                     procurementRec: enrichedData.procurementRec
                 }),
-                wineId
+                vintageId
             ]);
-            
-            console.log(`Updated vintage data for wine ${wineId}`);
+
+            console.log(`Updated vintage data for vintage ${vintageId}`);
         } catch (error) {
             console.error('Error updating vintage data:', error.message);
         }
