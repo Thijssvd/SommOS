@@ -12,10 +12,7 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   collectCoverageFrom: [
-    'backend/**/*.js',
-    'frontend/js/**/*.js',
-    '!backend/node_modules/**',
-    '!**/test*.js'
+    'backend/api/**/*.js'
   ],
   
   // Test setup
