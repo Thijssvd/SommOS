@@ -312,7 +312,8 @@ class OpenMeteoService {
                 dayLength: daily.daylight_duration[i] || 0,
                 windMax: daily.wind_speed_10m_max[i] || 0,
                 windGusts: daily.wind_gusts_10m_max[i] || 0,
-                evapotranspiration: daily.et0_fao_evapotranspiration[i] || 0
+                evapotranspiration: daily.et0_fao_evapotranspiration[i] || 0,
+                dayOfYear: this.getDayOfYear(dates[i])
             };
             
             // Skip days with missing critical data
@@ -388,7 +389,9 @@ class OpenMeteoService {
 
         // Phenological estimations based on GDD
         const phenology = this.estimatePhenology(gdd, dailyData);
-        
+        const rainfallWindows = this.calculatePhenologyRainfall(dailyData, phenology);
+        const droughtMetrics = this.calculateDroughtMetrics(dailyData);
+
         // Weather quality scoring
         const qualityScore = this.calculateWeatherQuality({
             gdd,
@@ -419,16 +422,22 @@ class OpenMeteoService {
             
             // Precipitation data
             totalRainfall: Math.round(totalRainfall * 10) / 10,
+            floweringRain: Math.round(rainfallWindows.floweringRain * 10) / 10,
+            harvestRain: Math.round(rainfallWindows.harvestRain * 10) / 10,
             wetDays,
-            
+
             // Weather events
             heatwaveDays,
             frostDays,
             sunshineHours: Math.round(sunshineHours),
-            
+            droughtStress: droughtMetrics.droughtStress,
+            longestDrySpell: droughtMetrics.longestDrySpell,
+            waterBalance: Math.round(droughtMetrics.seasonalWaterBalance * 10) / 10,
+            seasonalEvapotranspiration: Math.round(droughtMetrics.totalEvapotranspiration * 10) / 10,
+
             // Phenology estimates
             phenology,
-            
+
             // Quality assessment
             overallScore: qualityScore.overall,
             ripenessScore: qualityScore.ripeness,
@@ -444,7 +453,9 @@ class OpenMeteoService {
                 heatwaveDays,
                 frostDays,
                 avgDiurnalRange,
-                sunshineHours
+                sunshineHours,
+                harvestRain: Math.round(rainfallWindows.harvestRain * 10) / 10,
+                droughtStress: droughtMetrics.droughtStress
             }),
             
             // Confidence level
@@ -462,7 +473,7 @@ class OpenMeteoService {
     estimatePhenology(gdd, dailyData) {
         const stages = {};
         let accumulatedGDD = 0;
-        
+
         // GDD thresholds for phenological stages
         const thresholds = {
             budbreak: 50,
@@ -492,6 +503,69 @@ class OpenMeteoService {
         }
 
         return stages;
+    }
+
+    calculatePhenologyRainfall(dailyData, phenology) {
+        const totalDays = dailyData.length;
+
+        const sumRain = (predicate) => dailyData.reduce((total, day, index) => {
+            const rainAmount = day.rain ?? day.precipitation ?? 0;
+            return predicate(day, index) ? total + rainAmount : total;
+        }, 0);
+
+        const computeWindow = (stage, windowDays, fallbackRange) => {
+            if (stage && stage.dayOfYear) {
+                const halfWindow = Math.floor(windowDays / 2);
+                return sumRain((day) => Math.abs(day.dayOfYear - stage.dayOfYear) <= halfWindow);
+            }
+            const [startIndex, endIndex] = fallbackRange;
+            return sumRain((_, index) => index >= startIndex && index <= endIndex);
+        };
+
+        const floweringFallback = [
+            Math.floor(totalDays * 0.3),
+            Math.min(totalDays - 1, Math.floor(totalDays * 0.45))
+        ];
+        const harvestFallback = [
+            Math.max(0, totalDays - 21),
+            Math.max(0, totalDays - 1)
+        ];
+
+        return {
+            floweringRain: computeWindow(phenology.flowering, 14, floweringFallback),
+            harvestRain: computeWindow(phenology.harvest, 21, harvestFallback)
+        };
+    }
+
+    calculateDroughtMetrics(dailyData) {
+        let currentDrySpell = 0;
+        let longestDrySpell = 0;
+        let seasonalWaterBalance = 0;
+        let totalEvapotranspiration = 0;
+
+        dailyData.forEach((day) => {
+            const rainAmount = day.rain ?? day.precipitation ?? 0;
+            const evapotranspiration = day.evapotranspiration ?? 0;
+
+            seasonalWaterBalance += rainAmount - evapotranspiration;
+            totalEvapotranspiration += evapotranspiration;
+
+            if (rainAmount < Math.max(1, evapotranspiration * 0.5)) {
+                currentDrySpell += 1;
+            } else {
+                longestDrySpell = Math.max(longestDrySpell, currentDrySpell);
+                currentDrySpell = 0;
+            }
+        });
+
+        longestDrySpell = Math.max(longestDrySpell, currentDrySpell);
+
+        return {
+            droughtStress: longestDrySpell >= 14 || seasonalWaterBalance < -40,
+            longestDrySpell,
+            seasonalWaterBalance,
+            totalEvapotranspiration
+        };
     }
 
     /**
@@ -559,10 +633,19 @@ class OpenMeteoService {
      * Generate human-readable weather summary
      */
     generateWeatherSummary(metrics) {
-        const { gdd, avgTemp, totalRainfall, heatwaveDays, frostDays, avgDiurnalRange } = metrics;
-        
+        const {
+            gdd,
+            avgTemp,
+            totalRainfall,
+            heatwaveDays,
+            frostDays,
+            avgDiurnalRange,
+            harvestRain,
+            droughtStress
+        } = metrics;
+
         let summary = '';
-        
+
         // GDD assessment
         if (gdd < 1200) {
             summary += 'Cool growing season with limited heat accumulation. ';
@@ -588,6 +671,12 @@ class OpenMeteoService {
             summary += 'Good temperature variation supporting balanced development.';
         } else {
             summary += 'Limited temperature variation.';
+        }
+
+        if (droughtStress) {
+            summary += ' Extended dry spells introduced moderate vine stress but boosted concentration.';
+        } else if (harvestRain && harvestRain > 60) {
+            summary += ` Late-season rainfall (~${Math.round(harvestRain)}mm) required vigilant harvest timing.`;
         }
 
         return summary.trim();

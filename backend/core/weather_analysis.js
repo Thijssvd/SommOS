@@ -45,6 +45,16 @@ class WeatherAnalysisService {
      */
     async analyzeVintage(region, year, weatherData = null) {
         console.log(`Analyzing vintage weather for ${region} ${year}`);
+
+        const normalizedRegion = typeof region === 'string' ? region.trim() : region;
+
+        if (!weatherData) {
+            const cachedAnalysis = await this.getCachedWeatherAnalysis(normalizedRegion, year);
+            if (cachedAnalysis) {
+                console.log(`✅ Using cached weather analysis for ${normalizedRegion} ${year}`);
+                return cachedAnalysis;
+            }
+        }
         
         try {
             // First try Open-Meteo for real historical data
@@ -435,10 +445,24 @@ class WeatherAnalysisService {
      */
     calculateConfidence(dataQuality) {
         if (!dataQuality) return 'Low';
-        
-        if (dataQuality.completeness > 0.9 && dataQuality.accuracy > 0.85) {
+
+        if (typeof dataQuality === 'string') {
+            const normalized = dataQuality.toLowerCase();
+            if (normalized === 'high') return 'High';
+            if (normalized === 'medium') return 'Medium';
+            return 'Low';
+        }
+
+        const completeness = typeof dataQuality.completeness === 'number'
+            ? dataQuality.completeness
+            : parseFloat(dataQuality.completeness) || 0;
+        const accuracy = typeof dataQuality.accuracy === 'number'
+            ? dataQuality.accuracy
+            : parseFloat(dataQuality.accuracy) || 0;
+
+        if (completeness > 0.9 && accuracy > 0.85) {
             return 'High';
-        } else if (dataQuality.completeness > 0.7 && dataQuality.accuracy > 0.7) {
+        } else if (completeness > 0.7 && accuracy > 0.7) {
             return 'Medium';
         } else {
             return 'Low';
@@ -466,11 +490,12 @@ class WeatherAnalysisService {
      */
     generateEstimatedAnalysis(region, year) {
         console.log(`Generating estimated analysis for ${region} ${year}`);
-        
+
         // Use regional averages and year-specific adjustments
         const baseGDD = this.getRegionalBaseGDD(region);
         const yearAdjustment = this.getYearAdjustment(year);
-        
+        const estimatedRainfall = this.getRegionalRainfall(region);
+
         return {
             region,
             year,
@@ -479,6 +504,10 @@ class WeatherAnalysisService {
             avgDiurnalRange: this.getRegionalDiurnalRange(region),
             heatwaveDays: Math.round(this.getRegionalHeatwaveDays(region) * yearAdjustment),
             frostDays: this.getRegionalFrostDays(region),
+            totalRainfall: estimatedRainfall,
+            floweringRain: Math.round(estimatedRainfall * 0.18),
+            harvestRain: Math.round(estimatedRainfall * 0.14),
+            droughtStress: false,
             ripenessScore: 3.5,
             acidityScore: 3.5,
             tanninScore: 3.5,
@@ -496,6 +525,49 @@ class WeatherAnalysisService {
      */
     async cacheWeatherAnalysis(analysis) {
         try {
+            if (!analysis || !analysis.region || !analysis.year) {
+                return;
+            }
+
+            const regionKey = analysis.region.trim();
+            const growingSeasonTemp = analysis.avgTemp ?? null;
+            const growingSeasonRain = analysis.totalRainfall ?? null;
+            const qualityScore = Number.isFinite(analysis.overallScore)
+                ? Number(analysis.overallScore)
+                : parseFloat(analysis.overallScore) || 0;
+
+            const harvestConditions = this.sanitizeForJson({
+                gdd: analysis.gdd,
+                huglinIndex: analysis.huglinIndex,
+                avgDiurnalRange: analysis.avgDiurnalRange,
+                avgTemp: growingSeasonTemp,
+                floweringRain: analysis.floweringRain,
+                harvestRain: analysis.harvestRain,
+                ripenessScore: analysis.ripenessScore,
+                acidityScore: analysis.acidityScore,
+                tanninScore: analysis.tanninScore,
+                diseaseScore: analysis.diseaseScore,
+                weatherSummary: analysis.weatherSummary,
+                confidenceLevel: analysis.confidenceLevel,
+                dataSource: analysis.dataSource,
+                dataQuality: analysis.dataQuality
+            });
+
+            const weatherEvents = this.sanitizeForJson({
+                totalRainfall: analysis.totalRainfall,
+                wetDays: analysis.wetDays,
+                heatwaveDays: analysis.heatwaveDays,
+                frostDays: analysis.frostDays,
+                droughtStress: analysis.droughtStress
+            });
+
+            const harvestPayload = Object.keys(harvestConditions).length > 0
+                ? JSON.stringify(harvestConditions)
+                : null;
+            const eventPayload = Object.keys(weatherEvents).length > 0
+                ? JSON.stringify(weatherEvents)
+                : null;
+
             await this.db.run(`
                 INSERT OR REPLACE INTO WeatherVintage (
                     region, year, growing_season_temp_avg, growing_season_rainfall,
@@ -503,27 +575,111 @@ class WeatherAnalysisService {
                     vintage_rating
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `, [
-                analysis.region,
+                regionKey,
                 analysis.year,
-                analysis.avgDiurnalRange,
-                analysis.totalRainfall || 0,
-                JSON.stringify({
-                    gdd: analysis.gdd,
-                    huglinIndex: analysis.huglinIndex,
-                    harvestRain: analysis.harvestRain
-                }),
-                JSON.stringify({
-                    heatwaveDays: analysis.heatwaveDays,
-                    frostDays: analysis.frostDays,
-                    droughtStress: analysis.droughtStress
-                }),
-                Math.max(-50, Math.min(50, analysis.overallScore - 50)),
-                this.getVintageRating(analysis.overallScore)
+                growingSeasonTemp,
+                growingSeasonRain,
+                harvestPayload,
+                eventPayload,
+                Math.max(-50, Math.min(50, Math.round(qualityScore - 50))),
+                this.getVintageRating(qualityScore)
             ]);
-            
+
             console.log(`Cached weather analysis for ${analysis.region} ${analysis.year}`);
         } catch (error) {
             console.error('Error caching weather analysis:', error.message);
+        }
+    }
+
+    sanitizeForJson(data) {
+        return Object.fromEntries(
+            Object.entries(data)
+                .filter(([, value]) => value !== undefined && value !== null)
+        );
+    }
+
+    async getCachedWeatherAnalysis(region, year) {
+        if (!region || !year) {
+            return null;
+        }
+
+        try {
+            const cachedRow = await this.db.get(`
+                SELECT region, year, growing_season_temp_avg, growing_season_rainfall,
+                       harvest_conditions, weather_events, quality_impact_score,
+                       vintage_rating, created_at
+                FROM WeatherVintage
+                WHERE LOWER(region) = LOWER(?) AND year = ?
+            `, [region, year]);
+
+            if (!cachedRow) {
+                return null;
+            }
+
+            const parseJson = (value) => {
+                if (!value || typeof value !== 'string') return {};
+                try {
+                    return JSON.parse(value);
+                } catch (error) {
+                    return {};
+                }
+            };
+
+            const harvestData = parseJson(cachedRow.harvest_conditions);
+            const eventData = parseJson(cachedRow.weather_events);
+            const qualityScore = Math.max(-50, Math.min(50, cachedRow.quality_impact_score ?? 0)) + 50;
+
+            const columnTempValue = cachedRow.growing_season_temp_avg;
+            const hasStructuredAvgTemp = Object.prototype.hasOwnProperty.call(harvestData, 'avgTemp');
+            const hasStructuredDiurnal = Object.prototype.hasOwnProperty.call(harvestData, 'avgDiurnalRange');
+            const isLegacyPayload = !hasStructuredAvgTemp && !hasStructuredDiurnal
+                && columnTempValue !== null && columnTempValue !== undefined;
+
+            let avgTemp = null;
+            if (hasStructuredAvgTemp) {
+                avgTemp = harvestData.avgTemp ?? null;
+            } else if (!isLegacyPayload && columnTempValue !== null && columnTempValue !== undefined) {
+                avgTemp = columnTempValue;
+            }
+
+            let avgDiurnalRange = null;
+            if (hasStructuredDiurnal) {
+                avgDiurnalRange = harvestData.avgDiurnalRange ?? null;
+            } else if (isLegacyPayload) {
+                avgDiurnalRange = columnTempValue;
+            }
+
+            return {
+                region: cachedRow.region,
+                year: cachedRow.year,
+                dataSource: harvestData.dataSource || 'database-cache',
+                dataQuality: harvestData.dataQuality || 'High',
+                gdd: harvestData.gdd ?? null,
+                huglinIndex: harvestData.huglinIndex ?? null,
+                avgTemp,
+                avgDiurnalRange,
+                totalRainfall: cachedRow.growing_season_rainfall ?? eventData.totalRainfall ?? null,
+                floweringRain: harvestData.floweringRain ?? null,
+                harvestRain: harvestData.harvestRain ?? null,
+                droughtStress: eventData.droughtStress ?? false,
+                wetDays: eventData.wetDays ?? null,
+                heatwaveDays: eventData.heatwaveDays ?? null,
+                frostDays: eventData.frostDays ?? null,
+                ripenessScore: harvestData.ripenessScore ?? null,
+                acidityScore: harvestData.acidityScore ?? null,
+                tanninScore: harvestData.tanninScore ?? null,
+                diseaseScore: harvestData.diseaseScore ?? null,
+                overallScore: Math.max(20, Math.min(100, qualityScore)),
+                weatherSummary: harvestData.weatherSummary || '',
+                confidenceLevel: harvestData.confidenceLevel
+                    || this.calculateConfidence(harvestData.dataQuality || 'High'),
+                vintageRating: cachedRow.vintage_rating,
+                cachedAt: cachedRow.created_at,
+                cached: true
+            };
+        } catch (error) {
+            console.error('Error retrieving cached weather analysis:', error.message);
+            return null;
         }
     }
 
@@ -550,6 +706,31 @@ class WeatherAnalysisService {
         };
         
         return regionalGDD[region.toLowerCase()] || 1400; // Default moderate climate
+    }
+
+    /**
+     * Get regional average growing season rainfall (mm)
+     */
+    getRegionalRainfall(region) {
+        const regionalRainfall = {
+            'bordeaux': 520,
+            'burgundy': 480,
+            'champagne': 600,
+            'rhône': 430,
+            'tuscany': 420,
+            'piedmont': 540,
+            'rioja': 390,
+            'douro': 360,
+            'napa': 410,
+            'sonoma': 430,
+            'willamette': 520,
+            'barossa': 300,
+            'hunter': 520,
+            'marlborough': 470,
+            'central otago': 320
+        };
+
+        return regionalRainfall[region.toLowerCase()] || 450;
     }
 
     /**
