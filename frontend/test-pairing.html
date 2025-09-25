@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pairing Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h1>Wine Pairing API Test</h1>
+    <button onclick="testPairing()">Test Pairing API</button>
+    <div id="results"></div>
+
+    <script>
+        async function testPairing() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="test-result">Testing API...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/pairing/recommend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        dish: 'grilled salmon with herbs',
+                        context: {
+                            occasion: 'casual',
+                            guestCount: 4
+                        },
+                        guestPreferences: ''
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    results.innerHTML = `
+                        <div class="test-result success">
+                            <h3>✅ API Test Successful!</h3>
+                            <p>Found ${data.data.length} wine recommendations</p>
+                            <h4>First recommendation:</h4>
+                            <pre>${JSON.stringify(data.data[0], null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    results.innerHTML = `
+                        <div class="test-result error">
+                            <h3>❌ API returned empty results</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Test error:', error);
+                results.innerHTML = `
+                    <div class="test-result error">
+                        <h3>❌ API Test Failed</h3>
+                        <p>Error: ${error.message}</p>
+                        <p>Check console for details</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

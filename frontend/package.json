@@ -1,0 +1,13 @@
+{
+  "name": "sommos-frontend",
+  "version": "1.0.0",
+  "description": "SommOS Frontend - Yacht Wine Management PWA",
+  "scripts": {
+    "start": "python3 -m http.server 3000 2>/dev/null || python -m SimpleHTTPServer 3000",
+    "build": "echo 'Frontend build complete - using static files'",
+    "dev": "npm start"
+  },
+  "keywords": ["pwa", "wine", "yacht", "frontend"],
+  "author": "SommOS Team",
+  "license": "MIT"
+}
