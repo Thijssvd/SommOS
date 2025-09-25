@@ -137,24 +137,68 @@
                 </div>
                 
                 <div class="dashboard-sections">
-                    <section class="dashboard-section">
-                        <h2>Quick Actions</h2>
-                        <div class="quick-actions">
-                            <button class="action-btn primary" data-action="quick-pairing">
-                                <span class="btn-icon">⚡</span>
-                                Quick Pairing
-                            </button>
-                            <button class="action-btn" data-action="record-consumption">
-                                <span class="btn-icon">📝</span>
-                                Record Service
-                            </button>
-                            <button class="action-btn" data-action="check-stock">
-                                <span class="btn-icon">📊</span>
-                                Check Stock
-                            </button>
-                        </div>
-                    </section>
-                    
+                <section class="dashboard-section">
+                    <h2>Quick Actions</h2>
+                    <div class="quick-actions">
+                        <button class="action-btn primary" data-action="quick-pairing">
+                            <span class="btn-icon">⚡</span>
+                            Quick Pairing
+                        </button>
+                        <button class="action-btn" data-action="record-consumption">
+                            <span class="btn-icon">📝</span>
+                            Record Service
+                        </button>
+                        <button class="action-btn" data-action="check-stock">
+                            <span class="btn-icon">📊</span>
+                            Check Stock
+                        </button>
+                    </div>
+                </section>
+
+                <section class="dashboard-section score-insights">
+                    <h2>Understanding SommOS Scores</h2>
+                    <div class="score-grid">
+                        <article class="score-card">
+                            <div class="score-icon" aria-hidden="true">🎯</div>
+                            <div class="score-content">
+                                <h3>Pairing Confidence</h3>
+                                <p>Displayed in pairing recommendations, this percentage blends multiple pairing heuristics to show how certain SommOS is that a wine complements your dish.</p>
+                                <ul class="score-factors">
+                                    <li><strong>Flavor Harmony:</strong> Analyzes the match between tasting notes in your dish description and the wine&rsquo;s profile.</li>
+                                    <li><strong>Structure Balance:</strong> Considers acidity, tannin, and body so richer dishes lean toward fuller wines.</li>
+                                    <li><strong>Service Readiness:</strong> Gives a boost when bottles are in stock and at optimal serving temperature or aging window.</li>
+                                </ul>
+                            </div>
+                        </article>
+
+                        <article class="score-card">
+                            <div class="score-icon" aria-hidden="true">💼</div>
+                            <div class="score-content">
+                                <h3>Procurement Opportunity</h3>
+                                <p>Used on the procurement tab, this score highlights the smartest restocking moves by weighing potential value against urgency.</p>
+                                <ul class="score-factors">
+                                    <li><strong>Inventory Gap:</strong> Prioritizes wines that fill shortages or complement upcoming service plans.</li>
+                                    <li><strong>Supplier Signal:</strong> Accounts for supplier reliability, available allocations, and delivery windows.</li>
+                                    <li><strong>Cost Efficiency:</strong> Rewards offers that achieve better price-to-value or long-term appreciation.</li>
+                                </ul>
+                            </div>
+                        </article>
+
+                        <article class="score-card">
+                            <div class="score-icon" aria-hidden="true">🏅</div>
+                            <div class="score-content">
+                                <h3>Vintage Quality</h3>
+                                <p>Shown for cellared bottles, the 0&ndash;100 rating blends critic consensus with SommOS aging models to track drinking windows.</p>
+                                <ul class="score-factors">
+                                    <li><strong>Critical Reviews:</strong> Aggregates trusted publications and competitions for the vintage.</li>
+                                    <li><strong>Aging Potential:</strong> Evaluates grape variety, region, and storage history to estimate peak maturity.</li>
+                                    <li><strong>Cellar Readiness:</strong> Adjusts for bottle condition and serving notes entered by your crew.</li>
+                                </ul>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
                 <section class="dashboard-section">
                     <h2>Wine Collection Analytics</h2>
                     <div class="charts-container">
