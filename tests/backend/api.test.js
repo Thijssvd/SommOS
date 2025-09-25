@@ -2,7 +2,6 @@
 // Comprehensive test suite for all API endpoints
 
 const request = require('supertest');
-const path = require('path');
 
 // Mock the database and core modules to avoid external dependencies during testing
 jest.mock('../../backend/database/connection');
@@ -38,6 +37,21 @@ describe('SommOS API Endpoints', () => {
             expect(response.body).toHaveProperty('success');
             expect(response.body).toHaveProperty('status');
             expect(response.body).toHaveProperty('timestamp');
+        });
+
+        test('GET /api/system/activity should return recent activity', async () => {
+            const response = await request(app)
+                .get('/api/system/activity?limit=5')
+                .expect(200);
+
+            expect(response.body).toHaveProperty('success', true);
+            expect(Array.isArray(response.body.data)).toBe(true);
+            if (response.body.data.length > 0) {
+                const activity = response.body.data[0];
+                expect(activity).toHaveProperty('type');
+                expect(activity).toHaveProperty('title');
+                expect(activity).toHaveProperty('timestamp');
+            }
         });
     });
 
@@ -109,6 +123,65 @@ describe('SommOS API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
+        });
+
+        test('POST /api/inventory/intake should create intake orders', async () => {
+            const intakeRequest = {
+                source_type: 'manual',
+                items: [
+                    {
+                        wine: { name: 'Test Wine', producer: 'Test Producer', region: 'Test Region' },
+                        vintage: { year: 2022 },
+                        stock: { quantity: 6, unit_cost: 42 }
+                    }
+                ]
+            };
+
+            const response = await request(app)
+                .post('/api/inventory/intake')
+                .send(intakeRequest)
+                .expect(200);
+
+            expect(response.body.success).toBe(true);
+            expect(response.body.data).toHaveProperty('intake_id');
+        });
+
+        test('POST /api/inventory/intake/:intakeId/receive should require receipts', async () => {
+            const response = await request(app)
+                .post('/api/inventory/intake/101/receive')
+                .send({ receipts: [] })
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('receipts');
+        });
+
+        test('POST /api/inventory/intake/:intakeId/receive should record receipts', async () => {
+            const receiptRequest = {
+                receipts: [
+                    { wine_name: 'Test Wine', quantity_received: 6 },
+                    { wine_name: 'Test Wine 2', quantity_received: 3 }
+                ],
+                created_by: 'test-user',
+                notes: 'Received partial order'
+            };
+
+            const response = await request(app)
+                .post('/api/inventory/intake/101/receive')
+                .send(receiptRequest)
+                .expect(200);
+
+            expect(response.body.success).toBe(true);
+            expect(response.body.data).toHaveProperty('received_count', receiptRequest.receipts.length);
+        });
+
+        test('GET /api/inventory/intake/:intakeId/status should return intake status', async () => {
+            const response = await request(app)
+                .get('/api/inventory/intake/101/status')
+                .expect(200);
+
+            expect(response.body.success).toBe(true);
+            expect(response.body.data).toHaveProperty('all_received');
         });
 
         test('POST /api/inventory/move should handle wine movement', async () => {

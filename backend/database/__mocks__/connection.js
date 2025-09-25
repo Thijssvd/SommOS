@@ -76,6 +76,46 @@ const SAMPLE_DATA = {
             notes: 'Initial stock',
             created_by: 'system',
             created_at: new Date().toISOString()
+        },
+        {
+            id: 'ledger-2',
+            vintage_id: 'test-vintage-1',
+            transaction_type: 'OUT',
+            location: 'main-cellar',
+            quantity: -2,
+            notes: 'Served during charter',
+            created_by: 'crew',
+            created_at: new Date(Date.now() - 3600 * 1000).toISOString()
+        },
+        {
+            id: 'ledger-3',
+            vintage_id: 'test-vintage-1',
+            transaction_type: 'MOVE',
+            location: 'service-bar',
+            quantity: 3,
+            notes: 'Moved for dinner service',
+            created_by: 'crew',
+            created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+        },
+        {
+            id: 'ledger-4',
+            vintage_id: 'test-vintage-1',
+            transaction_type: 'RESERVE',
+            location: 'owner-suite',
+            quantity: 1,
+            notes: 'Reserved for owner',
+            created_by: 'chief-stew',
+            created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
+        },
+        {
+            id: 'ledger-5',
+            vintage_id: 'test-vintage-1',
+            transaction_type: 'UNRESERVE',
+            location: 'main-cellar',
+            quantity: 1,
+            notes: 'Reservation cancelled',
+            created_by: 'chief-stew',
+            created_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString()
         }
     ],
     suppliers: [
@@ -217,6 +257,24 @@ class MockDatabase {
                 total_bottles: this.data.stock.reduce((sum, stock) => sum + (stock.quantity || 0), 0),
                 active_suppliers: this.data.suppliers.filter(s => s.active).length
             }];
+        }
+
+        if (sql.includes('from ledger l') && sql.includes('join vintages')) {
+            const limit = typeof params[0] === 'number' ? params[0] : this.data.ledger.length;
+            return this.data.ledger
+                .slice()
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, limit)
+                .map((entry) => {
+                    const vintage = this.data.vintages.find(v => v.id === entry.vintage_id) || {};
+                    const wine = this.data.wines.find(w => w.id === vintage.wine_id) || {};
+                    return {
+                        ...entry,
+                        wine_name: wine.name,
+                        producer: wine.producer,
+                        year: vintage.year
+                    };
+                });
         }
 
         if (sql.includes('from ledger')) {
