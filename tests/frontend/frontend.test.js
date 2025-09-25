@@ -237,8 +237,23 @@ describe('SommOS Frontend', () => {
 
             const result = await api.getInventory();
 
-            expect(global.fetch).toHaveBeenCalledWith('http://localhost:3000/api/inventory/stock?', expect.any(Object));
+            expect(global.fetch).toHaveBeenCalledWith('http://localhost:3000/api/inventory/stock', expect.any(Object));
             expect(result).toEqual({ success: true, data: [] });
+        });
+
+        test('should omit empty filter values when building query string', async () => {
+            const mockResponse = {
+                ok: true,
+                json: async () => ({ success: true, data: [] })
+            };
+            global.fetch.mockResolvedValue(mockResponse);
+
+            await api.getInventory({ location: '', wine_type: undefined, region: 'Bordeaux' });
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                'http://localhost:3000/api/inventory/stock?region=Bordeaux',
+                expect.any(Object)
+            );
         });
 
         test('should handle API request with filters', async () => {
