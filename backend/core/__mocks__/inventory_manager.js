@@ -90,6 +90,33 @@ class InventoryManager {
         };
     }
 
+    async createInventoryIntake(request = {}) {
+        return {
+            success: true,
+            intake_id: 101,
+            status: 'ORDERED',
+            items: request.items || [],
+            outstanding_quantity: (request.items || []).reduce((sum, item) => sum + (item.stock?.quantity || 0), 0)
+        };
+    }
+
+    async receiveInventoryIntake(intakeId, receipts = []) {
+        return {
+            success: true,
+            intake_id: intakeId,
+            received_count: receipts.length,
+            status: 'RECEIVED'
+        };
+    }
+
+    async getInventoryIntakeStatus(intakeId) {
+        return {
+            intake_id: intakeId,
+            all_received: true,
+            outstanding_bottles: 0
+        };
+    }
+
     async moveWine(vintageId, fromLocation, toLocation, quantity) {
         return {
             success: true,

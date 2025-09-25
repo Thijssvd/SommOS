@@ -20,18 +20,6 @@ const asyncHandler = (fn) => (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// Middleware for request validation
-const validateRequest = (schema) => (req, res, next) => {
-    const { error } = schema.validate(req.body);
-    if (error) {
-        return res.status(400).json({
-            success: false,
-            error: error.details[0].message
-        });
-    }
-    next();
-};
-
 // ============================================================================
 // PAIRING ENDPOINTS
 // ============================================================================
@@ -894,6 +882,92 @@ router.get('/system/health', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
+}));
+
+// GET /api/system/activity
+// Recent system activity derived from ledger and intake updates
+router.get('/system/activity', asyncHandler(async (req, res) => {
+    const { limit = 10 } = req.query;
+    const db = Database.getInstance();
+
+    const parsedLimit = Number.parseInt(limit, 10);
+    const safeLimit = Number.isFinite(parsedLimit) ? parsedLimit : 10;
+    const maxItems = Math.min(Math.max(safeLimit, 1), 50);
+
+    // Collect recent ledger movements
+    const ledgerActivity = await db.all(`
+        SELECT l.id, l.transaction_type, l.quantity, l.location, l.notes, l.created_by, l.created_at,
+               l.reference_id,
+               w.name AS wine_name,
+               w.producer,
+               v.year
+        FROM Ledger l
+        JOIN Vintages v ON l.vintage_id = v.id
+        JOIN Wines w ON v.wine_id = w.id
+        ORDER BY datetime(l.created_at) DESC
+        LIMIT ?
+    `, [maxItems]);
+
+    const activity = ledgerActivity.map((entry) => {
+        const wineName = entry.wine_name || 'Unknown wine';
+        const yearSuffix = entry.year ? ` (${entry.year})` : '';
+        const titleBase = `${wineName}${yearSuffix}`;
+        const numericQuantity = Number(entry.quantity);
+        const quantity = Number.isFinite(numericQuantity) ? Math.abs(numericQuantity) : null;
+        const quantityText = quantity !== null
+            ? `${quantity} bottle${quantity === 1 ? '' : 's'}`
+            : 'Inventory';
+
+        let type = 'inventory_update';
+        let actionVerb = 'updated';
+
+        switch ((entry.transaction_type || '').toUpperCase()) {
+        case 'OUT':
+            type = 'consumption';
+            actionVerb = 'served';
+            break;
+        case 'MOVE':
+            type = 'inventory_update';
+            actionVerb = 'moved';
+            break;
+        case 'RESERVE':
+            type = 'reservation';
+            actionVerb = 'reserved';
+            break;
+        case 'UNRESERVE':
+            type = 'reservation';
+            actionVerb = 'released';
+            break;
+        case 'IN':
+        default:
+            type = 'inventory_update';
+            actionVerb = 'received';
+            break;
+        }
+
+        const locationText = entry.location ? `Location: ${entry.location}` : null;
+        const referenceText = entry.reference_id ? `Reference: ${entry.reference_id}` : null;
+        const notesText = entry.notes ? `Notes: ${entry.notes}` : null;
+
+        return {
+            id: `ledger-${entry.id}`,
+            type,
+            title: `${quantityText} ${actionVerb} - ${titleBase}`.trim(),
+            details: [
+                entry.producer ? `Producer: ${entry.producer}` : null,
+                locationText,
+                referenceText,
+                notesText,
+                entry.created_by ? `Recorded by ${entry.created_by}` : null
+            ].filter(Boolean).join(' • '),
+            timestamp: entry.created_at
+        };
+    });
+
+    res.json({
+        success: true,
+        data: activity
+    });
 }));
 
 // 404 handler for unmatched API routes
