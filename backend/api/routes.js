@@ -375,8 +375,15 @@ router.get('/wines', asyncHandler(async (req, res) => {
     try {
         const db = Database.getInstance();
         let query = `
-            SELECT w.*, v.year, v.quality_score, v.peak_drinking_start, v.peak_drinking_end,
-                   COALESCE(SUM(s.quantity), 0) as total_stock
+            SELECT w.*, v.year, v.quality_score, v.weather_score, v.critic_score,
+                   v.peak_drinking_start, v.peak_drinking_end,
+                   COALESCE(SUM(s.quantity), 0) as total_stock,
+                   ROUND(
+                       SUM(s.quantity * COALESCE(s.cost_per_bottle, s.current_value, 0)) /
+                       NULLIF(SUM(s.quantity), 0),
+                       2
+                   ) as avg_cost_per_bottle,
+                   COALESCE(SUM(s.quantity * COALESCE(s.current_value, s.cost_per_bottle, 0)), 0) as total_value
             FROM Wines w
             LEFT JOIN Vintages v ON w.id = v.wine_id
             LEFT JOIN Stock s ON v.id = s.vintage_id
@@ -469,21 +476,39 @@ router.get('/wines/:id', asyncHandler(async (req, res) => {
         
         // Get vintages
         const vintages = await db.all(`
-            SELECT v.*, COALESCE(SUM(s.quantity), 0) as total_stock
+            SELECT v.*,
+                   COALESCE(SUM(s.quantity), 0) as total_stock,
+                   ROUND(
+                       SUM(s.quantity * COALESCE(s.cost_per_bottle, s.current_value, 0)) /
+                       NULLIF(SUM(s.quantity), 0),
+                       2
+                   ) as avg_cost_per_bottle,
+                   COALESCE(SUM(s.quantity * COALESCE(s.current_value, s.cost_per_bottle, 0)), 0) as total_value
             FROM Vintages v
             LEFT JOIN Stock s ON v.id = s.vintage_id
             WHERE v.wine_id = ?
             GROUP BY v.id
             ORDER BY v.year DESC
         `, [id]);
-        
+
         // Get aliases
         const aliases = await db.all('SELECT * FROM Aliases WHERE wine_id = ?', [id]);
-        
+
+        const primaryVintage = vintages[0] || {};
+        const totalStock = vintages.reduce((sum, vintage) => sum + (vintage.total_stock || 0), 0);
+        const totalValue = vintages.reduce((sum, vintage) => sum + (vintage.total_value || 0), 0);
+        const averageCost = totalStock > 0 ? Number((totalValue / totalStock).toFixed(2)) : null;
+
         res.json({
             success: true,
             data: {
                 ...wine,
+                quality_score: wine.quality_score ?? primaryVintage.quality_score ?? null,
+                weather_score: wine.weather_score ?? primaryVintage.weather_score ?? null,
+                critic_score: wine.critic_score ?? primaryVintage.critic_score ?? null,
+                total_stock: totalStock,
+                total_value: Number(totalValue.toFixed(2)),
+                avg_cost_per_bottle: averageCost,
                 vintages,
                 aliases
             }
