@@ -7,8 +7,9 @@ const OpenAI = require('openai');
 const Database = require('../database/connection');
 
 class PairingEngine {
-    constructor(database) {
+    constructor(database, learningEngine = null) {
         this.db = database || Database.getInstance();
+        this.learningEngine = learningEngine;
         this.openai = process.env.OPENAI_API_KEY ? new OpenAI({
             apiKey: process.env.OPENAI_API_KEY,
         }) : null;
@@ -30,26 +31,44 @@ class PairingEngine {
      * @returns {Array} Ranked pairing recommendations
      */
     async generatePairings(dish, context = {}, preferences = {}, options = {}) {
-        // Handle both string and object inputs for backward compatibility
-        const dishContext = typeof dish === 'string' ? 
-            await this.parseNaturalLanguageDish(dish, context) : 
-            dish;
-            
-        // If AI is available, enhance with AI recommendations
-        if (this.openai && typeof dish === 'string') {
-            return await this.generateAIPairings(dish, context, preferences, options);
+        const dishContext = typeof dish === 'string'
+            ? await this.parseNaturalLanguageDish(dish, context)
+            : dish;
+
+        await this.refreshAdaptiveWeights();
+
+        const generatedByAI = this.openai && typeof dish === 'string';
+        let recommendations;
+
+        if (generatedByAI) {
+            recommendations = await this.generateAIPairings(
+                dish,
+                context,
+                preferences,
+                options,
+                dishContext
+            );
+        } else {
+            recommendations = await this.generateTraditionalPairings(dishContext, preferences);
         }
-        
-        return await this.generateTraditionalPairings(dishContext, preferences);
+
+        return await this.attachLearningMetadata(recommendations, {
+            dishDescription: typeof dish === 'string' ? dish : (dishContext?.name || ''),
+            dishContext,
+            preferences,
+            generatedByAI
+        });
     }
     
     /**
      * Generate AI-powered pairing recommendations
      */
-    async generateAIPairings(dish, context = {}, preferences = {}, options = {}) {
+    async generateAIPairings(dish, context = {}, preferences = {}, options = {}, dishContext = null) {
         try {
             // Get available wines from inventory
             const availableWines = await this.getAvailableWines();
+
+            const parsedDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
             
             // Create wine inventory summary for AI
             const wineInventory = availableWines.map(wine => ({
@@ -75,8 +94,8 @@ class PairingEngine {
                 );
                 
                 if (wine) {
-                    const traditionalScore = await this.calculatePairingScore(wine, 
-                        await this.parseNaturalLanguageDish(dish, context), preferences);
+                    const traditionalScore = await this.calculatePairingScore(wine,
+                        parsedDish, preferences);
                     
                     enhancedPairings.push({
                         wine,
@@ -97,9 +116,8 @@ class PairingEngine {
                 
         } catch (error) {
             console.error('AI pairing failed, falling back to traditional:', error.message);
-            return await this.generateTraditionalPairings(
-                await this.parseNaturalLanguageDish(dish, context), preferences
-            );
+            const fallbackDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
+            return await this.generateTraditionalPairings(fallbackDish, preferences);
         }
     }
     
@@ -618,6 +636,8 @@ Focus on wines that create harmony or interesting contrasts with the dish. Consi
      * Quick AI-powered pairing for immediate service
      */
     async quickPairing(dish, context = {}, ownerLikes = {}) {
+        await this.refreshAdaptiveWeights();
+
         if (!this.openai) {
             // Fallback to rule-based quick pairing
             const availableWines = await this.getAvailableWines();
@@ -650,6 +670,50 @@ Focus on wines that create harmony or interesting contrasts with the dish. Consi
                 reasoning: 'Quick selection (AI unavailable)',
                 confidence: 0.5
             }));
+        }
+    }
+
+    async refreshAdaptiveWeights() {
+        if (!this.learningEngine) {
+            return;
+        }
+
+        try {
+            const adaptiveWeights = await this.learningEngine.getPairingWeights();
+            if (adaptiveWeights) {
+                this.scoringWeights = adaptiveWeights;
+            }
+        } catch (error) {
+            console.warn('Failed to refresh adaptive pairing weights:', error.message);
+        }
+    }
+
+    async attachLearningMetadata(recommendations, sessionContext = {}) {
+        if (!this.learningEngine || !Array.isArray(recommendations) || recommendations.length === 0) {
+            return recommendations;
+        }
+
+        try {
+            const capture = await this.learningEngine.recordPairingSession({
+                dishDescription: sessionContext.dishDescription,
+                dishContext: sessionContext.dishContext,
+                preferences: sessionContext.preferences,
+                recommendations,
+                generatedByAI: sessionContext.generatedByAI
+            });
+
+            if (!capture?.sessionId) {
+                return recommendations;
+            }
+
+            return recommendations.map((recommendation, index) => ({
+                ...recommendation,
+                learning_session_id: capture.sessionId,
+                learning_recommendation_id: capture.recommendationIds?.[index] || null
+            }));
+        } catch (error) {
+            console.warn('Unable to attach learning metadata to pairing results:', error.message);
+            return recommendations;
         }
     }
 }

@@ -232,6 +232,65 @@ CREATE TABLE Explainability (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE LearningParameters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parameter_name TEXT NOT NULL UNIQUE,
+    parameter_value TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE LearningPairingSessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dish_description TEXT,
+    dish_context TEXT,
+    preferences TEXT,
+    generated_by_ai BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE LearningPairingRecommendations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    wine_id INTEGER,
+    wine_name TEXT NOT NULL,
+    producer TEXT,
+    wine_type TEXT,
+    region TEXT,
+    score_breakdown TEXT,
+    ai_enhanced BOOLEAN DEFAULT 0,
+    ranking INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES LearningPairingSessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE LearningPairingFeedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recommendation_id INTEGER NOT NULL,
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    notes TEXT,
+    selected BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (recommendation_id) REFERENCES LearningPairingRecommendations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE LearningConsumptionEvents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vintage_id INTEGER,
+    wine_id INTEGER,
+    wine_type TEXT,
+    quantity REAL NOT NULL,
+    location TEXT,
+    event_type TEXT CHECK (event_type IN ('consume', 'receive', 'adjust')) DEFAULT 'consume',
+    metadata TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_learning_pairing_session_created ON LearningPairingSessions(created_at);
+CREATE INDEX idx_learning_pairing_recommendation_session ON LearningPairingRecommendations(session_id);
+CREATE INDEX idx_learning_pairing_feedback_recommendation ON LearningPairingFeedback(recommendation_id);
+CREATE INDEX idx_learning_consumption_event_type ON LearningConsumptionEvents(event_type);
+CREATE INDEX idx_learning_consumption_wine_type ON LearningConsumptionEvents(wine_type);
+
 -- Indexes for Performance
 
 CREATE INDEX idx_wines_region ON Wines(region);

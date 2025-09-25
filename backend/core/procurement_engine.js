@@ -6,8 +6,17 @@
 const Database = require('../database/connection');
 
 class ProcurementEngine {
-    constructor(database) {
+    constructor(database, learningEngine = null) {
         this.db = database || Database.getInstance();
+        this.learningEngine = learningEngine;
+        this.defaultScoringWeights = {
+            stock_urgency: 0.28,
+            value_proposition: 0.23,
+            quality_score: 0.18,
+            supplier_reliability: 0.12,
+            seasonal_relevance: 0.09,
+            budget_alignment: 0.10
+        };
     }
 
     /**
@@ -35,11 +44,23 @@ class ProcurementEngine {
 
         const recommendations = [];
 
+        const learningContext = await this.getAdaptiveProcurementContext();
+
         for (const opportunity of opportunities) {
-            const score = await this.scoreProcurementOpportunity(opportunity, lowStockItems, normalizedCriteria);
+            const score = await this.scoreProcurementOpportunity(
+                opportunity,
+                lowStockItems,
+                normalizedCriteria,
+                learningContext
+            );
 
             if (score.total > 0.5) {
-                const recommended_quantity = this.calculateRecommendedQuantity(opportunity, lowStockItems, normalizedCriteria);
+                const recommended_quantity = this.calculateRecommendedQuantity(
+                    opportunity,
+                    lowStockItems,
+                    normalizedCriteria,
+                    learningContext.demandMultipliers
+                );
                 const estimated_market_price = this.estimateMarketPrice(opportunity);
                 const estimated_value = estimated_market_price * recommended_quantity;
                 const estimated_investment = opportunity.price_per_bottle * recommended_quantity;
@@ -48,7 +69,13 @@ class ProcurementEngine {
                 recommendations.push({
                     ...opportunity,
                     score,
-                    reasoning: this.generateProcurementReasoning(opportunity, score, normalizedCriteria, recommended_quantity),
+                    reasoning: this.generateProcurementReasoning(
+                        opportunity,
+                        score,
+                        normalizedCriteria,
+                        recommended_quantity,
+                        learningContext.demandMultipliers
+                    ),
                     recommended_quantity,
                     estimated_value: this.roundCurrency(estimated_value),
                     estimated_investment: this.roundCurrency(estimated_investment),
@@ -73,30 +100,35 @@ class ProcurementEngine {
     /**
      * Score procurement opportunity
      */
-    async scoreProcurementOpportunity(opportunity, lowStockItems, criteria = {}) {
+    async scoreProcurementOpportunity(opportunity, lowStockItems, criteria = {}, learningContext = {}) {
         const scores = {
             stock_urgency: this.calculateStockUrgency(opportunity, lowStockItems),
             value_proposition: this.calculateValueProposition(opportunity),
             quality_score: this.normalizeQualityScore(opportunity.quality_score),
             supplier_reliability: await this.getSupplierReliability(opportunity.supplier_id),
             seasonal_relevance: this.calculateSeasonalRelevance(opportunity),
-            budget_alignment: this.calculateBudgetAlignment(opportunity, criteria, lowStockItems)
+            budget_alignment: this.calculateBudgetAlignment(
+                opportunity,
+                criteria,
+                lowStockItems,
+                learningContext.demandMultipliers
+            )
         };
 
-        const weights = {
-            stock_urgency: 0.28,
-            value_proposition: 0.23,
-            quality_score: 0.18,
-            supplier_reliability: 0.12,
-            seasonal_relevance: 0.09,
-            budget_alignment: 0.10
-        };
-        
+        const demandFactor = learningContext?.demandMultipliers?.[opportunity.wine_type] || 1;
+
+        if (demandFactor && demandFactor !== 1) {
+            scores.stock_urgency = Math.min(1, scores.stock_urgency * demandFactor);
+            scores.seasonal_relevance = Math.min(1, scores.seasonal_relevance * (0.9 + 0.1 * demandFactor));
+        }
+
+        const weights = learningContext?.weights || this.defaultScoringWeights;
+
         let total = 0;
         for (const [category, score] of Object.entries(scores)) {
-            total += score * weights[category];
+            total += score * (weights[category] || 0);
         }
-        
+
         return {
             ...scores,
             total: Math.min(1.0, total),
@@ -182,7 +214,7 @@ class ProcurementEngine {
     /**
      * Generate procurement reasoning
      */
-    generateProcurementReasoning(opportunity, score, criteria = {}, recommendedQuantity) {
+    generateProcurementReasoning(opportunity, score, criteria = {}, recommendedQuantity, demandMultipliers = {}) {
         const reasons = [];
 
         if (score.stock_urgency > 0.8) {
@@ -190,7 +222,14 @@ class ProcurementEngine {
         } else if (score.stock_urgency > 0.6) {
             reasons.push('Low stock levels detected');
         }
-        
+
+        const demandFactor = demandMultipliers?.[opportunity.wine_type] || 1;
+        if (demandFactor > 1.25) {
+            reasons.push('Consumption trends show rising demand for this wine style');
+        } else if (demandFactor < 0.85) {
+            reasons.push('Demand is stable; consider moderate restock levels');
+        }
+
         if (score.value_proposition > 0.8) {
             reasons.push('Excellent value proposition with high quality-to-price ratio');
         } else if (score.value_proposition > 0.6) {
@@ -216,7 +255,12 @@ class ProcurementEngine {
         }
 
         if (criteria?.budget_limit) {
-            const recommended = recommendedQuantity ?? this.calculateRecommendedQuantity(opportunity, [], criteria);
+            const recommended = recommendedQuantity ?? this.calculateRecommendedQuantity(
+                opportunity,
+                [],
+                criteria,
+                demandMultipliers
+            );
             reasons.push(`Projected spend of $${this.roundCurrency(
                 (opportunity.price_per_bottle || 0) * recommended
             )} stays within $${criteria.budget_limit} budget window.`);
@@ -298,6 +342,7 @@ class ProcurementEngine {
 
             // Calculate analysis scores
             const lowStockItems = await this.identifyLowStock(5);
+            const learningContext = await this.getAdaptiveProcurementContext();
             const opportunity = {
                 wine_name: wine.name,
                 producer: wine.producer,
@@ -311,9 +356,25 @@ class ProcurementEngine {
                 minimum_order: context.minimum_order || 1
             };
 
-            const recommendedQuantity = this.calculateRecommendedQuantity(opportunity, lowStockItems, context);
-            const score = await this.scoreProcurementOpportunity(opportunity, lowStockItems, context);
-            const reasoning = this.generateProcurementReasoning(opportunity, score, context, recommendedQuantity);
+            const recommendedQuantity = this.calculateRecommendedQuantity(
+                opportunity,
+                lowStockItems,
+                context,
+                learningContext.demandMultipliers
+            );
+            const score = await this.scoreProcurementOpportunity(
+                opportunity,
+                lowStockItems,
+                context,
+                learningContext
+            );
+            const reasoning = this.generateProcurementReasoning(
+                opportunity,
+                score,
+                context,
+                recommendedQuantity,
+                learningContext.demandMultipliers
+            );
 
             // Calculate order details
             const totalCost = quantity * (wine.price_per_bottle || 0);
@@ -576,7 +637,7 @@ class ProcurementEngine {
         };
     }
 
-    calculateRecommendedQuantity(opportunity, lowStockItems, criteria = {}) {
+    calculateRecommendedQuantity(opportunity, lowStockItems, criteria = {}, demandMultipliers = {}) {
         const lowStockItem = lowStockItems.find(item =>
             item.wine_name === opportunity.wine_name &&
             item.producer === opportunity.producer
@@ -587,19 +648,30 @@ class ProcurementEngine {
         const currentStock = opportunity.current_stock || 0;
         const deficit = Math.max(0, desiredStockLevel - currentStock);
 
+        const rawMultiplier = demandMultipliers?.[opportunity.wine_type] || 1;
+        const demandMultiplier = Math.max(0.7, Math.min(1.6, rawMultiplier));
+        const cap = Math.max(baseQuantity, criteria.max_restock || 48);
+
         if (lowStockItem) {
-            return Math.max(baseQuantity, deficit || baseQuantity);
+            const quantity = Math.max(baseQuantity, deficit || baseQuantity);
+            return Math.min(cap, Math.max(baseQuantity, Math.round(quantity * demandMultiplier)));
         }
 
-        return Math.min(Math.max(baseQuantity, deficit || baseQuantity), 48);
+        const quantity = Math.max(baseQuantity, deficit || baseQuantity);
+        return Math.min(cap, Math.max(baseQuantity, Math.round(quantity * demandMultiplier)));
     }
 
-    calculateBudgetAlignment(opportunity, criteria = {}, lowStockItems = []) {
+    calculateBudgetAlignment(opportunity, criteria = {}, lowStockItems = [], demandMultipliers = {}) {
         if (!criteria?.budget_limit) {
             return 0.6; // neutral score when no budget constraint
         }
 
-        const recommendedQuantity = this.calculateRecommendedQuantity(opportunity, lowStockItems, criteria);
+        const recommendedQuantity = this.calculateRecommendedQuantity(
+            opportunity,
+            lowStockItems,
+            criteria,
+            demandMultipliers
+        );
         const projectedSpend = opportunity.price_per_bottle * recommendedQuantity;
 
         if (projectedSpend <= criteria.budget_limit * 0.5) return 1.0;
@@ -634,6 +706,33 @@ class ProcurementEngine {
         const scarcityMultiplier = opportunity.availability_status === 'Limited' ? 1.1 : 1;
 
         return base * qualityMultiplier * scarcityMultiplier;
+    }
+
+    async getAdaptiveProcurementContext() {
+        if (!this.learningEngine) {
+            return {
+                weights: this.defaultScoringWeights,
+                demandMultipliers: {}
+            };
+        }
+
+        try {
+            const [weights, demandMultipliers] = await Promise.all([
+                this.learningEngine.getProcurementWeights(),
+                this.learningEngine.getDemandMultipliers()
+            ]);
+
+            return {
+                weights: weights || this.defaultScoringWeights,
+                demandMultipliers: demandMultipliers || {}
+            };
+        } catch (error) {
+            console.warn('Failed to load adaptive procurement context:', error.message);
+            return {
+                weights: this.defaultScoringWeights,
+                demandMultipliers: {}
+            };
+        }
     }
 
     buildOpportunitySummary(opportunities, criteria) {

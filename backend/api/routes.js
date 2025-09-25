@@ -6,14 +6,20 @@ const router = express.Router();
 const PairingEngine = require('../core/pairing_engine');
 const InventoryManager = require('../core/inventory_manager');
 const ProcurementEngine = require('../core/procurement_engine');
+const LearningEngine = require('../core/learning_engine');
 const VintageIntelligenceService = require('../core/vintage_intelligence');
 const wineGuidanceService = require('../core/wine_guidance_service');
 const Database = require('../database/connection');
 
 // Initialize engines
-const pairingEngine = new PairingEngine();
-const inventoryManager = new InventoryManager();
-const procurementEngine = new ProcurementEngine();
+const learningEngine = new LearningEngine();
+learningEngine.initialize().catch(error => {
+    console.warn('Learning engine initialization failed:', error.message);
+});
+
+const pairingEngine = new PairingEngine(null, learningEngine);
+const inventoryManager = new InventoryManager(null, learningEngine);
+const procurementEngine = new ProcurementEngine(null, learningEngine);
 const vintageIntelligenceService = new VintageIntelligenceService();
 
 // Middleware for error handling
@@ -45,10 +51,17 @@ router.post('/pairing/recommend', asyncHandler(async (req, res) => {
             options || {}
         );
 
-        res.json({
+        const responsePayload = {
             success: true,
             data: recommendations
-        });
+        };
+
+        const sessionId = Array.isArray(recommendations) && recommendations[0]?.learning_session_id;
+        if (sessionId) {
+            responsePayload.meta = { learning_session_id: sessionId };
+        }
+
+        res.json(responsePayload);
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -68,6 +81,33 @@ router.post('/pairing/quick', asyncHandler(async (req, res) => {
         res.json({
             success: true,
             data: quickPairings
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}));
+
+// POST /api/pairing/feedback
+// Capture owner feedback to improve future pairings
+router.post('/pairing/feedback', asyncHandler(async (req, res) => {
+    const { recommendation_id, rating, notes, selected = true } = req.body || {};
+
+    if (!recommendation_id || !rating) {
+        return res.status(400).json({
+            success: false,
+            error: 'recommendation_id and rating are required'
+        });
+    }
+
+    try {
+        await learningEngine.recordPairingFeedback(recommendation_id, rating, notes, selected);
+
+        res.json({
+            success: true,
+            message: 'Feedback recorded'
         });
     } catch (error) {
         res.status(500).json({
