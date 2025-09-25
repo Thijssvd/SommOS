@@ -5,11 +5,13 @@
 
 const Database = require('../database/connection');
 const VintageIntelligenceService = require('./vintage_intelligence');
+const InventoryIntakeProcessor = require('./inventory_intake_processor');
 
 class InventoryManager {
     constructor(database) {
         this.db = database || Database.getInstance();
         this.vintageIntelligence = new VintageIntelligenceService(this.db);
+        this.intakeProcessor = new InventoryIntakeProcessor();
     }
 
     /**
@@ -66,6 +68,342 @@ class InventoryManager {
             
         } catch (error) {
             throw error;
+        }
+    }
+
+    /**
+     * Create a new intake order from various capture sources (manual/pdf/excel/scan)
+     */
+    async createInventoryIntake(intakeRequest = {}) {
+        try {
+            const normalized = this.intakeProcessor.process(intakeRequest);
+
+            if (!normalized.items.length) {
+                throw new Error('Inventory intake must include at least one wine entry');
+            }
+
+            const orderDate = normalized.order_date || new Date().toISOString().slice(0, 10);
+
+            const orderResult = await this.db.run(`
+                INSERT INTO InventoryIntakeOrders (
+                    supplier_id, supplier_name, source_type, reference,
+                    order_date, expected_delivery, status, raw_payload, metadata
+                ) VALUES (?, ?, ?, ?, ?, ?, 'ORDERED', ?, ?)
+            `, [
+                normalized.supplier?.id || null,
+                normalized.supplier?.name || null,
+                normalized.source_type,
+                normalized.reference || null,
+                orderDate,
+                normalized.expected_delivery || null,
+                this.safeStringify(normalized.raw_payload || intakeRequest),
+                this.safeStringify(normalized.metadata || {})
+            ]);
+
+            const intakeId = orderResult.lastID;
+            const itemsSummary = [];
+
+            for (const item of normalized.items) {
+                const quantityOrdered = this.toInteger(item.stock?.quantity, 0);
+                const unitCost = this.toNumber(item.stock?.unit_cost, null);
+                const location = item.stock?.location || 'receiving';
+                const grapeVarieties = this.normalizeGrapeVarieties(item.wine?.grape_varieties);
+
+                await this.db.run(`
+                    INSERT INTO InventoryIntakeItems (
+                        intake_id, external_reference, wine_name, producer, region, country,
+                        wine_type, grape_varieties, vintage_year, quantity_ordered,
+                        unit_cost, location, status, notes, wine_payload, vintage_payload, stock_payload
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ORDERED', ?, ?, ?, ?)
+                `, [
+                    intakeId,
+                    item.external_reference || null,
+                    item.wine?.name || 'Unknown Wine',
+                    item.wine?.producer || 'Unknown Producer',
+                    item.wine?.region || 'Unknown Region',
+                    item.wine?.country || 'Unknown',
+                    item.wine?.wine_type || 'Red',
+                    JSON.stringify(grapeVarieties),
+                    this.toInteger(item.vintage?.year, null),
+                    quantityOrdered,
+                    unitCost,
+                    location,
+                    item.stock?.notes || null,
+                    this.safeStringify(item.wine || {}),
+                    this.safeStringify(item.vintage || {}),
+                    this.safeStringify(item.stock || {})
+                ]);
+
+                itemsSummary.push({
+                    external_reference: item.external_reference || null,
+                    wine_name: item.wine?.name || 'Unknown Wine',
+                    producer: item.wine?.producer || 'Unknown Producer',
+                    vintage_year: this.toInteger(item.vintage?.year, null),
+                    quantity_ordered: quantityOrdered,
+                    unit_cost: unitCost,
+                    location
+                });
+            }
+
+            const outstandingQuantity = itemsSummary.reduce((sum, item) => sum + (item.quantity_ordered || 0), 0);
+
+            return {
+                success: true,
+                intake_id: intakeId,
+                status: 'ORDERED',
+                order_reference: normalized.reference || null,
+                source_type: normalized.source_type,
+                supplier: normalized.supplier || {},
+                total_items: itemsSummary.length,
+                outstanding_quantity: outstandingQuantity,
+                items: itemsSummary
+            };
+        } catch (error) {
+            throw new Error(`Failed to create inventory intake: ${error.message}`);
+        }
+    }
+
+    /**
+     * Receive bottles against an intake order and move them into stock
+     */
+    async receiveInventoryIntake(intakeId, receipts = [], options = {}) {
+        try {
+            if (!intakeId) {
+                throw new Error('intakeId is required to receive inventory');
+            }
+
+            if (!Array.isArray(receipts) || receipts.length === 0) {
+                throw new Error('Receipts array is required to record received bottles');
+            }
+
+            const order = await this.db.get(`
+                SELECT * FROM InventoryIntakeOrders WHERE id = ?
+            `, [intakeId]);
+
+            if (!order) {
+                throw new Error(`Inventory intake order ${intakeId} not found`);
+            }
+
+            const items = await this.db.all(`
+                SELECT * FROM InventoryIntakeItems WHERE intake_id = ?
+            `, [intakeId]);
+
+            if (!items.length) {
+                throw new Error('No items registered for this intake order');
+            }
+
+            const receiptSummaries = [];
+
+            for (const receipt of receipts) {
+                const item = this.matchIntakeItem(items, receipt);
+                if (!item) {
+                    throw new Error('Unable to match receipt to an intake line item');
+                }
+
+                const remaining = item.quantity_ordered - item.quantity_received;
+                if (remaining <= 0) {
+                    receiptSummaries.push({
+                        item_id: item.id,
+                        wine_name: item.wine_name,
+                        status: item.status,
+                        message: 'Item already fully received'
+                    });
+                    continue;
+                }
+
+                const quantityToReceive = Math.min(
+                    this.toInteger(receipt.quantity, remaining) || remaining,
+                    remaining
+                );
+
+                if (quantityToReceive <= 0) {
+                    throw new Error('Receipt quantity must be greater than zero');
+                }
+
+                const winePayload = this.safeParseJSON(item.wine_payload, {
+                    name: item.wine_name,
+                    producer: item.producer,
+                    region: item.region,
+                    country: item.country,
+                    wine_type: item.wine_type,
+                    grape_varieties: this.safeParseJSON(item.grape_varieties, [])
+                });
+
+                const vintagePayload = this.safeParseJSON(item.vintage_payload, {
+                    year: item.vintage_year
+                });
+
+                const stockPayload = this.safeParseJSON(item.stock_payload, {});
+
+                const wineData = {
+                    name: winePayload.name || item.wine_name,
+                    producer: winePayload.producer || item.producer,
+                    region: winePayload.region || item.region,
+                    country: winePayload.country || item.country || 'Unknown',
+                    wine_type: winePayload.wine_type || item.wine_type || 'Red',
+                    grape_varieties: this.normalizeGrapeVarieties(winePayload.grape_varieties),
+                    alcohol_content: winePayload.alcohol_content || null,
+                    style: winePayload.style || null,
+                    tasting_notes: winePayload.tasting_notes || null,
+                    food_pairings: winePayload.food_pairings || null,
+                    serving_temp_min: winePayload.serving_temp_min || null,
+                    serving_temp_max: winePayload.serving_temp_max || null
+                };
+
+                const vintageData = {
+                    year: this.toInteger(receipt.year || vintagePayload.year || item.vintage_year, null),
+                    harvest_date: vintagePayload.harvest_date || null,
+                    bottling_date: vintagePayload.bottling_date || null,
+                    release_date: vintagePayload.release_date || null,
+                    peak_drinking_start: vintagePayload.peak_drinking_start || null,
+                    peak_drinking_end: vintagePayload.peak_drinking_end || null,
+                    quality_score: vintagePayload.quality_score || null,
+                    weather_score: vintagePayload.weather_score || null,
+                    critic_score: vintagePayload.critic_score || null,
+                    production_notes: vintagePayload.production_notes || null
+                };
+
+                const costPerBottle = this.toNumber(
+                    receipt.unit_cost ?? receipt.cost_per_bottle ?? stockPayload.unit_cost ?? item.unit_cost,
+                    0
+                );
+
+                const notesFragments = [stockPayload.notes, receipt.notes, options.notes]
+                    .filter(Boolean)
+                    .join(' | ') || null;
+
+                const stockData = {
+                    location: receipt.location || stockPayload.location || item.location || 'main-cellar',
+                    quantity: quantityToReceive,
+                    cost_per_bottle: costPerBottle,
+                    unit_cost: costPerBottle,
+                    reference_id: receipt.reference_id || order.reference || stockPayload.reference_id || null,
+                    notes: notesFragments,
+                    storage_conditions: stockPayload.storage_conditions || null,
+                    created_by: receipt.created_by || options.created_by || 'Inventory Intake'
+                };
+
+                const addition = await this.addWineToInventory(wineData, vintageData, stockData);
+
+                const updatedQuantity = item.quantity_received + quantityToReceive;
+                const newStatus = updatedQuantity >= item.quantity_ordered ? 'RECEIVED' : 'PARTIAL';
+
+                await this.db.run(`
+                    UPDATE InventoryIntakeItems
+                    SET quantity_received = ?, status = ?, updated_at = CURRENT_TIMESTAMP,
+                        wine_id = COALESCE(wine_id, ?), vintage_id = COALESCE(vintage_id, ?)
+                    WHERE id = ?
+                `, [
+                    updatedQuantity,
+                    newStatus,
+                    addition.wine?.id || null,
+                    addition.vintage?.id || null,
+                    item.id
+                ]);
+
+                receiptSummaries.push({
+                    item_id: item.id,
+                    wine_name: item.wine_name,
+                    vintage_year: item.vintage_year,
+                    received_quantity: quantityToReceive,
+                    status: newStatus,
+                    remaining: Math.max(item.quantity_ordered - updatedQuantity, 0)
+                });
+            }
+
+            const updatedItems = await this.db.all(`
+                SELECT quantity_ordered, quantity_received
+                FROM InventoryIntakeItems
+                WHERE intake_id = ?
+            `, [intakeId]);
+
+            const outstandingBottles = updatedItems.reduce(
+                (sum, row) => sum + Math.max(row.quantity_ordered - row.quantity_received, 0),
+                0
+            );
+
+            const allReceived = updatedItems.every(row => row.quantity_received >= row.quantity_ordered);
+            const anyReceived = updatedItems.some(row => row.quantity_received > 0);
+
+            const orderStatus = allReceived ? 'RECEIVED' : (anyReceived ? 'PARTIALLY_RECEIVED' : 'ORDERED');
+
+            await this.db.run(`
+                UPDATE InventoryIntakeOrders
+                SET status = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `, [orderStatus, intakeId]);
+
+            return {
+                success: true,
+                intake_id: intakeId,
+                status: orderStatus,
+                outstanding_bottles: outstandingBottles,
+                all_received: allReceived,
+                receipts: receiptSummaries
+            };
+        } catch (error) {
+            throw new Error(`Failed to receive inventory intake: ${error.message}`);
+        }
+    }
+
+    /**
+     * Get intake order status with outstanding quantity verification
+     */
+    async getInventoryIntakeStatus(intakeId) {
+        try {
+            if (!intakeId) {
+                throw new Error('intakeId is required');
+            }
+
+            const order = await this.db.get(`
+                SELECT * FROM InventoryIntakeOrders WHERE id = ?
+            `, [intakeId]);
+
+            if (!order) {
+                throw new Error(`Inventory intake order ${intakeId} not found`);
+            }
+
+            const items = await this.db.all(`
+                SELECT * FROM InventoryIntakeItems WHERE intake_id = ? ORDER BY id
+            `, [intakeId]);
+
+            const itemSummaries = items.map(item => {
+                const outstanding = Math.max(item.quantity_ordered - item.quantity_received, 0);
+                return {
+                    item_id: item.id,
+                    wine_name: item.wine_name,
+                    producer: item.producer,
+                    vintage_year: item.vintage_year,
+                    quantity_ordered: item.quantity_ordered,
+                    quantity_received: item.quantity_received,
+                    outstanding_quantity: outstanding,
+                    status: item.status,
+                    location: item.location,
+                    external_reference: item.external_reference
+                };
+            });
+
+            const outstandingBottles = itemSummaries.reduce((sum, item) => sum + item.outstanding_quantity, 0);
+            const allReceived = outstandingBottles === 0;
+
+            return {
+                success: true,
+                intake_id: intakeId,
+                supplier: {
+                    id: order.supplier_id,
+                    name: order.supplier_name
+                },
+                reference: order.reference,
+                status: order.status,
+                source_type: order.source_type,
+                order_date: order.order_date,
+                expected_delivery: order.expected_delivery,
+                outstanding_bottles: outstandingBottles,
+                all_received,
+                items: itemSummaries
+            };
+        } catch (error) {
+            throw new Error(`Failed to retrieve intake status: ${error.message}`);
         }
     }
 
@@ -270,6 +608,135 @@ class InventoryManager {
             WHERE (s.quantity - s.reserved_quantity) <= ? AND (s.quantity - s.reserved_quantity) > 0
             ORDER BY available_quantity ASC
         `, [threshold]);
+    }
+
+    matchIntakeItem(items = [], receipt = {}) {
+        if (!items.length) {
+            return null;
+        }
+
+        const outstandingItems = items.filter(item => item.quantity_received < item.quantity_ordered);
+        const candidates = outstandingItems.length ? outstandingItems : items;
+
+        if (receipt.item_id || receipt.id) {
+            const targetId = receipt.item_id || receipt.id;
+            const match = candidates.find(item => item.id === targetId);
+            if (match) return match;
+        }
+
+        if (receipt.external_reference || receipt.reference) {
+            const reference = receipt.external_reference || receipt.reference;
+            const match = candidates.find(item => item.external_reference && item.external_reference === reference);
+            if (match) return match;
+        }
+
+        if (receipt.line || receipt.line_number) {
+            const lineNumber = this.toInteger(receipt.line || receipt.line_number, null);
+            if (lineNumber !== null) {
+                const match = candidates.find(item => {
+                    const payload = this.safeParseJSON(item.stock_payload, {});
+                    return payload.line === lineNumber;
+                });
+                if (match) return match;
+            }
+        }
+
+        if (receipt.wine_name) {
+            const targetName = String(receipt.wine_name).toLowerCase().trim();
+            const targetYear = this.toInteger(receipt.year || receipt.vintage_year, null);
+            const match = candidates.find(item => {
+                const sameName = item.wine_name && item.wine_name.toLowerCase() === targetName;
+                if (!sameName) return false;
+                if (targetYear === null) return true;
+                return this.toInteger(item.vintage_year, null) === targetYear;
+            });
+            if (match) return match;
+        }
+
+        return candidates[0] || null;
+    }
+
+    normalizeGrapeVarieties(value) {
+        if (value === null || value === undefined) {
+            return [];
+        }
+
+        if (Array.isArray(value)) {
+            return value;
+        }
+
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return [];
+            }
+
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                }
+            } catch (error) {
+                // Not JSON formatted, fall back to delimiter split
+            }
+
+            return trimmed
+                .split(/[,;]+/)
+                .map(entry => entry.trim())
+                .filter(Boolean);
+        }
+
+        return [value].filter(Boolean);
+    }
+
+    safeStringify(value) {
+        if (value === null || value === undefined) {
+            return null;
+        }
+
+        if (typeof value === 'string') {
+            return value;
+        }
+
+        try {
+            return JSON.stringify(value);
+        } catch (error) {
+            return JSON.stringify({ value: String(value), error: error.message });
+        }
+    }
+
+    safeParseJSON(value, fallback) {
+        if (value === null || value === undefined || value === '') {
+            return fallback;
+        }
+
+        if (typeof value === 'object') {
+            return value;
+        }
+
+        try {
+            return JSON.parse(value);
+        } catch (error) {
+            return fallback;
+        }
+    }
+
+    toInteger(value, fallback = 0) {
+        if (value === null || value === undefined || value === '') {
+            return fallback;
+        }
+
+        const intVal = parseInt(value, 10);
+        return Number.isNaN(intVal) ? fallback : intVal;
+    }
+
+    toNumber(value, fallback = 0) {
+        if (value === null || value === undefined || value === '') {
+            return fallback;
+        }
+
+        const numVal = parseFloat(value);
+        return Number.isNaN(numVal) ? fallback : numVal;
     }
 
     // Helper methods

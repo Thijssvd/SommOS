@@ -154,7 +154,7 @@ router.post('/inventory/consume', asyncHandler(async (req, res) => {
 // Record wine receipt/delivery
 router.post('/inventory/receive', asyncHandler(async (req, res) => {
     const { vintage_id, location, quantity, unit_cost, reference_id, notes, created_by } = req.body;
-    
+
     if (!vintage_id || !location || !quantity) {
         return res.status(400).json({
             success: false,
@@ -179,6 +179,77 @@ router.post('/inventory/receive', asyncHandler(async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+}));
+
+// POST /api/inventory/intake
+// Create a new intake order from external sources
+router.post('/inventory/intake', asyncHandler(async (req, res) => {
+    try {
+        const result = await inventoryManager.createInventoryIntake(req.body || {});
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        const statusCode = /required|Unable|not found|extract/i.test(error.message) ? 400 : 500;
+        res.status(statusCode).json({
+            success: false,
+            error: error.message
+        });
+    }
+}));
+
+// POST /api/inventory/intake/:intakeId/receive
+// Mark bottles as received against an intake order
+router.post('/inventory/intake/:intakeId/receive', asyncHandler(async (req, res) => {
+    const intakeId = parseInt(req.params.intakeId, 10);
+    const { receipts, created_by, notes } = req.body || {};
+
+    if (!Array.isArray(receipts) || receipts.length === 0) {
+        return res.status(400).json({
+            success: false,
+            error: 'receipts array with at least one entry is required'
+        });
+    }
+
+    try {
+        const result = await inventoryManager.receiveInventoryIntake(
+            intakeId,
+            receipts,
+            { created_by, notes }
+        );
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        const statusCode = /required|Unable|not found/i.test(error.message) ? 400 : 500;
+        res.status(statusCode).json({
+            success: false,
+            error: error.message
+        });
+    }
+}));
+
+// GET /api/inventory/intake/:intakeId/status
+// Verify whether all bottles from an intake have been received
+router.get('/inventory/intake/:intakeId/status', asyncHandler(async (req, res) => {
+    const intakeId = parseInt(req.params.intakeId, 10);
+
+    try {
+        const result = await inventoryManager.getInventoryIntakeStatus(intakeId);
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        const statusCode = /required|not found/i.test(error.message) ? 404 : 500;
+        res.status(statusCode).json({
             success: false,
             error: error.message
         });

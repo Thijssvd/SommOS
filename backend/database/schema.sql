@@ -147,6 +147,55 @@ CREATE TABLE PriceBook (
     UNIQUE(vintage_id, supplier_id)
 );
 
+CREATE TABLE InventoryIntakeOrders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER,
+    supplier_name TEXT,
+    source_type TEXT NOT NULL CHECK (source_type IN ('manual', 'pdf_invoice', 'excel', 'scanned_document')),
+    reference TEXT,
+    order_date DATE DEFAULT CURRENT_DATE,
+    expected_delivery DATE,
+    status TEXT NOT NULL CHECK (status IN ('ORDERED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED')) DEFAULT 'ORDERED',
+    raw_payload TEXT,
+    metadata TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES Suppliers(id) ON DELETE SET NULL,
+    UNIQUE(reference, supplier_id)
+);
+
+CREATE TABLE InventoryIntakeItems (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    intake_id INTEGER NOT NULL,
+    external_reference TEXT,
+    wine_name TEXT NOT NULL,
+    producer TEXT,
+    region TEXT,
+    country TEXT,
+    wine_type TEXT,
+    grape_varieties TEXT,
+    vintage_year INTEGER,
+    quantity_ordered INTEGER NOT NULL,
+    quantity_received INTEGER NOT NULL DEFAULT 0,
+    unit_cost DECIMAL(10,2),
+    location TEXT,
+    status TEXT NOT NULL CHECK (status IN ('ORDERED', 'PARTIAL', 'RECEIVED', 'CANCELLED')) DEFAULT 'ORDERED',
+    notes TEXT,
+    wine_payload TEXT,
+    vintage_payload TEXT,
+    stock_payload TEXT,
+    wine_id INTEGER,
+    vintage_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (intake_id) REFERENCES InventoryIntakeOrders(id) ON DELETE CASCADE,
+    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE SET NULL,
+    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_inventory_intake_items_intake_id ON InventoryIntakeItems(intake_id);
+CREATE INDEX idx_inventory_intake_items_status ON InventoryIntakeItems(status);
+
 CREATE TABLE Aliases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     wine_id INTEGER NOT NULL,
