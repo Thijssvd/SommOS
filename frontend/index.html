@@ -22,6 +22,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        window.__SOMMOS_API_BASE__ = window.__SOMMOS_API_BASE__ || (function () {
+            const { protocol, hostname, port } = window.location;
+            if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '3000') {
+                return `${protocol}//${hostname}:3001/api`;
+            }
+            const origin = window.location.origin.endsWith('/')
+                ? window.location.origin.slice(0, -1)
+                : window.location.origin;
+            return `${origin}/api`;
+        })();
+    </script>
 </head>
 <body>
     <!-- Skip to main content -->

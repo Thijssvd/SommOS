@@ -16,12 +16,17 @@ class OpenMeteoService {
     constructor() {
         this.baseUrl = 'https://archive-api.open-meteo.com/v1/archive';
         this.geocodingUrl = 'https://geocoding-api.open-meteo.com/v1/search';
-        
+
         // Wine region coordinates cache to minimize geocoding requests
         this.regionCoordinates = new Map();
-        
+
         // Initialize with major wine regions
         this.initializeWineRegions();
+    }
+
+    shouldBypassNetwork() {
+        return ['test', 'performance'].includes(process.env.NODE_ENV) ||
+            process.env.SOMMOS_DISABLE_EXTERNAL_CALLS === 'true';
     }
 
     /**
@@ -95,6 +100,14 @@ class OpenMeteoService {
             return this.regionCoordinates.get(normalizedRegion);
         }
 
+        if (this.shouldBypassNetwork()) {
+            // In tests we avoid network calls and rely on cached / fallback coordinates
+            if (this.regionCoordinates.has(normalizedRegion)) {
+                return this.regionCoordinates.get(normalizedRegion);
+            }
+            return { latitude: 44.8378, longitude: -0.5792 };
+        }
+
         // Geocode using Open-Meteo's geocoding API
         try {
             const response = await axios.get(this.geocodingUrl, {
@@ -159,6 +172,10 @@ class OpenMeteoService {
      * https://github.com/open-meteo/open-meteo/blob/main/openapi_historical_weather_api.yml
      */
     async getVintageWeatherData(region, year, options = {}) {
+        if (this.shouldBypassNetwork()) {
+            return null;
+        }
+
         console.log(`Fetching Open-Meteo data for ${region} ${year}`);
 
         try {

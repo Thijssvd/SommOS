@@ -1,31 +1,31 @@
 /* SommOS - Yacht Wine Management System Styles */
 
 :root {
-    --primary-color: #1a1a2e;
-    --secondary-color: #16213e;
-    --accent-color: #e94560;
-    --gold-color: #f5c842;
-    --text-primary: #ffffff;
-    --text-secondary: #b8b8b8;
-    --text-muted: #888888;
-    --background: #0f0f23;
-    --surface: #1e1e3f;
-    --surface-elevated: #2a2a4f;
-    --border: #2a2a4a;
-    --border-light: #3a3a5a;
-    --success: #4caf50;
-    --warning: #ff9800;
-    --error: #f44336;
-    --shadow: rgba(0, 0, 0, 0.3);
-    --shadow-elevated: rgba(0, 0, 0, 0.5);
-    --gradient-primary: linear-gradient(135deg, var(--accent-color), var(--gold-color));
-    --gradient-surface: linear-gradient(135deg, var(--surface), var(--surface-elevated));
-    --border-radius-small: 8px;
-    --border-radius-medium: 12px;
-    --border-radius-large: 16px;
+    --primary-color: #101a33;
+    --secondary-color: #18243d;
+    --accent-color: #9c7cff;
+    --gold-color: #f2c76e;
+    --text-primary: #f8fafc;
+    --text-secondary: #c1c7d0;
+    --text-muted: #8f9bb3;
+    --background: radial-gradient(circle at top, #0b1020 0%, #050912 60%, #02040a 100%);
+    --surface: rgba(19, 30, 53, 0.92);
+    --surface-elevated: rgba(31, 48, 78, 0.9);
+    --border: rgba(148, 163, 184, 0.08);
+    --border-light: rgba(148, 163, 184, 0.14);
+    --success: #38d39f;
+    --warning: #f6a96c;
+    --error: #ff6b6b;
+    --shadow: rgba(8, 15, 31, 0.4);
+    --shadow-elevated: rgba(2, 6, 15, 0.65);
+    --gradient-primary: linear-gradient(135deg, rgba(156, 124, 255, 0.9), rgba(242, 199, 110, 0.95));
+    --gradient-surface: linear-gradient(160deg, rgba(19, 30, 53, 0.95), rgba(31, 48, 78, 0.75));
+    --border-radius-small: 10px;
+    --border-radius-medium: 16px;
+    --border-radius-large: 22px;
     --transition-fast: 0.2s ease;
-    --transition-medium: 0.3s ease;
-    --transition-slow: 0.5s ease;
+    --transition-medium: 0.35s ease;
+    --transition-slow: 0.6s ease;
 }
 
 * {
@@ -37,9 +37,11 @@
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background: var(--background);
+    background-attachment: fixed;
     color: var(--text-primary);
     line-height: 1.6;
     overflow-x: hidden;
+    min-height: 100vh;
 }
 
 /* Skip to main content link */
@@ -163,14 +165,14 @@ select:focus {
 /* Navigation */
 .main-nav {
     width: 280px;
-    background: linear-gradient(180deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-    border-right: 1px solid var(--border);
+    background: linear-gradient(200deg, rgba(16, 26, 51, 0.95) 0%, rgba(16, 26, 51, 0.55) 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
     display: flex;
     flex-direction: column;
     padding: 1.5rem 0;
     position: relative;
-    backdrop-filter: blur(20px);
-    box-shadow: 2px 0 20px var(--shadow);
+    backdrop-filter: blur(22px);
+    box-shadow: 0 12px 50px rgba(8, 15, 31, 0.45);
 }
 
 .nav-brand {
@@ -279,12 +281,13 @@ select:focus {
 .main-content {
     flex: 1;
     overflow-y: auto;
-    background: var(--background);
+    background: linear-gradient(180deg, rgba(9, 13, 25, 0.85) 0%, rgba(5, 9, 18, 0.95) 40%, rgba(4, 8, 16, 0.98) 100%);
+    padding: 3rem;
 }
 
 .view {
     display: none;
-    padding: 2rem;
+    padding: 2.5rem;
     max-width: 1400px;
     margin: 0 auto;
 }
@@ -294,7 +297,9 @@ select:focus {
 }
 
 .view-header {
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
 }
 
 .view-header h1 {
@@ -894,6 +899,8 @@ select:focus {
     transition: all var(--transition-medium);
     position: relative;
     overflow: hidden;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 40px rgba(7, 13, 27, 0.45);
 }
 
 .wine-card::before {
@@ -909,8 +916,8 @@ select:focus {
 }
 
 .wine-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px var(--shadow-elevated);
+    transform: translateY(-6px);
+    box-shadow: 0 20px 60px var(--shadow-elevated);
     border-color: var(--accent-color);
 }
 
@@ -1210,6 +1217,7 @@ select:focus {
     gap: 0.75rem;
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--border);
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.02), rgba(156, 124, 255, 0.05));
 }
 
 .btn-small {
