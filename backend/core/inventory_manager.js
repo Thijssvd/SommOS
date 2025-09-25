@@ -46,9 +46,12 @@ class InventoryManager {
                 const wineWithVintage = {
                     ...wine,
                     ...vintage,
+                    wine_id: wine.id,
+                    vintage_id: vintage.id,
+                    id: wine.id,
                     year: vintage.year || vintageData.year
                 };
-                
+
                 const enrichedData = await this.vintageIntelligence.enrichWineData(wineWithVintage);
                 console.log('Vintage intelligence enrichment completed');
                 
