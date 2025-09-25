@@ -193,7 +193,91 @@
                             <label for="dish-input">Dish Description</label>
                             <textarea id="dish-input" placeholder="Describe the dish you're serving (e.g., grilled salmon with lemon herbs)" rows="3"></textarea>
                         </div>
-                        
+
+                        <div class="form-group dish-builder" aria-describedby="dish-builder-helper">
+                            <div class="builder-header">
+                                <label>Build a Dish Description <span class="optional">(Optional)</span></label>
+                                <p id="dish-builder-helper" class="helper-text">Choose a few quick details and we'll craft a rich dish description that you can still edit.</p>
+                            </div>
+
+                            <div class="builder-grid">
+                                <div class="builder-column">
+                                    <label for="dish-main-ingredient">Main Ingredient</label>
+                                    <input type="text" id="dish-main-ingredient" placeholder="e.g., salmon, beef tenderloin, wild mushrooms">
+                                </div>
+                                <div class="builder-column">
+                                    <label for="dish-cooking-technique">Cooking Technique</label>
+                                    <select id="dish-cooking-technique">
+                                        <option value="">Select technique</option>
+                                        <option value="grilled">Grilled</option>
+                                        <option value="roasted">Roasted</option>
+                                        <option value="pan-seared">Pan-seared</option>
+                                        <option value="braised">Braised</option>
+                                        <option value="poached">Poached</option>
+                                        <option value="smoked">Smoked</option>
+                                        <option value="slow-cooked">Slow-cooked</option>
+                                    </select>
+                                </div>
+                                <div class="builder-column">
+                                    <label for="dish-cuisine-style">Cuisine Style</label>
+                                    <select id="dish-cuisine-style">
+                                        <option value="">Select cuisine</option>
+                                        <option value="Mediterranean">Mediterranean</option>
+                                        <option value="French">French</option>
+                                        <option value="Italian">Italian</option>
+                                        <option value="Spanish">Spanish</option>
+                                        <option value="Japanese">Japanese</option>
+                                        <option value="Thai">Thai</option>
+                                        <option value="Latin">Latin American</option>
+                                        <option value="Modern">Modern fusion</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="builder-grid">
+                                <div class="builder-column">
+                                    <label for="dish-accompaniments">Accompaniments</label>
+                                    <input type="text" id="dish-accompaniments" placeholder="e.g., roasted root vegetables, citrus beurre blanc">
+                                </div>
+                                <div class="builder-column">
+                                    <label for="dish-intensity">Intensity</label>
+                                    <select id="dish-intensity">
+                                        <option value="">Select intensity</option>
+                                        <option value="light">Light</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="rich">Rich</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="flavor-tag-group" role="group" aria-label="Flavor notes">
+                                <span class="flavor-label">Flavor Highlights</span>
+                                <div class="flavor-tags">
+                                    <button type="button" class="flavor-tag" data-flavor="bright citrus">Citrus</button>
+                                    <button type="button" class="flavor-tag" data-flavor="herbaceous">Herbal</button>
+                                    <button type="button" class="flavor-tag" data-flavor="smoky">Smoky</button>
+                                    <button type="button" class="flavor-tag" data-flavor="savory umami">Umami</button>
+                                    <button type="button" class="flavor-tag" data-flavor="spiced">Spiced</button>
+                                    <button type="button" class="flavor-tag" data-flavor="creamy">Creamy</button>
+                                    <button type="button" class="flavor-tag" data-flavor="sweet and tangy">Sweet &amp; Tangy</button>
+                                    <button type="button" class="flavor-tag" data-flavor="earthy">Earthy</button>
+                                </div>
+                            </div>
+
+                            <div class="builder-preview" aria-live="polite" aria-atomic="true">
+                                <span class="preview-label">Preview</span>
+                                <p id="dish-builder-preview">Select details to see a suggested description.</p>
+                            </div>
+
+                            <div class="builder-actions">
+                                <button type="button" id="clear-dish-builder" class="btn ghost small">Clear Builder</button>
+                                <button type="button" id="apply-dish-builder" class="btn secondary small">
+                                    <span class="btn-icon">✨</span>
+                                    Use This Description
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="occasion-select">Occasion</label>
