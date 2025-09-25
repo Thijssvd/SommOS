@@ -184,22 +184,34 @@ class PairingEngine {
      * Calculate flavor harmony score
      */
     calculateFlavorHarmony(wine, dishContext) {
-        const wineFlavors = this.extractWineFlavors(wine);
+        const wineDescriptors = new Set([
+            ...this.extractWineFlavors(wine),
+            this.getWineBody(wine),
+            this.getWineTexture(wine)
+        ].filter(Boolean));
         const dishFlavors = dishContext.dominant_flavors || [];
-        
+
         let harmonyScore = 0;
         let conflictPenalty = 0;
-        
+
         // Check for complementary flavors
         for (const dishFlavor of dishFlavors) {
-            if (this.isComplementaryFlavor(dishFlavor, wineFlavors)) {
+            if (this.isComplementaryFlavor(dishFlavor, wineDescriptors)) {
                 harmonyScore += 0.3;
             }
-            if (this.isConflictingFlavor(dishFlavor, wineFlavors)) {
-                conflictPenalty += 0.2;
+            if (this.isConflictingFlavor(dishFlavor, wineDescriptors)) {
+                conflictPenalty += 0.3;
             }
         }
-        
+
+        const wineBody = this.getWineBody(wine);
+        if (['light', 'medium'].includes(dishContext.intensity) && wine.wine_type === 'Red' && wineBody === 'full') {
+            conflictPenalty += 0.2;
+        }
+        if (dishFlavors.includes('citrus') && wine.wine_type === 'Red') {
+            conflictPenalty += 0.1;
+        }
+
         return Math.max(0, Math.min(1.0, harmonyScore - conflictPenalty));
     }
 
@@ -208,13 +220,13 @@ class PairingEngine {
      */
     calculateTextureBalance(wine, dishContext) {
         const wineTexture = this.getWineTexture(wine);
-        const dishTexture = dishContext.texture || 'medium';
+        const dishTexture = this.deriveDishTexture(dishContext);
         
         // Complementary texture pairings
         const textureMatrix = {
-            'crisp': { 'creamy': 0.9, 'oily': 0.8, 'light': 0.7 },
-            'smooth': { 'textured': 0.8, 'medium': 0.9, 'rich': 0.7 },
-            'tannic': { 'fatty': 0.9, 'protein-rich': 0.8, 'rich': 0.7 }
+            'crisp': { 'creamy': 0.9, 'oily': 0.8, 'light': 0.7, 'rich': 0.4 },
+            'smooth': { 'textured': 0.8, 'medium': 0.9, 'rich': 0.7, 'light': 0.6 },
+            'tannic': { 'fatty': 0.9, 'protein-rich': 0.8, 'rich': 0.7, 'light': 0.3 }
         };
         
         return textureMatrix[wineTexture]?.[dishTexture] || 0.5;
@@ -241,7 +253,7 @@ class PairingEngine {
      * Calculate seasonal appropriateness
      */
     calculateSeasonalScore(wine, dishContext) {
-        const currentSeason = this.getCurrentSeason();
+        const currentSeason = dishContext.season || this.getCurrentSeason();
         const wineStyle = this.getWineStyle(wine);
         
         const seasonalPreferences = {
@@ -303,7 +315,11 @@ class PairingEngine {
         if (score.texture_balance > 0.8) {
             reasons.push(`The wine's texture provides perfect balance to the dish`);
         }
-        
+
+        if (reasons.length === 0) {
+            reasons.push(`Balanced structure and style make this a versatile match for the dish`);
+        }
+
         return reasons.join('. ') + '.';
     }
 
@@ -345,39 +361,84 @@ class PairingEngine {
         
         // Extract flavor categories from tasting notes
         const flavorKeywords = {
-            'fruit': ['berry', 'cherry', 'apple', 'citrus', 'tropical'],
-            'earth': ['mineral', 'stone', 'earth', 'soil'],
-            'spice': ['pepper', 'spice', 'herb', 'oak'],
-            'floral': ['floral', 'rose', 'violet']
+            'fruit': ['berry', 'cherry', 'cassis', 'blackberry', 'plum', 'apple', 'pear', 'peach', 'apricot', 'citrus', 'lemon', 'lime', 'orange', 'tropical'],
+            'earth': ['mineral', 'stone', 'earth', 'soil', 'graphite', 'truffle', 'mushroom'],
+            'spice': ['pepper', 'spice', 'herb', 'herbal', 'cedar', 'oak', 'anise', 'clove'],
+            'floral': ['floral', 'rose', 'violet', 'blossom'],
+            'sweet': ['honey', 'caramel', 'toffee'],
+            'nutty': ['almond', 'hazelnut', 'nut', 'walnut'],
+            'smoky': ['smoke', 'smoky', 'toast', 'toasted']
         };
-        
+
         for (const [category, keywords] of Object.entries(flavorKeywords)) {
             if (keywords.some(keyword => notes.includes(keyword))) {
                 flavors.push(category);
             }
         }
-        
+
         return flavors;
     }
 
-    isComplementaryFlavor(dishFlavor, wineFlavors) {
+    isComplementaryFlavor(dishFlavor, wineDescriptors) {
         const complementaryMap = {
-            'citrus': ['fruit', 'mineral'],
-            'herb': ['earth', 'spice'],
-            'rich': ['tannic', 'full'],
-            'spicy': ['fruit', 'spice']
+            'citrus': ['crisp', 'light', 'earth'],
+            'herb': ['earth', 'spice', 'herbal'],
+            'rich': ['full', 'tannic', 'sweet', 'smooth'],
+            'spicy': ['sweet', 'fruit', 'spice'],
+            'sweet': ['sweet', 'fruit', 'smooth'],
+            'delicate': ['light', 'floral', 'crisp'],
+            'umami': ['earth', 'spice', 'tannic']
         };
-        
-        return complementaryMap[dishFlavor]?.some(f => wineFlavors.includes(f)) || false;
+
+        const descriptors = Array.isArray(wineDescriptors) ? wineDescriptors : Array.from(wineDescriptors);
+        return complementaryMap[dishFlavor]?.some(f => descriptors.includes(f)) || false;
     }
 
-    isConflictingFlavor(dishFlavor, wineFlavors) {
+    isConflictingFlavor(dishFlavor, wineDescriptors) {
         const conflictMap = {
-            'delicate': ['tannic', 'heavy'],
-            'sweet': ['dry', 'tannic']
+            'delicate': ['tannic', 'full'],
+            'sweet': ['tannic'],
+            'spicy': ['tannic'],
+            'citrus': ['tannic']
         };
-        
-        return conflictMap[dishFlavor]?.some(f => wineFlavors.includes(f)) || false;
+
+        const descriptors = Array.isArray(wineDescriptors) ? wineDescriptors : Array.from(wineDescriptors);
+        return conflictMap[dishFlavor]?.some(f => descriptors.includes(f)) || false;
+    }
+
+    deriveDishTexture(dishContext) {
+        if (dishContext.texture) {
+            return dishContext.texture;
+        }
+
+        if (dishContext.dominant_flavors?.includes('rich')) {
+            return 'rich';
+        }
+        if (dishContext.dominant_flavors?.includes('spicy')) {
+            return 'medium';
+        }
+        if (dishContext.dominant_flavors?.includes('delicate')) {
+            return 'light';
+        }
+
+        const preparation = dishContext.preparation?.toLowerCase();
+        if (preparation) {
+            if (['raw', 'poached', 'steamed'].includes(preparation)) {
+                return 'light';
+            }
+            if (['roasted', 'braised', 'grilled', 'seared', 'stewed'].includes(preparation)) {
+                return 'rich';
+            }
+        }
+
+        if (dishContext.intensity === 'heavy') {
+            return 'rich';
+        }
+        if (dishContext.intensity === 'light') {
+            return 'light';
+        }
+
+        return 'medium';
     }
 
     getCurrentSeason() {
@@ -416,11 +477,19 @@ class PairingEngine {
         // Simplified regional tradition lookup
         const traditions = {
             'burgundy': { 'french': { perfect_match: true } },
+            'bordeaux': { 'french': { good_match: true } },
+            'loire valley': { 'french': { good_match: true } },
+            'provence': { 'french': { good_match: true } },
             'tuscany': { 'italian': { perfect_match: true } },
+            'piedmont': { 'italian': { perfect_match: true } },
             'rioja': { 'spanish': { perfect_match: true } },
-            'champagne': { 'french': { good_match: true } }
+            'champagne': { 'french': { good_match: true }, 'international': { good_match: true } },
+            'mosel': { 'german': { perfect_match: true }, 'thai': { good_match: true } },
+            'alsace': { 'french': { good_match: true }, 'german': { acceptable_match: true } },
+            'douro': { 'portuguese': { perfect_match: true }, 'french': { acceptable_match: true } },
+            'california': { 'american': { good_match: true }, 'international': { acceptable_match: true } }
         };
-        
+
         return traditions[wineRegion]?.[cuisine] || {};
     }
 
