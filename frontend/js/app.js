@@ -69,16 +69,16 @@ class SommOS {
         // Initialize IndexedDB for offline storage
         return new Promise((resolve, reject) => {
             const request = indexedDB.open('SommOSDB', 1);
-            
+
             request.onerror = () => reject(request.error);
             request.onsuccess = () => {
                 this.db = request.result;
                 resolve();
             };
-            
+
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                
+
                 // Create object stores
                 if (!db.objectStoreNames.contains('wines')) {
                     db.createObjectStore('wines', { keyPath: 'id' });
@@ -91,6 +91,228 @@ class SommOS {
                 }
             };
         });
+    }
+
+    setupDishBuilder() {
+        const builderContainer = document.querySelector('.dish-builder');
+        if (!builderContainer) {
+            return;
+        }
+
+        this.dishBuilderState = {
+            ingredient: '',
+            technique: '',
+            cuisine: '',
+            accompaniments: '',
+            intensity: '',
+            flavors: new Set()
+        };
+
+        this.dishBuilderElements = {
+            ingredientInput: document.getElementById('dish-main-ingredient'),
+            techniqueSelect: document.getElementById('dish-cooking-technique'),
+            cuisineSelect: document.getElementById('dish-cuisine-style'),
+            accompanimentsInput: document.getElementById('dish-accompaniments'),
+            intensitySelect: document.getElementById('dish-intensity'),
+            flavorButtons: Array.from(document.querySelectorAll('.flavor-tag')),
+            preview: document.getElementById('dish-builder-preview'),
+            applyBtn: document.getElementById('apply-dish-builder'),
+            clearBtn: document.getElementById('clear-dish-builder')
+        };
+
+        const updateState = () => this.updateDishBuilderPreview();
+
+        if (this.dishBuilderElements.ingredientInput) {
+            this.dishBuilderElements.ingredientInput.addEventListener('input', (event) => {
+                this.dishBuilderState.ingredient = event.target.value.trim();
+                updateState();
+            });
+        }
+
+        if (this.dishBuilderElements.techniqueSelect) {
+            this.dishBuilderElements.techniqueSelect.addEventListener('change', (event) => {
+                this.dishBuilderState.technique = event.target.value;
+                updateState();
+            });
+        }
+
+        if (this.dishBuilderElements.cuisineSelect) {
+            this.dishBuilderElements.cuisineSelect.addEventListener('change', (event) => {
+                this.dishBuilderState.cuisine = event.target.value;
+                updateState();
+            });
+        }
+
+        if (this.dishBuilderElements.accompanimentsInput) {
+            this.dishBuilderElements.accompanimentsInput.addEventListener('input', (event) => {
+                this.dishBuilderState.accompaniments = event.target.value.trim();
+                updateState();
+            });
+        }
+
+        if (this.dishBuilderElements.intensitySelect) {
+            this.dishBuilderElements.intensitySelect.addEventListener('change', (event) => {
+                this.dishBuilderState.intensity = event.target.value;
+                updateState();
+            });
+        }
+
+        if (this.dishBuilderElements.flavorButtons.length > 0) {
+            this.dishBuilderElements.flavorButtons.forEach((button) => {
+                button.setAttribute('aria-pressed', 'false');
+                button.addEventListener('click', () => {
+                    const flavor = button.dataset.flavor;
+                    if (!flavor) {
+                        return;
+                    }
+
+                    if (this.dishBuilderState.flavors.has(flavor)) {
+                        this.dishBuilderState.flavors.delete(flavor);
+                        button.classList.remove('selected');
+                        button.setAttribute('aria-pressed', 'false');
+                    } else {
+                        this.dishBuilderState.flavors.add(flavor);
+                        button.classList.add('selected');
+                        button.setAttribute('aria-pressed', 'true');
+                    }
+
+                    updateState();
+                });
+            });
+        }
+
+        if (this.dishBuilderElements.applyBtn) {
+            this.dishBuilderElements.applyBtn.addEventListener('click', () => this.applyDishBuilderDescription());
+        }
+
+        if (this.dishBuilderElements.clearBtn) {
+            this.dishBuilderElements.clearBtn.addEventListener('click', () => this.resetDishBuilder());
+        }
+
+        this.updateDishBuilderPreview();
+    }
+
+    buildDishDescription() {
+        if (!this.dishBuilderState) {
+            return '';
+        }
+
+        const { ingredient, technique, cuisine, accompaniments, intensity, flavors } = this.dishBuilderState;
+        const descriptionParts = [];
+
+        const mainDish = [technique, ingredient].filter(Boolean).join(' ').trim();
+        if (mainDish) {
+            descriptionParts.push(mainDish);
+        }
+
+        if (cuisine) {
+            descriptionParts.push(`${cuisine} cuisine`);
+        }
+
+        if (accompaniments) {
+            descriptionParts.push(`served with ${accompaniments}`);
+        }
+
+        if (intensity) {
+            descriptionParts.push(`${intensity} intensity`);
+        }
+
+        if (flavors && flavors.size > 0) {
+            const flavorList = Array.from(flavors);
+            if (flavorList.length === 1) {
+                descriptionParts.push(`highlighting ${flavorList[0]} notes`);
+            } else {
+                const lastFlavor = flavorList.pop();
+                descriptionParts.push(`highlighting ${flavorList.join(', ')} and ${lastFlavor} notes`);
+            }
+        }
+
+        if (descriptionParts.length === 0) {
+            return '';
+        }
+
+        let description = descriptionParts.join(', ');
+        description = description.charAt(0).toUpperCase() + description.slice(1);
+
+        if (!description.endsWith('.')) {
+            description += '.';
+        }
+
+        return description;
+    }
+
+    updateDishBuilderPreview() {
+        if (!this.dishBuilderElements || !this.dishBuilderElements.preview) {
+            return;
+        }
+
+        const description = this.buildDishDescription();
+        this.dishBuilderElements.preview.textContent = description || 'Select details to see a suggested description.';
+    }
+
+    applyDishBuilderDescription() {
+        const dishInput = document.getElementById('dish-input');
+        const description = this.buildDishDescription();
+
+        if (!dishInput) {
+            return;
+        }
+
+        if (!description) {
+            this.ui.showToast('Add a few dish details before using the builder.', 'warning');
+            return;
+        }
+
+        const existingText = dishInput.value.trim();
+        if (existingText && !existingText.includes(description)) {
+            dishInput.value = `${description}\n${existingText}`;
+        } else {
+            dishInput.value = description;
+        }
+
+        dishInput.focus();
+        dishInput.setSelectionRange(dishInput.value.length, dishInput.value.length);
+        this.ui.showToast('Dish description updated with your selections.', 'success');
+    }
+
+    resetDishBuilder() {
+        if (!this.dishBuilderElements || !this.dishBuilderState) {
+            return;
+        }
+
+        this.dishBuilderState = {
+            ingredient: '',
+            technique: '',
+            cuisine: '',
+            accompaniments: '',
+            intensity: '',
+            flavors: new Set()
+        };
+
+        const {
+            ingredientInput,
+            techniqueSelect,
+            cuisineSelect,
+            accompanimentsInput,
+            intensitySelect,
+            flavorButtons
+        } = this.dishBuilderElements;
+
+        if (ingredientInput) ingredientInput.value = '';
+        if (techniqueSelect) techniqueSelect.value = '';
+        if (cuisineSelect) cuisineSelect.value = '';
+        if (accompanimentsInput) accompanimentsInput.value = '';
+        if (intensitySelect) intensitySelect.value = '';
+
+        if (flavorButtons && flavorButtons.length) {
+            flavorButtons.forEach((button) => {
+                button.classList.remove('selected');
+                button.setAttribute('aria-pressed', 'false');
+            });
+        }
+
+        this.updateDishBuilderPreview();
+        this.ui.showToast('Dish builder cleared.', 'info');
     }
 
     setupEventListeners() {
@@ -157,6 +379,8 @@ class SommOS {
             this.isOnline = false;
             this.ui.showToast('Working offline', 'warning');
         });
+
+        this.setupDishBuilder();
     }
 
     navigateToView(viewName) {
