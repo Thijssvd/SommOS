@@ -2569,6 +2569,35 @@ select:focus {
     font-size: 0.85rem;
 }
 
+.catalog-card .wine-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.catalog-card .wine-card-body {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.wine-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.wine-meta .meta-item {
+    background: var(--surface-elevated);
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--border-radius-small);
+    border: 1px solid var(--border-light);
+}
+
 .catalog-card .wine-stats {
     display: flex;
     justify-content: space-between;
@@ -2577,6 +2606,32 @@ select:focus {
     padding-top: 1rem;
     border-top: 1px solid var(--border);
     font-size: 0.9rem;
+    gap: 1rem;
+}
+
+.catalog-card .wine-stats .stat-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+}
+
+.catalog-card .wine-stats .stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.catalog-card .wine-stats .stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.catalog-card .wine-stats .stat-unit {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
 }
 
 .catalog-card .stock {
@@ -2612,6 +2667,158 @@ select:focus {
     transform: translateX(4px);
 }
 
+.wine-score-summary {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+}
+
+.wine-card-body .wine-score-summary,
+.wine-metrics .wine-score-summary {
+    margin-top: 0;
+}
+
+.wine-score-summary .score-chip {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius-medium);
+    border: 1px solid var(--border);
+    background: var(--surface-elevated);
+    min-width: 130px;
+}
+
+.wine-score-summary .score-chip.overall {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    box-shadow: 0 8px 20px rgba(139, 90, 60, 0.25);
+}
+
+.wine-score-summary .score-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.85;
+}
+
+.wine-score-summary .score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+}
+
+.score-unit {
+    font-size: 0.75rem;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+.score-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.score-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-elevated);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.score-pill .pill-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.score-pill .pill-value {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25rem;
+}
+
+.score-pill.muted {
+    opacity: 0.6;
+    border-style: dashed;
+}
+
+.wine-score-summary.list {
+    justify-content: flex-end;
+    margin-top: 0;
+}
+
+.wine-score-summary.list .score-chip {
+    padding: 0.5rem 0.75rem;
+    min-width: auto;
+    background: var(--surface-elevated);
+    color: var(--text-primary);
+}
+
+.wine-score-summary.list .score-chip.overall {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+.wine-score-summary.list .score-value {
+    font-size: 1.2rem;
+}
+
+.wine-score-summary.list .score-breakdown {
+    display: none;
+}
+
+.wine-score-summary.detail,
+.wine-score-summary.modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius-medium);
+    padding: 1rem 1.5rem;
+    justify-content: space-between;
+    gap: 1.5rem;
+}
+
+.wine-score-summary.modal {
+    margin-bottom: 1.5rem;
+}
+
+.wine-score-summary.detail .score-chip.overall,
+.wine-score-summary.modal .score-chip.overall {
+    background: var(--accent-color);
+    box-shadow: none;
+}
+
+.wine-score-summary.detail .score-chip,
+.wine-score-summary.modal .score-chip {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+}
+
+.wine-score-summary.detail .score-breakdown,
+.wine-score-summary.modal .score-breakdown {
+    flex: 1;
+}
+
+.wine-score-summary.detail .score-pill,
+.wine-score-summary.modal .score-pill {
+    background: var(--surface);
+}
+
 .wine-basic-info h4 {
     color: var(--text-primary);
     margin-bottom: 0.25rem;
@@ -2628,23 +2835,44 @@ select:focus {
     gap: 1rem;
     color: var(--text-secondary);
     font-size: 0.9rem;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .wine-metrics {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 0.25rem;
-    font-size: 0.9rem;
+    gap: 0.75rem;
+    align-items: stretch;
 }
 
-.wine-metrics .stock {
+.wine-details .peak-window {
+    background: var(--surface-elevated);
+    border-radius: var(--border-radius-small);
+    border: 1px solid var(--border-light);
+    padding: 0.25rem 0.6rem;
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.wine-metrics .metric-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
 }
 
-.wine-metrics .value {
-    color: var(--success);
+.wine-metrics .metric-label {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.75rem;
+}
+
+.wine-metrics .metric-value {
     font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
 }
 
 .catalog-pagination {
@@ -2776,6 +3004,147 @@ select:focus {
     flex-direction: column;
     gap: 2rem;
     margin-bottom: 2rem;
+}
+
+.peak-window {
+    margin-top: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius-medium);
+    padding: 0.75rem 1rem;
+}
+
+.peak-window strong {
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+.peak-window p {
+    margin: 0.35rem 0 0 0;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.wine-inventory {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius-medium);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.wine-inventory h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.inventory-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+}
+
+.inventory-metric {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius-medium);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.inventory-metric .metric-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.inventory-metric .metric-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.vintages-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.vintages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.vintage-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius-medium);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.vintage-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px var(--shadow-elevated);
+    border-color: var(--accent-color);
+}
+
+.vintage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.vintage-year {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.vintage-stock {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.vintage-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.vintage-metrics .metric {
+    background: var(--surface-elevated);
+    border-radius: var(--border-radius-small);
+    border: 1px solid var(--border-light);
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.vintage-metrics .score-pill {
+    background: var(--surface);
+}
+
+.vintage-actions {
+    display: flex;
+    justify-content: flex-end;
 }
 
 .wine-detail-section h4 {

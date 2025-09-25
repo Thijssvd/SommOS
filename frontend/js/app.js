@@ -779,6 +779,183 @@ class SommOS {
         };
         return icons[wineType] || '🍷';
     }
+
+    parseNumeric(value) {
+        if (value === null || value === undefined) {
+            return null;
+        }
+
+        const numeric = Number(value);
+        return Number.isFinite(numeric) ? numeric : null;
+    }
+
+    formatNumber(value) {
+        const numeric = this.parseNumeric(value);
+        if (numeric === null) {
+            return '—';
+        }
+
+        return new Intl.NumberFormat().format(numeric);
+    }
+
+    formatCurrency(value, { minimumFractionDigits = 0, maximumFractionDigits = 0 } = {}) {
+        const numeric = this.parseNumeric(value);
+        if (numeric === null) {
+            return '—';
+        }
+
+        return new Intl.NumberFormat(undefined, {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits,
+            maximumFractionDigits
+        }).format(numeric);
+    }
+
+    getPeakDrinkingWindow(wine) {
+        const startOffset = this.parseNumeric(wine.peak_drinking_start);
+        const endOffset = this.parseNumeric(wine.peak_drinking_end);
+        const vintageYear = this.parseNumeric(wine.year);
+
+        if (startOffset === null && endOffset === null) {
+            return null;
+        }
+
+        if (vintageYear !== null) {
+            const startYear = startOffset !== null ? vintageYear + startOffset : null;
+            const endYear = endOffset !== null ? vintageYear + endOffset : null;
+
+            if (startYear && endYear) {
+                return `${startYear} – ${endYear}`;
+            }
+            if (startYear) {
+                return `${startYear}+`;
+            }
+            if (endYear) {
+                return `Drink by ${endYear}`;
+            }
+        }
+
+        if (startOffset !== null && endOffset !== null) {
+            return `${startOffset}-${endOffset} yrs`;
+        }
+
+        if (startOffset !== null) {
+            return `${startOffset}+ yrs`;
+        }
+
+        if (endOffset !== null) {
+            return `Drink within ${endOffset} yrs`;
+        }
+
+        return null;
+    }
+
+    parseScore(score) {
+        const numeric = this.parseNumeric(score);
+        if (numeric === null) {
+            return null;
+        }
+
+        return Math.max(0, Math.min(100, numeric));
+    }
+
+    calculateWineScore(wine) {
+        const quality = this.parseScore(wine.quality_score);
+        const critic = this.parseScore(wine.critic_score);
+        const weather = this.parseScore(wine.weather_score);
+
+        const weightedScores = [
+            { value: quality, weight: 0.5 },
+            { value: critic, weight: 0.3 },
+            { value: weather, weight: 0.2 }
+        ];
+
+        let weightedSum = 0;
+        let totalWeight = 0;
+
+        weightedScores.forEach(({ value, weight }) => {
+            if (value !== null) {
+                weightedSum += value * weight;
+                totalWeight += weight;
+            }
+        });
+
+        if (totalWeight === 0) {
+            return null;
+        }
+
+        return weightedSum / totalWeight;
+    }
+
+    getWineScoreData(wine) {
+        const qualityScore = this.parseScore(wine.quality_score);
+        const criticScore = this.parseScore(wine.critic_score);
+        const weatherScore = this.parseScore(wine.weather_score);
+        const availableScores = [qualityScore, criticScore, weatherScore].filter(score => score !== null);
+
+        return {
+            overallScore: this.calculateWineScore(wine),
+            qualityScore,
+            criticScore,
+            weatherScore,
+            hasScores: availableScores.length > 0
+        };
+    }
+
+    renderScoreValue(score, fallback = '—') {
+        const numeric = this.parseNumeric(score);
+        if (numeric === null) {
+            return fallback;
+        }
+
+        const rounded = Math.round(numeric);
+        return `${rounded}<span class="score-unit">pts</span>`;
+    }
+
+    renderScorePill(label, score) {
+        const numeric = this.parseNumeric(score);
+        if (numeric === null) {
+            return '';
+        }
+
+        return `
+            <div class="score-pill">
+                <span class="pill-label">${label}</span>
+                <span class="pill-value">${this.renderScoreValue(numeric)}</span>
+            </div>
+        `;
+    }
+
+    renderWineScoreSummary(wine, variant = 'card') {
+        const { overallScore, qualityScore, criticScore, weatherScore, hasScores } = this.getWineScoreData(wine);
+
+        if (!hasScores) {
+            return '';
+        }
+
+        const variantClass = variant ? ` ${variant}` : '';
+        const overallBase = overallScore ?? qualityScore ?? criticScore ?? weatherScore;
+        const overallLabel = variant === 'list' ? 'Score' : 'Overall Score';
+
+        const breakdownHtml = [
+            this.renderScorePill('Quality', qualityScore),
+            this.renderScorePill('Critic', criticScore),
+            this.renderScorePill('Weather', weatherScore)
+        ].filter(Boolean).join('');
+
+        const showBreakdown = breakdownHtml.trim().length > 0 && variant !== 'list';
+
+        return `
+            <div class="wine-score-summary${variantClass}">
+                <div class="score-chip overall">
+                    <span class="score-label">${overallLabel}</span>
+                    <span class="score-value">${this.renderScoreValue(overallBase)}</span>
+                </div>
+                ${showBreakdown ? `<div class="score-breakdown">${breakdownHtml}</div>` : ''}
+            </div>
+        `;
+    }
     
     // Action methods for wine cards
     reserveWineModal(vintageId, wineName) {
@@ -2160,23 +2337,57 @@ class SommOS {
 
     createCatalogWineCard(wine, viewType) {
         const displayRegion = this.getDisplayRegion(wine);
-        const totalValue = (wine.total_stock || 0) * (wine.cost_per_bottle || 0);
-        
+        const stock = this.parseNumeric(wine.total_stock) ?? 0;
+        const totalValueNumeric = this.parseNumeric(wine.total_value);
+        const avgCostNumeric = this.parseNumeric(wine.avg_cost_per_bottle ?? wine.cost_per_bottle);
+        const avgCost = avgCostNumeric !== null
+            ? avgCostNumeric
+            : (stock > 0 && totalValueNumeric !== null ? totalValueNumeric / stock : null);
+        const totalValue = totalValueNumeric !== null
+            ? totalValueNumeric
+            : (avgCost !== null ? avgCost * stock : 0);
+        const peakWindow = this.getPeakDrinkingWindow(wine);
+        const scoreVariant = viewType === 'list' ? 'list' : (viewType === 'detail' ? 'detail' : 'card');
+        const scoreSummary = this.renderWineScoreSummary(wine, scoreVariant);
+        const formattedStock = this.formatNumber(stock);
+        const formattedValue = this.formatCurrency(totalValue);
+        const formattedAvgCost = this.formatCurrency(avgCost, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const stockWithUnit = formattedStock === '—' ? '—' : `${formattedStock} bottles`;
+        const avgCostWithUnit = formattedAvgCost !== '—' ? `${formattedAvgCost} per bottle` : '—';
+
         if (viewType === 'grid') {
             return `
                 <div class="wine-card catalog-card" onclick="app.showWineDetails('${wine.id}')">
-                    <div class="wine-header">
+                    <div class="wine-card-header">
                         <div class="wine-type-badge ${wine.wine_type?.toLowerCase() || 'unknown'}">
                             ${this.getWineTypeIcon(wine.wine_type)} ${wine.wine_type || 'Wine'}
                         </div>
                         <div class="wine-year">${wine.year || 'N/A'}</div>
                     </div>
-                    <h3>${wine.name || 'Unknown Wine'}</h3>
-                    <p class="producer">${wine.producer || 'Unknown Producer'}</p>
-                    <p class="region">${displayRegion}</p>
+                    <div class="wine-card-body">
+                        <h3>${wine.name || 'Unknown Wine'}</h3>
+                        <p class="producer">${wine.producer || 'Unknown Producer'}</p>
+                        <div class="wine-meta">
+                            <span class="meta-item">${displayRegion}</span>
+                            ${peakWindow ? `<span class="meta-item">Peak: ${peakWindow}</span>` : ''}
+                        </div>
+                        ${scoreSummary || ''}
+                    </div>
                     <div class="wine-stats">
-                        <span class="stock">${wine.total_stock || 0} bottles</span>
-                        <span class="value">$${totalValue.toFixed(0)}</span>
+                        <div class="stat-block">
+                            <span class="stat-label">Stock</span>
+                            <span class="stat-value">${formattedStock}</span>
+                            <span class="stat-unit">bottles</span>
+                        </div>
+                        <div class="stat-block">
+                            <span class="stat-label">Avg Cost</span>
+                            <span class="stat-value">${formattedAvgCost}</span>
+                            ${formattedAvgCost !== '—' ? '<span class="stat-unit">per bottle</span>' : ''}
+                        </div>
+                        <div class="stat-block">
+                            <span class="stat-label">Value</span>
+                            <span class="stat-value">${formattedValue}</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -2191,10 +2402,18 @@ class SommOS {
                         <span class="type">${wine.wine_type || 'Wine'}</span>
                         <span class="year">${wine.year || 'N/A'}</span>
                         <span class="region">${displayRegion}</span>
+                        ${peakWindow ? `<span class="peak-window">Peak: ${peakWindow}</span>` : ''}
                     </div>
                     <div class="wine-metrics">
-                        <span class="stock">${wine.total_stock || 0} bottles</span>
-                        <span class="value">$${totalValue.toFixed(0)}</span>
+                        ${scoreSummary || ''}
+                        <div class="metric-line">
+                            <span class="metric-label">Stock</span>
+                            <span class="metric-value">${stockWithUnit}</span>
+                        </div>
+                        <div class="metric-line">
+                            <span class="metric-label">Value</span>
+                            <span class="metric-value">${formattedValue}</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -2213,16 +2432,18 @@ class SommOS {
                             <div class="wine-year-badge">${wine.year || 'N/A'}</div>
                         </div>
                     </div>
+                    ${scoreSummary || ''}
                     <div class="wine-detail-content">
                         <div class="wine-info">
                             <p><strong>Region:</strong> ${displayRegion}</p>
                             <p><strong>Alcohol:</strong> ${wine.alcohol_content || 'N/A'}%</p>
                             <p><strong>Style:</strong> ${wine.style || 'N/A'}</p>
+                            ${peakWindow ? `<p><strong>Peak Window:</strong> ${peakWindow}</p>` : ''}
                         </div>
                         <div class="wine-inventory">
-                            <p><strong>Total Stock:</strong> ${wine.total_stock || 0} bottles</p>
-                            <p><strong>Total Value:</strong> $${totalValue.toFixed(0)}</p>
-                            <p><strong>Avg. Cost:</strong> $${(wine.cost_per_bottle || 0).toFixed(2)}/bottle</p>
+                            <p><strong>Total Stock:</strong> ${stockWithUnit}</p>
+                            <p><strong>Inventory Value:</strong> ${formattedValue}</p>
+                            <p><strong>Avg. Cost:</strong> ${avgCostWithUnit}</p>
                         </div>
                     </div>
                     ${wine.tasting_notes ? `
@@ -2239,11 +2460,24 @@ class SommOS {
     updateCatalogStats(wines) {
         const totalCount = wines.length;
         const totalBottles = wines.reduce((sum, wine) => sum + (wine.total_stock || 0), 0);
-        const totalValue = wines.reduce((sum, wine) => sum + ((wine.total_stock || 0) * (wine.cost_per_bottle || 0)), 0);
-        
-        document.getElementById('catalog-count').textContent = totalCount.toLocaleString();
-        document.getElementById('catalog-bottles').textContent = totalBottles.toLocaleString();
-        document.getElementById('catalog-value').textContent = '$' + totalValue.toLocaleString();
+        const totalValue = wines.reduce((sum, wine) => {
+            const value = this.parseNumeric(wine.total_value);
+            if (value !== null) {
+                return sum + value;
+            }
+
+            const stock = wine.total_stock || 0;
+            const avgCost = this.parseNumeric(wine.avg_cost_per_bottle ?? wine.cost_per_bottle);
+            if (avgCost !== null) {
+                return sum + (stock * avgCost);
+            }
+
+            return sum;
+        }, 0);
+
+        document.getElementById('catalog-count').textContent = this.formatNumber(totalCount);
+        document.getElementById('catalog-bottles').textContent = this.formatNumber(totalBottles);
+        document.getElementById('catalog-value').textContent = this.formatCurrency(totalValue);
     }
 
     updateCatalogPagination(currentCount, limit) {
@@ -2299,7 +2533,31 @@ class SommOS {
         const displayRegion = this.getDisplayRegion(wine);
         const vintages = wine.vintages || [];
         const aliases = wine.aliases || [];
-        
+        const primaryVintage = vintages[0] || {};
+        const scoreContext = {
+            ...wine,
+            quality_score: wine.quality_score ?? primaryVintage.quality_score,
+            critic_score: wine.critic_score ?? primaryVintage.critic_score,
+            weather_score: wine.weather_score ?? primaryVintage.weather_score,
+            peak_drinking_start: wine.peak_drinking_start ?? primaryVintage.peak_drinking_start,
+            peak_drinking_end: wine.peak_drinking_end ?? primaryVintage.peak_drinking_end,
+            year: wine.year ?? primaryVintage.year
+        };
+
+        const scoreSummary = this.renderWineScoreSummary(scoreContext, 'modal');
+        const peakWindow = this.getPeakDrinkingWindow(scoreContext);
+        const stockFromWine = this.parseNumeric(wine.total_stock);
+        const totalStock = stockFromWine !== null ? stockFromWine : vintages.reduce((sum, vintage) => sum + (vintage.total_stock || 0), 0);
+        const valueFromWine = this.parseNumeric(wine.total_value);
+        const totalValue = valueFromWine !== null ? valueFromWine : vintages.reduce((sum, vintage) => sum + (this.parseNumeric(vintage.total_value) || 0), 0);
+        const avgCostFromWine = this.parseNumeric(wine.avg_cost_per_bottle);
+        const averageCost = avgCostFromWine !== null ? avgCostFromWine : (totalStock > 0 ? totalValue / totalStock : null);
+        const formattedStock = this.formatNumber(totalStock);
+        const stockWithUnit = formattedStock === '—' ? '—' : `${formattedStock} bottles`;
+        const formattedValue = this.formatCurrency(totalValue);
+        const formattedAvgCost = this.formatCurrency(averageCost, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const avgCostWithUnit = formattedAvgCost !== '—' ? `${formattedAvgCost} per bottle` : '—';
+
         this.ui.showModal(`Wine Details - ${wine.name}`, `
             <div class="wine-details-modal">
                 <div class="wine-details-header">
@@ -2314,7 +2572,9 @@ class SommOS {
                         </div>
                     </div>
                 </div>
-                
+
+                ${scoreSummary || ''}
+
                 <div class="wine-details-content">
                     <div class="wine-info-section">
                         <h4>Wine Information</h4>
@@ -2324,21 +2584,28 @@ class SommOS {
                             <div><strong>Alcohol:</strong> ${wine.alcohol_content || 'N/A'}%</div>
                             <div><strong>Style:</strong> ${wine.style || 'N/A'}</div>
                         </div>
-                        
+
+                        ${peakWindow ? `
+                            <div class="peak-window">
+                                <strong>Peak Drinking Window:</strong>
+                                <p>${peakWindow}</p>
+                            </div>
+                        ` : ''}
+
                         ${wine.grape_varieties ? `
                             <div class="grape-varieties">
                                 <strong>Grape Varieties:</strong>
                                 <p>${Array.isArray(wine.grape_varieties) ? wine.grape_varieties.join(', ') : wine.grape_varieties}</p>
                             </div>
                         ` : ''}
-                        
+
                         ${wine.tasting_notes ? `
                             <div class="tasting-notes">
                                 <strong>Tasting Notes:</strong>
                                 <p>${wine.tasting_notes}</p>
                             </div>
                         ` : ''}
-                        
+
                         ${wine.food_pairings ? `
                             <div class="food-pairings">
                                 <strong>Food Pairings:</strong>
@@ -2346,17 +2613,45 @@ class SommOS {
                             </div>
                         ` : ''}
                     </div>
-                    
+
+                    <div class="wine-inventory">
+                        <h4>Cellar Snapshot</h4>
+                        <div class="inventory-summary">
+                            <div class="inventory-metric">
+                                <span class="metric-label">Total Stock</span>
+                                <span class="metric-value">${stockWithUnit}</span>
+                            </div>
+                            <div class="inventory-metric">
+                                <span class="metric-label">Inventory Value</span>
+                                <span class="metric-value">${formattedValue}</span>
+                            </div>
+                            <div class="inventory-metric">
+                                <span class="metric-label">Average Cost</span>
+                                <span class="metric-value">${avgCostWithUnit}</span>
+                            </div>
+                        </div>
+                    </div>
+
                     ${vintages.length > 0 ? `
                         <div class="vintages-section">
                             <h4>Available Vintages</h4>
                             <div class="vintages-list">
                                 ${vintages.map(vintage => `
                                     <div class="vintage-item">
-                                        <div class="vintage-year">${vintage.year}</div>
-                                        <div class="vintage-stock">${vintage.total_stock || 0} bottles</div>
-                                        <div class="vintage-quality">
-                                            ${vintage.quality_score ? `Quality: ${vintage.quality_score}/100` : ''}
+                                        <div class="vintage-header">
+                                            <div class="vintage-year">${vintage.year}</div>
+                                            <div class="vintage-stock">${this.formatNumber(vintage.total_stock || 0)} bottles</div>
+                                        </div>
+                                        <div class="vintage-metrics">
+                                            ${this.renderScorePill('Quality', vintage.quality_score) || '<div class="score-pill muted"><span class="pill-label">Quality</span><span class="pill-value">—</span></div>'}
+                                            ${(() => {
+                                                const avg = this.formatCurrency(vintage.avg_cost_per_bottle, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                return avg !== '—' ? `<span class="metric">Avg Cost: ${avg}</span>` : '';
+                                            })()}
+                                            ${(() => {
+                                                const value = this.formatCurrency(vintage.total_value);
+                                                return value !== '—' ? `<span class="metric">Value: ${value}</span>` : '';
+                                            })()}
                                         </div>
                                         <div class="vintage-actions">
                                             <button class="btn-small primary" onclick="app.reserveWineModal('${vintage.id}', '${wine.name} ${vintage.year}')">
@@ -2368,7 +2663,7 @@ class SommOS {
                             </div>
                         </div>
                     ` : ''}
-                    
+
                     ${aliases.length > 0 ? `
                         <div class="aliases-section">
                             <h4>Known As</h4>
@@ -2378,7 +2673,7 @@ class SommOS {
                         </div>
                     ` : ''}
                 </div>
-                
+
                 <div class="wine-details-actions">
                     <button class="btn secondary" onclick="app.ui.hideModal()">Close</button>
                     <button class="btn primary" onclick="app.navigateToView('pairing'); app.ui.hideModal();">Find Pairings</button>
