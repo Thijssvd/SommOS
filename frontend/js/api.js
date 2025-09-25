@@ -6,15 +6,30 @@ class SommOSAPI {
         const explicitBase = (typeof window !== 'undefined' && window.__SOMMOS_API_BASE__)
             || (typeof process !== 'undefined' && process.env && process.env.SOMMOS_API_BASE_URL);
 
-        let origin = window.location.origin;
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        if (isLocalhost && (!window.location.port || window.location.port === '')) {
-            origin = `${window.location.protocol}//${window.location.hostname}:3000`;
+        const sanitizedExplicitBase = explicitBase ? explicitBase.replace(/\/$/, '') : null;
+
+        const hasWindowLocation = typeof window !== 'undefined'
+            && typeof window.location !== 'undefined';
+
+        let computedBase = sanitizedExplicitBase;
+
+        if (!computedBase && hasWindowLocation) {
+            const { protocol, hostname, port, origin } = window.location;
+            const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+            let resolvedOrigin = origin || `${protocol}//${hostname}${port ? `:${port}` : ''}`;
+
+            if (isLocalhost && (!port || port === '')) {
+                resolvedOrigin = `${protocol}//${hostname}:3000`;
+            }
+
+            computedBase = `${resolvedOrigin.replace(/\/$/, '')}/api`;
         }
 
-        const originBase = `${origin.replace(/\/$/, '')}/api`;
+        if (!computedBase) {
+            computedBase = 'http://localhost:3000/api';
+        }
 
-        this.baseURL = (explicitBase ? explicitBase.replace(/\/$/, '') : originBase);
+        this.baseURL = computedBase.replace(/\/$/, '');
         this.timeout = 10000; // 10 seconds default timeout
     }
 
@@ -124,8 +139,18 @@ class SommOSAPI {
 
     // Inventory endpoints
     async getInventory(filters = {}) {
-        const params = new URLSearchParams(filters);
-        return this.request(`/inventory/stock?${params}`);
+        const params = new URLSearchParams();
+
+        Object.entries(filters || {}).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                params.append(key, value);
+            }
+        });
+
+        const queryString = params.toString();
+        const suffix = queryString ? `?${queryString}` : '';
+
+        return this.request(`/inventory/stock${suffix}`);
     }
 
     async consumeWine(vintageId, location, quantity, notes = '', createdBy = 'SommOS') {
