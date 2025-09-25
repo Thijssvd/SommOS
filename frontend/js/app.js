@@ -964,7 +964,7 @@ class SommOS {
                 service_date: new Date().toISOString()
             };
             
-            // Submit to API (you'll need to implement this endpoint)
+            // Submit consumption record to backend API
             await this.api.recordConsumption(consumptionData);
             
             this.ui.showToast(`Successfully recorded service of ${quantity} bottle(s)`, 'success');

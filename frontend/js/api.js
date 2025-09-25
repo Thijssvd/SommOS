@@ -170,7 +170,7 @@ class SommOSAPI {
     }
 
     async recordConsumption(consumptionData) {
-        return this.request('/inventory/consumption', {
+        return this.request('/inventory/consume', {
             method: 'POST',
             body: JSON.stringify(consumptionData)
         });

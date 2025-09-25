@@ -83,7 +83,38 @@ global.navigator = {
 };
 global.fetch = jest.fn();
 global.indexedDB = {
-    open: jest.fn()
+    open: jest.fn(() => {
+        const request = {
+            result: null,
+            onsuccess: null,
+            onerror: null,
+            onupgradeneeded: null
+        };
+
+        setTimeout(() => {
+            if (typeof request.onupgradeneeded === 'function') {
+                const db = {
+                    objectStoreNames: {
+                        contains: () => false
+                    },
+                    createObjectStore: jest.fn()
+                };
+                request.onupgradeneeded({ target: { result: db } });
+            }
+
+            if (typeof request.onsuccess === 'function') {
+                request.result = {
+                    objectStoreNames: {
+                        contains: () => false
+                    },
+                    createObjectStore: jest.fn()
+                };
+                request.onsuccess({ target: { result: request.result } });
+            }
+        }, 0);
+
+        return request;
+    })
 };
 global.Chart = jest.fn();
 
@@ -249,6 +280,33 @@ describe('SommOS Frontend', () => {
                 })
             );
             expect(result).toEqual({ success: true, data: { id: 123 } });
+        });
+
+        test('should record service consumption via API', async () => {
+            const mockResponse = {
+                ok: true,
+                json: async () => ({ success: true })
+            };
+            global.fetch.mockResolvedValue(mockResponse);
+
+            const payload = {
+                vintage_id: 'wine-42',
+                quantity_consumed: 3,
+                occasion: 'tasting',
+                guest_count: 6,
+                notes: 'VIP table',
+                service_date: '2024-05-01T12:00:00.000Z'
+            };
+
+            await api.recordConsumption(payload);
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                `${api.baseURL}/inventory/consume`,
+                expect.objectContaining({
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                })
+            );
         });
 
         test('should handle request timeout', async () => {
