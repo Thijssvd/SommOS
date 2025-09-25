@@ -156,6 +156,28 @@ class SommOSAPI {
         });
     }
 
+    async createInventoryIntake(intakePayload) {
+        return this.request('/inventory/intake', {
+            method: 'POST',
+            body: JSON.stringify(intakePayload)
+        });
+    }
+
+    async receiveInventoryIntake(intakeId, receipts, options = {}) {
+        return this.request(`/inventory/intake/${intakeId}/receive`, {
+            method: 'POST',
+            body: JSON.stringify({
+                receipts,
+                created_by: options.createdBy || options.created_by,
+                notes: options.notes
+            })
+        });
+    }
+
+    async getInventoryIntakeStatus(intakeId) {
+        return this.request(`/inventory/intake/${intakeId}/status`);
+    }
+
     async moveWine(vintageId, fromLocation, toLocation, quantity, notes = '', createdBy = 'SommOS') {
         return this.request('/inventory/move', {
             method: 'POST',

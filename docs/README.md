@@ -293,6 +293,52 @@ Content-Type: application/json
 }
 ```
 
+**Create Inventory Intake Order**
+```http
+POST /api/inventory/intake
+Content-Type: application/json
+
+{
+  "source_type": "pdf_invoice",
+  "reference": "INV-2024-042",
+  "supplier": { "name": "La Cave de Paris" },
+  "order_date": "2024-05-18",
+  "expected_delivery": "2024-05-25",
+  "items": [
+    {
+      "wine": {
+        "name": "Château Margaux",
+        "producer": "Château Margaux",
+        "region": "Bordeaux",
+        "wine_type": "Red"
+      },
+      "vintage": { "year": 2015 },
+      "stock": { "quantity": 6, "unit_cost": 780, "location": "receiving" }
+    }
+  ]
+}
+```
+
+**Receive Bottles for Intake Order**
+```http
+POST /api/inventory/intake/{intakeId}/receive
+Content-Type: application/json
+
+{
+  "receipts": [
+    { "item_id": 12, "quantity": 6, "location": "main-cellar" }
+  ],
+  "notes": "Verified against delivery note",
+  "created_by": "Sommelier"
+}
+```
+
+**Verify Intake Completion**
+```http
+GET /api/inventory/intake/{intakeId}/status
+```
+Returns outstanding bottles and status (ORDERED, PARTIALLY_RECEIVED, RECEIVED).
+
 **Move Wine Between Locations**
 ```http
 POST /api/inventory/move
