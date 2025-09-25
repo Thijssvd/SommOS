@@ -1706,7 +1706,7 @@ class SommOS {
     async loadProcurementStats() {
         try {
             // For now, show placeholder stats
-            document.getElementById('procurement-opportunities').textContent = '12';
+            document.getElementById('procurement-opportunity-count').textContent = '12';
             document.getElementById('potential-savings').textContent = '$15,240';
             document.getElementById('pending-orders').textContent = '3';
         } catch (error) {
@@ -1737,10 +1737,13 @@ class SommOS {
             };
             
             const opportunities = await this.api.getProcurementOpportunities(filters);
-            
+
             if (opportunities.success && opportunities.data) {
-                this.displayProcurementOpportunities(opportunities.data);
-                this.ui.showToast(`Found ${opportunities.data.length} procurement opportunities`, 'success');
+                this.displayProcurementOverview(opportunities.data.summary);
+                this.displayProcurementOpportunities(opportunities.data.opportunities);
+
+                const opportunityCount = opportunities.data.summary?.total_opportunities ?? opportunities.data.opportunities?.length ?? 0;
+                this.ui.showToast(`Found ${opportunityCount} procurement opportunities`, 'success');
             } else {
                 throw new Error('Failed to get procurement opportunities');
             }
@@ -1750,29 +1753,55 @@ class SommOS {
         }
     }
 
+    displayProcurementOverview(summary) {
+        if (!summary) {
+            return;
+        }
+
+        const opportunitiesElement = document.getElementById('procurement-opportunity-count');
+        const savingsElement = document.getElementById('potential-savings');
+        const pendingOrdersElement = document.getElementById('pending-orders');
+
+        if (opportunitiesElement) {
+            opportunitiesElement.textContent = summary.total_opportunities ?? '-';
+        }
+
+        if (savingsElement) {
+            const savings = (summary.projected_value || 0) - (summary.recommended_spend || 0);
+            savingsElement.textContent = `$${Number.isFinite(savings) ? savings.toFixed(2) : '0.00'}`;
+        }
+
+        if (pendingOrdersElement) {
+            pendingOrdersElement.textContent = summary.urgent_actions ?? '0';
+        }
+    }
+
     displayProcurementOpportunities(opportunities) {
         const grid = document.getElementById('procurement-opportunities');
-        
+
         if (!opportunities || opportunities.length === 0) {
             grid.innerHTML = '<div class="opportunities-placeholder"><p>No procurement opportunities found with current filters</p></div>';
             return;
         }
-        
+
         grid.innerHTML = opportunities.map(opportunity => `
             <div class="opportunity-card">
                 <div class="opportunity-header">
                     <h4>${opportunity.wine_name || 'Wine Opportunity'}</h4>
-                    <div class="opportunity-score">${Math.round((opportunity.score || 0.8) * 100)}%</div>
+                    <div class="opportunity-score">${Math.round(((opportunity.score?.total) || opportunity.score || 0.8) * 100)}%</div>
                 </div>
                 <div class="opportunity-details">
                     <p><strong>Producer:</strong> ${opportunity.producer || 'N/A'}</p>
                     <p><strong>Region:</strong> ${opportunity.region || 'N/A'}</p>
-                    <p><strong>Estimated Value:</strong> $${opportunity.estimated_value || 'TBD'}</p>
+                    <p><strong>Estimated Value:</strong> $${opportunity.estimated_value ?? 'TBD'}</p>
                     <p><strong>Recommended Quantity:</strong> ${opportunity.recommended_quantity || 12} bottles</p>
+                    <p><strong>Projected Investment:</strong> $${opportunity.estimated_investment ?? 'TBD'}</p>
+                    <p><strong>Urgency:</strong> ${opportunity.urgency || 'Moderate'}</p>
                 </div>
                 <div class="opportunity-reasoning">
                     <h5>Why this opportunity:</h5>
                     <p>${opportunity.reasoning || 'Based on current inventory gaps and market analysis'}</p>
+                    <p><strong>Confidence:</strong> ${(opportunity.confidence ? Math.round(opportunity.confidence * 100) : 70)}%</p>
                 </div>
                 <div class="opportunity-actions">
                     <button class="btn primary" onclick="app.analyzePurchaseDecision('${opportunity.wine_id}', '${opportunity.supplier_id}')">
