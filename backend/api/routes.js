@@ -798,10 +798,18 @@ router.get('/system/health', asyncHandler(async (req, res) => {
     }
 }));
 
+// 404 handler for unmatched API routes
+router.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Endpoint not found'
+    });
+});
+
 // Error handling middleware
 router.use((error, req, res, next) => {
     console.error('API Error:', error);
-    
+
     res.status(error.status || 500).json({
         success: false,
         error: error.message || 'Internal server error'

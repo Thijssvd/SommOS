@@ -438,7 +438,7 @@ class SommOS {
                         <p><strong>Year:</strong> ${item.year || 'N/A'} ${displayCountry ? '| ' + displayCountry : ''}</p>
                         <p><strong>Region:</strong> ${displayRegion}</p>
                         <div class="stock-display">
-                            <span class="quantity"><strong>${item.quantity || 0}</strong> bottles</span>
+                            <span class="quantity">${item.quantity || 0} bottles</span>
                             <span class="location">📍 ${item.location || 'Unknown'}</span>
                         </div>
                         <div class="card-actions-simple">
@@ -467,10 +467,18 @@ class SommOS {
     }
     
     getDisplayRegion(item) {
+        const placeholderRegions = ['various', 'unknown', 'multiple', 'n/a', ''];
+        const region = (item.region || '').trim();
+        const normalizedRegion = region.toLowerCase();
+
+        if (region && !placeholderRegions.includes(normalizedRegion)) {
+            return region;
+        }
+
         // Try to extract better region info from wine name or producer
         const name = (item.name || '').toLowerCase();
         const producer = (item.producer || '').toLowerCase();
-        
+
         if (name.includes('bordeaux') || producer.includes('château')) return 'Bordeaux';
         if (name.includes('burgundy') || name.includes('bourgogne')) return 'Burgundy';
         if (name.includes('champagne')) return 'Champagne';
@@ -484,9 +492,9 @@ class SommOS {
         if (name.includes('loire')) return 'Loire Valley';
         if (name.includes('alsace')) return 'Alsace';
         if (name.includes('mosel') || name.includes('riesling')) return 'Mosel';
-        
+
         // Fall back to original region or country
-        return item.region !== 'Various' ? item.region : (item.country || 'Unknown Region');
+        return region || item.country || 'Unknown Region';
     }
     
     
@@ -842,9 +850,11 @@ class SommOS {
         }).join('');
 
         resultsDiv.classList.remove('hidden');
-        
-        // Scroll to results
-        resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Scroll to results when supported
+        if (typeof resultsDiv.scrollIntoView === 'function') {
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
 
     handleQuickAction(action) {

@@ -3,14 +3,38 @@
 
 class SommOSUI {
     constructor() {
-        this.toastContainer = document.getElementById('toast-container');
-        this.modalOverlay = document.getElementById('modal-overlay');
+        this.refreshDomReferences();
         this.setupModalHandlers();
     }
 
+    refreshDomReferences() {
+        const existingToastContainer = document.getElementById('toast-container');
+        if (existingToastContainer) {
+            this.toastContainer = existingToastContainer;
+        } else {
+            this.toastContainer = this.createToastContainer();
+        }
+
+        const overlay = document.getElementById('modal-overlay');
+        const modal = document.getElementById('modal');
+        this.modalOverlay = overlay || modal || null;
+        this.modalElement = modal || overlay || null;
+    }
+
+    createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.setAttribute('role', 'status');
+        container.setAttribute('aria-live', 'polite');
+        document.body.appendChild(container);
+        return container;
+    }
+
     setupModalHandlers() {
+        this.refreshDomReferences();
+
         // Close modal when clicking overlay or close button
-        if (this.modalOverlay) {
+        if (this.modalOverlay && typeof this.modalOverlay.addEventListener === 'function') {
             this.modalOverlay.addEventListener('click', (e) => {
                 if (e.target === this.modalOverlay || e.target.classList.contains('modal-close')) {
                     this.hideModal();
@@ -20,7 +44,7 @@ class SommOSUI {
 
         // Close modal with Escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !this.modalOverlay.classList.contains('hidden')) {
+            if (e.key === 'Escape' && this.modalOverlay && !this.modalOverlay.classList.contains('hidden')) {
                 this.hideModal();
             }
         });
@@ -28,6 +52,11 @@ class SommOSUI {
 
     // Toast notifications
     showToast(message, type = 'info', duration = 4000) {
+        this.refreshDomReferences();
+        if (!document.body.contains(this.toastContainer)) {
+            this.toastContainer = this.createToastContainer();
+        }
+
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         
@@ -80,8 +109,16 @@ class SommOSUI {
 
     // Modal functionality
     showModal(title, content, actions = null) {
-        const modalTitle = document.getElementById('modal-title');
-        const modalBody = document.getElementById('modal-body');
+        this.refreshDomReferences();
+        const container = this.modalElement || this.modalOverlay;
+        if (!container) return;
+
+        const modalTitle = container.querySelector('#modal-title') || document.getElementById('modal-title');
+        const modalBody = container.querySelector('#modal-body') || document.getElementById('modal-body');
+
+        if (!modalTitle || !modalBody) {
+            return;
+        }
 
         modalTitle.textContent = title;
         modalBody.innerHTML = content;
@@ -94,12 +131,17 @@ class SommOSUI {
             modalBody.appendChild(actionsDiv);
         }
 
-        this.modalOverlay.classList.remove('hidden');
+        if (this.modalOverlay) {
+            this.modalOverlay.classList.remove('hidden');
+        }
         document.body.style.overflow = 'hidden';
     }
 
     hideModal() {
-        this.modalOverlay.classList.add('hidden');
+        this.refreshDomReferences();
+        if (this.modalOverlay) {
+            this.modalOverlay.classList.add('hidden');
+        }
         document.body.style.overflow = '';
     }
 

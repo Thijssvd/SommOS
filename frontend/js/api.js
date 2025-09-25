@@ -3,18 +3,19 @@
 
 class SommOSAPI {
     constructor() {
-        // Check if running in development or production
-        const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        
-        if (isDevelopment) {
-            // In development, backend runs on port 3001
-            this.baseURL = 'http://localhost:3001/api';
-        } else {
-            // In production, use same origin with /api path
-            this.baseURL = window.location.origin + '/api';
+        const explicitBase = (typeof window !== 'undefined' && window.__SOMMOS_API_BASE__)
+            || (typeof process !== 'undefined' && process.env && process.env.SOMMOS_API_BASE_URL);
+
+        let origin = window.location.origin;
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (isLocalhost && (!window.location.port || window.location.port === '')) {
+            origin = `${window.location.protocol}//${window.location.hostname}:3000`;
         }
-        
-        this.timeout = 30000; // 30 seconds for AI processing
+
+        const originBase = `${origin.replace(/\/$/, '')}/api`;
+
+        this.baseURL = (explicitBase ? explicitBase.replace(/\/$/, '') : originBase);
+        this.timeout = 10000; // 10 seconds default timeout
     }
 
     async request(endpoint, options = {}) {
@@ -43,10 +44,27 @@ class SommOSAPI {
             clearTimeout(timeoutId);
 
             console.log(`API response status: ${response.status}`);
-            
+
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+                let errorDetail = '';
+                if (typeof response.text === 'function') {
+                    try {
+                        errorDetail = await response.text();
+                    } catch (e) {
+                        errorDetail = '';
+                    }
+                } else if (typeof response.json === 'function') {
+                    try {
+                        const json = await response.json();
+                        errorDetail = JSON.stringify(json);
+                    } catch (e) {
+                        errorDetail = '';
+                    }
+                }
+
+                const errorMessage = `HTTP ${response.status}: ${response.statusText}` +
+                    (errorDetail ? ` - ${errorDetail}` : '');
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
