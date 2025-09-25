@@ -629,6 +629,26 @@ class WeatherAnalysisService {
             const eventData = parseJson(cachedRow.weather_events);
             const qualityScore = Math.max(-50, Math.min(50, cachedRow.quality_impact_score ?? 0)) + 50;
 
+            const columnTempValue = cachedRow.growing_season_temp_avg;
+            const hasStructuredAvgTemp = Object.prototype.hasOwnProperty.call(harvestData, 'avgTemp');
+            const hasStructuredDiurnal = Object.prototype.hasOwnProperty.call(harvestData, 'avgDiurnalRange');
+            const isLegacyPayload = !hasStructuredAvgTemp && !hasStructuredDiurnal
+                && columnTempValue !== null && columnTempValue !== undefined;
+
+            let avgTemp = null;
+            if (hasStructuredAvgTemp) {
+                avgTemp = harvestData.avgTemp ?? null;
+            } else if (!isLegacyPayload && columnTempValue !== null && columnTempValue !== undefined) {
+                avgTemp = columnTempValue;
+            }
+
+            let avgDiurnalRange = null;
+            if (hasStructuredDiurnal) {
+                avgDiurnalRange = harvestData.avgDiurnalRange ?? null;
+            } else if (isLegacyPayload) {
+                avgDiurnalRange = columnTempValue;
+            }
+
             return {
                 region: cachedRow.region,
                 year: cachedRow.year,
@@ -636,8 +656,8 @@ class WeatherAnalysisService {
                 dataQuality: harvestData.dataQuality || 'High',
                 gdd: harvestData.gdd ?? null,
                 huglinIndex: harvestData.huglinIndex ?? null,
-                avgTemp: harvestData.avgTemp ?? cachedRow.growing_season_temp_avg ?? null,
-                avgDiurnalRange: harvestData.avgDiurnalRange ?? null,
+                avgTemp,
+                avgDiurnalRange,
                 totalRainfall: cachedRow.growing_season_rainfall ?? eventData.totalRainfall ?? null,
                 floweringRain: harvestData.floweringRain ?? null,
                 harvestRain: harvestData.harvestRain ?? null,
