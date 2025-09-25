@@ -812,6 +812,107 @@ class SommOS {
         }).format(numeric);
     }
 
+    getStorageGuidance(wine) {
+        if (!wine) {
+            return {
+                minC: null,
+                maxC: null,
+                minF: null,
+                maxF: null,
+                recommendation: null
+            };
+        }
+
+        return {
+            minC: this.parseNumeric(wine.storage_temp_min),
+            maxC: this.parseNumeric(wine.storage_temp_max),
+            minF: this.parseNumeric(wine.storage_temp_min_f),
+            maxF: this.parseNumeric(wine.storage_temp_max_f),
+            recommendation: wine.storage_recommendation || null
+        };
+    }
+
+    getDecantingGuidance(wine) {
+        if (!wine) {
+            return {
+                shouldDecant: false,
+                minMinutes: null,
+                maxMinutes: null,
+                recommendation: null
+            };
+        }
+
+        const shouldDecant = typeof wine.should_decant === 'boolean'
+            ? wine.should_decant
+            : (wine.wine_type?.toLowerCase().includes('red') || false);
+
+        return {
+            shouldDecant,
+            minMinutes: this.parseNumeric(wine.decanting_time_minutes_min),
+            maxMinutes: this.parseNumeric(wine.decanting_time_minutes_max),
+            recommendation: wine.decanting_recommendation || null
+        };
+    }
+
+    formatRange(min, max, unit = '') {
+        const minVal = this.parseNumeric(min);
+        const maxVal = this.parseNumeric(max);
+
+        if (minVal === null && maxVal === null) {
+            return null;
+        }
+
+        const suffix = unit ? unit : '';
+
+        if (minVal !== null && maxVal !== null) {
+            if (minVal === maxVal) {
+                return `${minVal}${suffix}`;
+            }
+            return `${minVal}–${maxVal}${suffix}`;
+        }
+
+        const value = minVal ?? maxVal;
+        return `${value}${suffix}`;
+    }
+
+    formatStorageRange(wine) {
+        const storage = this.getStorageGuidance(wine);
+        const celsiusRange = this.formatRange(storage.minC, storage.maxC, '°C');
+        const fahrenheitRange = this.formatRange(storage.minF, storage.maxF, '°F');
+
+        if (celsiusRange && fahrenheitRange) {
+            return `${celsiusRange} (${fahrenheitRange})`;
+        }
+
+        return celsiusRange || fahrenheitRange || '—';
+    }
+
+    formatDecantingSummary(wine) {
+        const decanting = this.getDecantingGuidance(wine);
+
+        if (!decanting.shouldDecant) {
+            return decanting.recommendation || 'No decanting needed';
+        }
+
+        const minutesRange = this.formatRange(decanting.minMinutes, decanting.maxMinutes, ' min');
+
+        if (minutesRange) {
+            return `Decant ${minutesRange}`;
+        }
+
+        return decanting.recommendation || 'Decant before service';
+    }
+
+    getStorageRecommendation(wine) {
+        const storage = this.getStorageGuidance(wine);
+        return storage.recommendation || null;
+    }
+
+    getDecantingRecommendation(wine) {
+        const decanting = this.getDecantingGuidance(wine);
+        return decanting.recommendation || (decanting.shouldDecant ? 'Decant before serving to allow the wine to open up.' : 'No decanting required; serve directly from the bottle.');
+    }
+
     getPeakDrinkingWindow(wine) {
         const startOffset = this.parseNumeric(wine.peak_drinking_start);
         const endOffset = this.parseNumeric(wine.peak_drinking_end);
@@ -2354,6 +2455,8 @@ class SommOS {
         const formattedAvgCost = this.formatCurrency(avgCost, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const stockWithUnit = formattedStock === '—' ? '—' : `${formattedStock} bottles`;
         const avgCostWithUnit = formattedAvgCost !== '—' ? `${formattedAvgCost} per bottle` : '—';
+        const storageSummary = this.formatStorageRange(wine);
+        const decantingSummary = this.formatDecantingSummary(wine);
 
         if (viewType === 'grid') {
             return `
@@ -2372,6 +2475,16 @@ class SommOS {
                             ${peakWindow ? `<span class="meta-item">Peak: ${peakWindow}</span>` : ''}
                         </div>
                         ${scoreSummary || ''}
+                        <div class="wine-guidance">
+                            <div class="guidance-line">
+                                <span class="guidance-label">Storage</span>
+                                <span class="guidance-value">${storageSummary}</span>
+                            </div>
+                            <div class="guidance-line">
+                                <span class="guidance-label">Decant</span>
+                                <span class="guidance-value">${decantingSummary}</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="wine-stats">
                         <div class="stat-block">
@@ -2414,6 +2527,14 @@ class SommOS {
                             <span class="metric-label">Value</span>
                             <span class="metric-value">${formattedValue}</span>
                         </div>
+                        <div class="metric-line">
+                            <span class="metric-label">Storage</span>
+                            <span class="metric-value">${storageSummary}</span>
+                        </div>
+                        <div class="metric-line">
+                            <span class="metric-label">Decant</span>
+                            <span class="metric-value">${decantingSummary}</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -2439,11 +2560,23 @@ class SommOS {
                             <p><strong>Alcohol:</strong> ${wine.alcohol_content || 'N/A'}%</p>
                             <p><strong>Style:</strong> ${wine.style || 'N/A'}</p>
                             ${peakWindow ? `<p><strong>Peak Window:</strong> ${peakWindow}</p>` : ''}
+                            <p><strong>Storage:</strong> ${storageSummary}</p>
+                            <p><strong>Decanting:</strong> ${decantingSummary}</p>
                         </div>
                         <div class="wine-inventory">
                             <p><strong>Total Stock:</strong> ${stockWithUnit}</p>
                             <p><strong>Inventory Value:</strong> ${formattedValue}</p>
                             <p><strong>Avg. Cost:</strong> ${avgCostWithUnit}</p>
+                        </div>
+                        <div class="wine-guidance-notes">
+                            ${(() => {
+                                const recommendation = this.getStorageRecommendation(wine);
+                                return recommendation ? `<p><strong>Storage Guidance:</strong> ${recommendation}</p>` : '';
+                            })()}
+                            ${(() => {
+                                const recommendation = this.getDecantingRecommendation(wine);
+                                return recommendation ? `<p><strong>Decanting Notes:</strong> ${recommendation}</p>` : '';
+                            })()}
                         </div>
                     </div>
                     ${wine.tasting_notes ? `
@@ -2583,6 +2716,8 @@ class SommOS {
                             <div><strong>Country:</strong> ${wine.country}</div>
                             <div><strong>Alcohol:</strong> ${wine.alcohol_content || 'N/A'}%</div>
                             <div><strong>Style:</strong> ${wine.style || 'N/A'}</div>
+                            <div><strong>Storage:</strong> ${this.formatStorageRange(wine)}</div>
+                            <div><strong>Decanting:</strong> ${this.formatDecantingSummary(wine)}</div>
                         </div>
 
                         ${peakWindow ? `
@@ -2612,6 +2747,28 @@ class SommOS {
                                 <p>${Array.isArray(wine.food_pairings) ? wine.food_pairings.join(', ') : wine.food_pairings}</p>
                             </div>
                         ` : ''}
+
+                        <div class="service-guidance">
+                            <h5>Storage & Service</h5>
+                            <div class="service-guidance-grid">
+                                <div class="service-card">
+                                    <span class="service-label">Storage Temperature</span>
+                                    <span class="service-value">${this.formatStorageRange(wine)}</span>
+                                    ${(() => {
+                                        const recommendation = this.getStorageRecommendation(wine);
+                                        return recommendation ? `<p class="guidance-note">${recommendation}</p>` : '';
+                                    })()}
+                                </div>
+                                <div class="service-card">
+                                    <span class="service-label">Decanting</span>
+                                    <span class="service-value">${this.formatDecantingSummary(wine)}</span>
+                                    ${(() => {
+                                        const recommendation = this.getDecantingRecommendation(wine);
+                                        return recommendation ? `<p class="guidance-note">${recommendation}</p>` : '';
+                                    })()}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="wine-inventory">

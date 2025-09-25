@@ -2583,6 +2583,36 @@ select:focus {
     gap: 0.75rem;
 }
 
+.catalog-card .wine-guidance {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.75rem 0 0;
+    border-top: 1px solid var(--border-light);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.catalog-card .guidance-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.catalog-card .guidance-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.catalog-card .guidance-value {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+}
+
 .wine-meta {
     display: flex;
     flex-wrap: wrap;
@@ -2875,6 +2905,23 @@ select:focus {
     text-align: right;
 }
 
+.wine-guidance-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.wine-guidance-notes p {
+    margin: 0;
+}
+
+.wine-guidance-notes strong {
+    color: var(--text-primary);
+}
+
 .catalog-pagination {
     display: flex;
     justify-content: center;
@@ -2925,6 +2972,54 @@ select:focus {
     padding-bottom: 2rem;
     margin-bottom: 2rem;
     border-bottom: 2px solid var(--border);
+}
+
+.service-guidance {
+    margin-top: 1.5rem;
+}
+
+.service-guidance h5 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.service-guidance-grid {
+    margin-top: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.service-card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius-medium);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.service-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.service-value {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.guidance-note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
 }
 
 .wine-main-info h2 {
