@@ -1,0 +1,45 @@
+name: Deploy SommOS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Create environment file
+      run: |
+        cat > .env << EOF
+        NODE_ENV=production
+        PORT=3000
+        DATABASE_PATH=./data/sommos.db
+        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+        JWT_SECRET=${{ secrets.JWT_SECRET }}
+        SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+        CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
+        EOF
+        
+    - name: Run tests
+      run: npm test
+      
+    - name: Build application
+      run: npm run build --if-present
+      
+    # Add your deployment steps here
+    # - name: Deploy to server
+    #   run: ./deployment/deploy.sh
