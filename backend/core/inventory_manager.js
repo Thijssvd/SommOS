@@ -301,6 +301,11 @@ class InventoryManager {
                     item.id
                 ]);
 
+                // Ensure in-memory item reflects the latest totals so subsequent
+                // receipts within the same request accumulate correctly.
+                item.quantity_received = updatedQuantity;
+                item.status = newStatus;
+
                 receiptSummaries.push({
                     item_id: item.id,
                     wine_name: item.wine_name,
