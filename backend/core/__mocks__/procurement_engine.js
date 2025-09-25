@@ -1,16 +1,36 @@
 class ProcurementEngine {
     async analyzeProcurementOpportunities(filters = {}) {
-        return [
-            {
-                wine_id: 'test-wine-1',
-                vintage_id: 'test-vintage-1',
-                supplier: 'Fine Wine Imports',
-                recommended_quantity: 12,
-                expected_margin: 0.28,
-                notes: 'Secure allocation ahead of peak season.',
-                filters
-            }
-        ];
+        return {
+            criteria: {
+                budget_limit: filters.max_price || filters.budget || null,
+                minimum_quality_score: filters.min_score || 75
+            },
+            summary: {
+                total_opportunities: 1,
+                recommended_spend: 1200,
+                projected_value: 1500,
+                average_score: 0.82,
+                urgent_actions: 1,
+                budget_limit: filters.max_price || null
+            },
+            opportunities: [
+                {
+                    wine_id: 'test-wine-1',
+                    vintage_id: 'test-vintage-1',
+                    supplier_id: 'supplier-123',
+                    wine_name: 'Test Wine One',
+                    producer: 'Fine Wine Imports',
+                    region: 'Bordeaux',
+                    score: { total: 0.82 },
+                    recommended_quantity: 12,
+                    estimated_value: 1500,
+                    estimated_investment: 1200,
+                    estimated_savings: 300,
+                    urgency: 'High',
+                    reasoning: 'Critical stock replenishment needed. Good value for money.'
+                }
+            ]
+        };
     }
 
     async analyzePurchaseDecision(vintageId, supplierId, quantity, context = {}) {
@@ -20,11 +40,35 @@ class ProcurementEngine {
             quantity,
             score: 0.91,
             recommendation: 'Proceed with purchase – excellent value for owner profile.',
+            projected_stock_after_purchase: (context.current_stock || 0) + quantity,
+            analysis: {
+                score: { total: 0.91 },
+                reasoning: 'Critical stock replenishment needed. Excellent value proposition with high quality-to-price ratio.',
+                estimated_market_price: 140,
+                estimated_savings: 240,
+                budget_impact: context.budget ? (quantity * 120) - context.budget : null
+            },
             context
         };
     }
 
     async generatePurchaseOrder(items, supplierId, deliveryDate, notes) {
+        if (!supplierId) {
+            throw new Error('Supplier is required for purchase orders');
+        }
+
+        for (const item of items || []) {
+            if (!item.vintage_id) {
+                throw new Error('Each item must reference a vintage_id');
+            }
+            if (!item.quantity || item.quantity <= 0) {
+                throw new Error('Each item must include a positive quantity');
+            }
+            if (item.price < 0) {
+                throw new Error('Unit price must be zero or greater');
+            }
+        }
+
         return {
             order_id: `po-${Date.now()}`,
             supplier_id: supplierId,

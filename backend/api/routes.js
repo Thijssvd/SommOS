@@ -277,14 +277,17 @@ router.get('/inventory/ledger/:vintage_id', asyncHandler(async (req, res) => {
 // GET /api/procurement/opportunities
 // Get procurement opportunities
 router.get('/procurement/opportunities', asyncHandler(async (req, res) => {
-    const { region, wine_type, max_price, min_score } = req.query;
-    
+    const { region, regions, wine_type, wine_types, max_price, min_score, budget } = req.query;
+
     try {
         const opportunities = await procurementEngine.analyzeProcurementOpportunities({
             region,
+            regions,
             wine_type,
+            wine_types,
             max_price: max_price ? parseFloat(max_price) : undefined,
-            min_score: min_score ? parseInt(min_score) : undefined
+            budget: budget ? parseFloat(budget) : undefined,
+            min_score: min_score ? parseInt(min_score, 10) : undefined
         });
 
         res.json({
@@ -335,7 +338,7 @@ router.post('/procurement/analyze', asyncHandler(async (req, res) => {
 // Generate purchase order
 router.post('/procurement/order', asyncHandler(async (req, res) => {
     const { items, supplier_id, delivery_date, notes } = req.body;
-    
+
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({
             success: false,
@@ -343,10 +346,17 @@ router.post('/procurement/order', asyncHandler(async (req, res) => {
         });
     }
 
+    if (!supplier_id) {
+        return res.status(400).json({
+            success: false,
+            error: 'supplier_id is required'
+        });
+    }
+
     try {
         const order = await procurementEngine.generatePurchaseOrder(
-            items, 
-            supplier_id, 
+            items,
+            supplier_id,
             delivery_date, 
             notes
         );

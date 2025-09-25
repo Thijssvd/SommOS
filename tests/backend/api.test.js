@@ -217,6 +217,13 @@ describe('SommOS API Endpoints', () => {
 
             expect(response.body.success).toBe(true);
             expect(response.body.data).toBeDefined();
+            expect(response.body.data.summary).toBeDefined();
+            expect(response.body.data.opportunities).toBeInstanceOf(Array);
+            expect(response.body.data.summary).toEqual(expect.objectContaining({
+                total_opportunities: expect.any(Number),
+                recommended_spend: expect.any(Number),
+                projected_value: expect.any(Number)
+            }));
         });
 
         test('GET /api/procurement/opportunities should handle filters', async () => {
@@ -225,6 +232,23 @@ describe('SommOS API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
+            expect(response.body.data.summary.budget_limit).toBe(100);
+            expect(response.body.data.summary.total_opportunities).toBeGreaterThanOrEqual(0);
+        });
+
+        test('GET /api/procurement/opportunities should handle engine errors gracefully', async () => {
+            const ProcurementEngine = require('../../backend/core/procurement_engine');
+            const original = ProcurementEngine.prototype.analyzeProcurementOpportunities;
+            ProcurementEngine.prototype.analyzeProcurementOpportunities = jest.fn(() => Promise.reject(new Error('Mock failure')));
+
+            const response = await request(app)
+                .get('/api/procurement/opportunities')
+                .expect(500);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('Mock failure');
+
+            ProcurementEngine.prototype.analyzeProcurementOpportunities = original;
         });
 
         test('POST /api/procurement/analyze should analyze purchase decisions', async () => {
@@ -241,6 +265,12 @@ describe('SommOS API Endpoints', () => {
                 .expect(200);
 
             expect(response.body.success).toBe(true);
+            expect(response.body.data.analysis).toBeDefined();
+            expect(response.body.data.analysis).toEqual(expect.objectContaining({
+                estimated_market_price: expect.any(Number),
+                estimated_savings: expect.any(Number)
+            }));
+            expect(response.body.data.projected_stock_after_purchase).toBeDefined();
         });
 
         test('POST /api/procurement/analyze should validate required fields', async () => {
@@ -289,6 +319,38 @@ describe('SommOS API Endpoints', () => {
 
             expect(response.body.success).toBe(false);
             expect(response.body.error).toContain('Items array is required');
+        });
+
+        test('POST /api/procurement/order should validate item quantities and prices', async () => {
+            const invalidOrder = {
+                items: [
+                    { vintage_id: 'vintage-1', quantity: 0, price: -10 }
+                ],
+                supplier_id: 'supplier-123',
+                delivery_date: '2024-02-15'
+            };
+
+            const response = await request(app)
+                .post('/api/procurement/order')
+                .send(invalidOrder)
+                .expect(500);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('positive quantity');
+        });
+
+        test('POST /api/procurement/order should require supplier id', async () => {
+            const response = await request(app)
+                .post('/api/procurement/order')
+                .send({
+                    items: [
+                        { vintage_id: 'vintage-1', quantity: 6, price: 40 }
+                    ]
+                })
+                .expect(400);
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error).toContain('supplier_id is required');
         });
     });
 

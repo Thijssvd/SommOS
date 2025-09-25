@@ -14,63 +14,82 @@ class ProcurementEngine {
      * Generate procurement recommendations based on current stock and demand
      */
     async generateProcurementRecommendations(criteria = {}) {
+        const normalizedCriteria = this.normalizeProcurementCriteria(criteria);
+
         const {
             budget_limit,
+            stock_threshold,
             priority_regions,
             wine_types,
-            minimum_quality_score = 75,
-            stock_threshold = 5
-        } = criteria;
+            minimum_quality_score
+        } = normalizedCriteria;
 
-        // Analyze current stock levels
         const lowStockItems = await this.identifyLowStock(stock_threshold);
-        
-        // Get procurement opportunities
+
         const opportunities = await this.getProcurementOpportunities({
             budget_limit,
             priority_regions,
             wine_types,
             minimum_quality_score
         });
-        
-        // Score and rank recommendations
+
         const recommendations = [];
-        
+
         for (const opportunity of opportunities) {
-            const score = await this.scoreProcurementOpportunity(opportunity, lowStockItems);
-            
+            const score = await this.scoreProcurementOpportunity(opportunity, lowStockItems, normalizedCriteria);
+
             if (score.total > 0.5) {
+                const recommended_quantity = this.calculateRecommendedQuantity(opportunity, lowStockItems, normalizedCriteria);
+                const estimated_market_price = this.estimateMarketPrice(opportunity);
+                const estimated_value = estimated_market_price * recommended_quantity;
+                const estimated_investment = opportunity.price_per_bottle * recommended_quantity;
+                const estimated_savings = Math.max(0, estimated_value - estimated_investment);
+
                 recommendations.push({
                     ...opportunity,
                     score,
-                    reasoning: this.generateProcurementReasoning(opportunity, score)
+                    reasoning: this.generateProcurementReasoning(opportunity, score, normalizedCriteria, recommended_quantity),
+                    recommended_quantity,
+                    estimated_value: this.roundCurrency(estimated_value),
+                    estimated_investment: this.roundCurrency(estimated_investment),
+                    estimated_savings: this.roundCurrency(estimated_savings),
+                    urgency: this.getUrgencyLabel(score),
+                    confidence: score.confidence
                 });
             }
         }
-        
-        return recommendations
+
+        const ranked = recommendations
             .sort((a, b) => b.score.total - a.score.total)
             .slice(0, 20);
+
+        return {
+            criteria: normalizedCriteria,
+            summary: this.buildOpportunitySummary(ranked, normalizedCriteria),
+            opportunities: ranked
+        };
     }
 
     /**
      * Score procurement opportunity
      */
-    async scoreProcurementOpportunity(opportunity, lowStockItems) {
+    async scoreProcurementOpportunity(opportunity, lowStockItems, criteria = {}) {
         const scores = {
             stock_urgency: this.calculateStockUrgency(opportunity, lowStockItems),
             value_proposition: this.calculateValueProposition(opportunity),
             quality_score: this.normalizeQualityScore(opportunity.quality_score),
             supplier_reliability: await this.getSupplierReliability(opportunity.supplier_id),
-            seasonal_relevance: this.calculateSeasonalRelevance(opportunity)
+            seasonal_relevance: this.calculateSeasonalRelevance(opportunity),
+            budget_alignment: this.calculateBudgetAlignment(opportunity, criteria, lowStockItems)
         };
-        
+
         const weights = {
-            stock_urgency: 0.30,
-            value_proposition: 0.25,
-            quality_score: 0.20,
-            supplier_reliability: 0.15,
-            seasonal_relevance: 0.10
+            stock_urgency: 0.28,
+            value_proposition: 0.23,
+            quality_score: 0.18,
+            supplier_reliability: 0.12,
+            seasonal_relevance: 0.09,
+            budget_alignment: 0.10
         };
         
         let total = 0;
@@ -163,9 +182,9 @@ class ProcurementEngine {
     /**
      * Generate procurement reasoning
      */
-    generateProcurementReasoning(opportunity, score) {
+    generateProcurementReasoning(opportunity, score, criteria = {}, recommendedQuantity) {
         const reasons = [];
-        
+
         if (score.stock_urgency > 0.8) {
             reasons.push('Critical stock replenishment needed');
         } else if (score.stock_urgency > 0.6) {
@@ -189,7 +208,20 @@ class ProcurementEngine {
         if (score.seasonal_relevance > 0.8) {
             reasons.push('Perfect seasonal timing for this wine style');
         }
-        
+
+        if (score.budget_alignment > 0.8) {
+            reasons.push('Fits comfortably within configured budget expectations');
+        } else if (score.budget_alignment < 0.4) {
+            reasons.push('Requires budget stretch beyond preferred range');
+        }
+
+        if (criteria?.budget_limit) {
+            const recommended = recommendedQuantity ?? this.calculateRecommendedQuantity(opportunity, [], criteria);
+            reasons.push(`Projected spend of $${this.roundCurrency(
+                (opportunity.price_per_bottle || 0) * recommended
+            )} stays within $${criteria.budget_limit} budget window.`);
+        }
+
         return reasons.join('. ') + '.';
     }
 
@@ -249,15 +281,21 @@ class ProcurementEngine {
                 WHERE v.id = ?
                 GROUP BY w.id, v.id
             `;
-            
+
             const wineResults = await this.db.all(wineQuery, [supplier_id, vintage_id]);
-            
+
             if (wineResults.length === 0) {
                 throw new Error('Wine or price information not found');
             }
-            
+
             const wine = wineResults[0];
-            
+
+            const supplier = await this.db.get(`
+                SELECT name, rating, payment_terms, delivery_terms
+                FROM Suppliers
+                WHERE id = ?
+            `, [supplier_id]);
+
             // Calculate analysis scores
             const lowStockItems = await this.identifyLowStock(5);
             const opportunity = {
@@ -269,15 +307,22 @@ class ProcurementEngine {
                 quality_score: wine.quality_score || 0,
                 price_per_bottle: wine.price_per_bottle || 0,
                 current_stock: wine.current_stock,
-                supplier_id: supplier_id
+                supplier_id: supplier_id,
+                minimum_order: context.minimum_order || 1
             };
-            
-            const score = await this.scoreProcurementOpportunity(opportunity, lowStockItems);
-            const reasoning = this.generateProcurementReasoning(opportunity, score);
-            
+
+            const recommendedQuantity = this.calculateRecommendedQuantity(opportunity, lowStockItems, context);
+            const score = await this.scoreProcurementOpportunity(opportunity, lowStockItems, context);
+            const reasoning = this.generateProcurementReasoning(opportunity, score, context, recommendedQuantity);
+
             // Calculate order details
             const totalCost = quantity * (wine.price_per_bottle || 0);
-            
+            const projectedStock = (wine.current_stock || 0) + quantity;
+            const estimatedMarketPrice = this.estimateMarketPrice(opportunity);
+            const estimatedValue = estimatedMarketPrice * quantity;
+            const estimatedSavings = Math.max(0, estimatedValue - totalCost);
+            const budget = context?.budget || context?.budget_limit;
+
             return {
                 wine: {
                     name: wine.name,
@@ -291,10 +336,20 @@ class ProcurementEngine {
                 total_cost: totalCost,
                 availability: wine.availability_status || 'Unknown',
                 current_stock: wine.current_stock,
+                projected_stock_after_purchase: projectedStock,
                 analysis: {
                     score: score,
                     reasoning: reasoning,
-                    recommendation: score.total > 0.6 ? 'Recommended' : 'Not Recommended'
+                    recommendation: score.total > 0.6 ? 'Recommended' : 'Not Recommended',
+                    estimated_market_price: this.roundCurrency(estimatedMarketPrice),
+                    estimated_savings: this.roundCurrency(estimatedSavings),
+                    budget_impact: budget ? this.roundCurrency(totalCost - budget) : null,
+                    supplier: supplier ? {
+                        name: supplier.name,
+                        rating: supplier.rating,
+                        payment_terms: supplier.payment_terms,
+                        delivery_terms: supplier.delivery_terms
+                    } : null
                 },
                 context
             };
@@ -315,17 +370,39 @@ class ProcurementEngine {
             notes,
             created_by
         } = orderData;
-        
+
         try {
+            if (!supplier_id) {
+                throw new Error('Supplier is required for purchase orders');
+            }
+
+            if (!items || !Array.isArray(items) || items.length === 0) {
+                throw new Error('At least one item is required');
+            }
+
             // Calculate totals
             let totalAmount = 0;
             for (const item of items) {
-                totalAmount += item.quantity * item.unit_price;
+                if (!item.vintage_id) {
+                    throw new Error('Each item must reference a vintage_id');
+                }
+
+                if (!item.quantity || item.quantity <= 0) {
+                    throw new Error('Each item must include a positive quantity');
+                }
+
+                const unitPrice = item.unit_price ?? item.price ?? 0;
+                if (unitPrice < 0) {
+                    throw new Error('Unit price must be zero or greater');
+                }
+
+                item.unit_price = unitPrice;
+                totalAmount += item.quantity * unitPrice;
             }
-            
+
             // Create order record (simplified - would need proper order table)
             const orderId = `PO-${Date.now()}`;
-            
+
             // Record each item as a ledger entry with reference to the order
             for (const item of items) {
                 await this.db.run(`
@@ -338,7 +415,7 @@ class ProcurementEngine {
                     `Purchase Order: ${notes}`, created_by
                 ]);
             }
-            
+
             return {
                 order_id: orderId,
                 total_amount: totalAmount,
@@ -346,9 +423,13 @@ class ProcurementEngine {
                 success: true,
                 supplier_id: supplier_id,
                 delivery_date: delivery_date,
-                notes: notes
+                notes: notes,
+                validation: {
+                    has_delivery_date: Boolean(delivery_date),
+                    notes_included: Boolean(notes && notes.trim())
+                }
             };
-            
+
         } catch (error) {
             console.error('Error creating purchase order:', error.message);
             throw new Error('Failed to create purchase order: ' + error.message);
@@ -411,7 +492,7 @@ class ProcurementEngine {
     async getProcurementOpportunities(criteria) {
         try {
             let query = `
-                SELECT 
+                SELECT
                     w.name as wine_name,
                     w.producer,
                     w.wine_type,
@@ -444,24 +525,157 @@ class ProcurementEngine {
                 query += ` AND w.wine_type IN (${criteria.wine_types.map(() => '?').join(',')})`;
                 params.push(...criteria.wine_types);
             }
-            
+
             if (criteria.priority_regions && criteria.priority_regions.length > 0) {
                 query += ` AND w.region IN (${criteria.priority_regions.map(() => '?').join(',')})`;
                 params.push(...criteria.priority_regions);
             }
-            
+
             if (criteria.budget_limit) {
                 query += ' AND pb.price_per_bottle <= ?';
                 params.push(criteria.budget_limit);
             }
-            
+
             query += ' GROUP BY w.id, v.id, pb.supplier_id ORDER BY v.quality_score DESC';
-            
+
             return await this.db.all(query, params);
         } catch (error) {
             console.error('Error getting procurement opportunities:', error.message);
             return []; // Return empty array if query fails
         }
+    }
+
+    normalizeProcurementCriteria(criteria = {}) {
+        const budget_limit = criteria.budget_limit || criteria.max_price || criteria.budget || undefined;
+
+        const regions = [];
+        if (criteria.priority_regions && Array.isArray(criteria.priority_regions)) {
+            regions.push(...criteria.priority_regions);
+        }
+        if (criteria.region) {
+            regions.push(...String(criteria.region).split(',').map(region => region.trim()).filter(Boolean));
+        }
+        if (criteria.regions) {
+            regions.push(...String(criteria.regions).split(',').map(region => region.trim()).filter(Boolean));
+        }
+
+        const types = [];
+        if (criteria.wine_types && Array.isArray(criteria.wine_types)) {
+            types.push(...criteria.wine_types);
+        }
+        if (criteria.wine_type) {
+            types.push(...String(criteria.wine_type).split(',').map(type => type.trim()).filter(Boolean));
+        }
+
+        return {
+            budget_limit,
+            minimum_quality_score: criteria.minimum_quality_score || criteria.min_score || 75,
+            priority_regions: [...new Set(regions)],
+            wine_types: [...new Set(types)],
+            stock_threshold: criteria.stock_threshold || 5
+        };
+    }
+
+    calculateRecommendedQuantity(opportunity, lowStockItems, criteria = {}) {
+        const lowStockItem = lowStockItems.find(item =>
+            item.wine_name === opportunity.wine_name &&
+            item.producer === opportunity.producer
+        );
+
+        const baseQuantity = Math.max(opportunity.minimum_order || 6, 6);
+        const desiredStockLevel = criteria.desired_stock_level || 24;
+        const currentStock = opportunity.current_stock || 0;
+        const deficit = Math.max(0, desiredStockLevel - currentStock);
+
+        if (lowStockItem) {
+            return Math.max(baseQuantity, deficit || baseQuantity);
+        }
+
+        return Math.min(Math.max(baseQuantity, deficit || baseQuantity), 48);
+    }
+
+    calculateBudgetAlignment(opportunity, criteria = {}, lowStockItems = []) {
+        if (!criteria?.budget_limit) {
+            return 0.6; // neutral score when no budget constraint
+        }
+
+        const recommendedQuantity = this.calculateRecommendedQuantity(opportunity, lowStockItems, criteria);
+        const projectedSpend = opportunity.price_per_bottle * recommendedQuantity;
+
+        if (projectedSpend <= criteria.budget_limit * 0.5) return 1.0;
+        if (projectedSpend <= criteria.budget_limit * 0.9) return 0.8;
+        if (projectedSpend <= criteria.budget_limit) return 0.6;
+        if (projectedSpend <= criteria.budget_limit * 1.2) return 0.4;
+
+        return 0.2;
+    }
+
+    getUrgencyLabel(score) {
+        if (score.stock_urgency >= 0.9) return 'Critical';
+        if (score.stock_urgency >= 0.7) return 'High';
+        if (score.stock_urgency >= 0.5) return 'Moderate';
+        return 'Low';
+    }
+
+    roundCurrency(value) {
+        if (value === null || value === undefined || Number.isNaN(value)) {
+            return 0;
+        }
+        return Math.round(value * 100) / 100;
+    }
+
+    estimateMarketPrice(opportunity) {
+        if (opportunity.market_price && opportunity.market_price > 0) {
+            return opportunity.market_price;
+        }
+
+        const base = opportunity.price_per_bottle || 0;
+        const qualityMultiplier = Math.max(0.8, (opportunity.quality_score || 0) / 80);
+        const scarcityMultiplier = opportunity.availability_status === 'Limited' ? 1.1 : 1;
+
+        return base * qualityMultiplier * scarcityMultiplier;
+    }
+
+    buildOpportunitySummary(opportunities, criteria) {
+        if (!opportunities.length) {
+            return {
+                total_opportunities: 0,
+                recommended_spend: 0,
+                projected_value: 0,
+                average_score: 0,
+                top_regions: [],
+                urgent_actions: 0,
+                budget_limit: criteria.budget_limit || null
+            };
+        }
+
+        const totals = opportunities.reduce((acc, opp) => {
+            acc.recommended_spend += opp.estimated_investment || 0;
+            acc.projected_value += opp.estimated_value || 0;
+            acc.average_score += opp.score.total;
+            acc.urgent_actions += opp.urgency === 'Critical' || opp.urgency === 'High' ? 1 : 0;
+
+            if (opp.region) {
+                acc.regions[opp.region] = (acc.regions[opp.region] || 0) + 1;
+            }
+
+            return acc;
+        }, { recommended_spend: 0, projected_value: 0, average_score: 0, urgent_actions: 0, regions: {} });
+
+        const top_regions = Object.entries(totals.regions)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([region, count]) => ({ region, count }));
+
+        return {
+            total_opportunities: opportunities.length,
+            recommended_spend: this.roundCurrency(totals.recommended_spend),
+            projected_value: this.roundCurrency(totals.projected_value),
+            average_score: this.roundCurrency(totals.average_score / opportunities.length),
+            top_regions,
+            urgent_actions: totals.urgent_actions,
+            budget_limit: criteria.budget_limit || null
+        };
     }
 
     getCurrentSeason() {
