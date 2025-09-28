@@ -4,7 +4,7 @@
   "type": "commonjs",
   "version": "0.1.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=18 <21"
   },
   "scripts": {
     "start": "node backend/server.js",
