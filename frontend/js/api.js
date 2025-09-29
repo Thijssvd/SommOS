@@ -1,7 +1,7 @@
 // SommOS API Client
 // Handles all API communication with offline fallback
 
-class SommOSAPIError extends Error {
+export class SommOSAPIError extends Error {
     constructor(message, { status, code, details } = {}) {
         super(message);
         this.name = 'SommOSAPIError';
@@ -11,9 +11,16 @@ class SommOSAPIError extends Error {
     }
 }
 
-class SommOSAPI {
+export class SommOSAPI {
     constructor() {
+        const viteEnvBase = (typeof import.meta !== 'undefined'
+            && import.meta.env
+            && import.meta.env.VITE_API_BASE)
+            ? import.meta.env.VITE_API_BASE
+            : null;
+
         const explicitBase = (typeof window !== 'undefined' && window.__SOMMOS_API_BASE__)
+            || viteEnvBase
             || (typeof process !== 'undefined' && process.env && process.env.SOMMOS_API_BASE_URL);
 
         const sanitizedExplicitBase = explicitBase ? explicitBase.replace(/\/$/, '') : null;

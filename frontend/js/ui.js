@@ -1,7 +1,7 @@
 // SommOS UI Helper Class
 // Handles UI interactions, modals, toasts, and visual feedback
 
-class SommOSUI {
+export class SommOSUI {
     constructor() {
         this.refreshDomReferences();
         this.setupModalHandlers();
