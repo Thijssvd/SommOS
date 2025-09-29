@@ -2,6 +2,7 @@
 // Express.js routes for the SommOS yacht wine management system
 
 const express = require('express');
+const path = require('path');
 const router = express.Router();
 const PairingEngine = require('../core/pairing_engine');
 const InventoryManager = require('../core/inventory_manager');
@@ -10,6 +11,7 @@ const LearningEngine = require('../core/learning_engine');
 const VintageIntelligenceService = require('../core/vintage_intelligence');
 const wineGuidanceService = require('../core/wine_guidance_service');
 const Database = require('../database/connection');
+const { validate, validators } = require('../middleware/validate');
 
 let servicesPromise = null;
 
@@ -77,7 +79,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 // POST /api/pairing/recommend
 // Generate wine pairing recommendations
-router.post('/pairing/recommend', asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
+router.post('/pairing/recommend', validate(validators.pairingRecommend), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
     const { dish, context, guestPreferences, options } = req.body;
 
     if (!dish) {
@@ -116,7 +118,7 @@ router.post('/pairing/recommend', asyncHandler(withServices(async ({ pairingEngi
 
 // POST /api/pairing/quick
 // Quick pairing for immediate service
-router.post('/pairing/quick', asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
+router.post('/pairing/quick', validate(validators.pairingQuick), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
     const { dish, context, ownerLikes } = req.body;
 
     try {
@@ -136,7 +138,7 @@ router.post('/pairing/quick', asyncHandler(withServices(async ({ pairingEngine }
 
 // POST /api/pairing/feedback
 // Capture owner feedback to improve future pairings
-router.post('/pairing/feedback', asyncHandler(withServices(async ({ learningEngine }, req, res) => {
+router.post('/pairing/feedback', validate(validators.pairingFeedback), asyncHandler(withServices(async ({ learningEngine }, req, res) => {
     const { recommendation_id, rating, notes, selected = true } = req.body || {};
 
     if (!recommendation_id || !rating) {
@@ -167,7 +169,7 @@ router.post('/pairing/feedback', asyncHandler(withServices(async ({ learningEngi
 
 // GET /api/inventory
 // Paginated inventory list
-router.get('/inventory', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.get('/inventory', validate(validators.inventoryList), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { location, wine_type, region, available_only, limit, offset } = req.query;
 
     const result = await inventoryManager.getInventoryList(
@@ -198,7 +200,7 @@ router.get('/inventory', asyncHandler(withServices(async ({ inventoryManager }, 
 
 // GET /api/inventory/stock
 // Get current stock levels
-router.get('/inventory/stock', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.get('/inventory/stock', validate(validators.inventoryStock), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { location, wine_type, region, available_only } = req.query;
 
     try {
@@ -223,7 +225,7 @@ router.get('/inventory/stock', asyncHandler(withServices(async ({ inventoryManag
 
 // GET /api/inventory/:id
 // Retrieve a specific stock item by identifier
-router.get('/inventory/:id', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.get('/inventory/:id', validate(validators.inventoryById), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { id } = req.params;
 
     const stockItem = await inventoryManager.getStockItemById(id);
@@ -246,7 +248,7 @@ router.get('/inventory/:id', asyncHandler(withServices(async ({ inventoryManager
 
 // GET /api/locations
 // List available storage locations
-router.get('/locations', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.get('/locations', validate(), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const locations = await inventoryManager.listLocations();
 
     res.json({
@@ -257,7 +259,7 @@ router.get('/locations', asyncHandler(withServices(async ({ inventoryManager }, 
 
 // POST /api/inventory/consume
 // Record wine consumption
-router.post('/inventory/consume', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.post('/inventory/consume', validate(validators.inventoryConsume), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id, location, quantity, notes, created_by } = req.body;
 
     if (!vintage_id || !location || !quantity) {
@@ -290,7 +292,7 @@ router.post('/inventory/consume', asyncHandler(withServices(async ({ inventoryMa
 
 // POST /api/inventory/receive
 // Record wine receipt/delivery
-router.post('/inventory/receive', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.post('/inventory/receive', validate(validators.inventoryReceive), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id, location, quantity, unit_cost, reference_id, notes, created_by } = req.body;
 
     if (!vintage_id || !location || !quantity) {
@@ -325,7 +327,7 @@ router.post('/inventory/receive', asyncHandler(withServices(async ({ inventoryMa
 
 // POST /api/inventory/intake
 // Create a new intake order from external sources
-router.post('/inventory/intake', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.post('/inventory/intake', validate(validators.inventoryIntake), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     try {
         const result = await inventoryManager.createInventoryIntake(req.body || {});
         res.json({
@@ -343,7 +345,7 @@ router.post('/inventory/intake', asyncHandler(withServices(async ({ inventoryMan
 
 // POST /api/inventory/intake/:intakeId/receive
 // Mark bottles as received against an intake order
-router.post('/inventory/intake/:intakeId/receive', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.post('/inventory/intake/:intakeId/receive', validate(validators.inventoryIntakeReceive), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const intakeId = parseInt(req.params.intakeId, 10);
     const { receipts, created_by, notes } = req.body || {};
 
@@ -376,7 +378,7 @@ router.post('/inventory/intake/:intakeId/receive', asyncHandler(withServices(asy
 
 // GET /api/inventory/intake/:intakeId/status
 // Verify whether all bottles from an intake have been received
-router.get('/inventory/intake/:intakeId/status', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.get('/inventory/intake/:intakeId/status', validate(validators.inventoryIntakeStatus), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const intakeId = parseInt(req.params.intakeId, 10);
 
     try {
@@ -396,7 +398,7 @@ router.get('/inventory/intake/:intakeId/status', asyncHandler(withServices(async
 
 // POST /api/inventory/move
 // Move wine between locations
-router.post('/inventory/move', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.post('/inventory/move', validate(validators.inventoryMove), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id, from_location, to_location, quantity, notes, created_by } = req.body;
 
     if (!vintage_id || !from_location || !to_location || !quantity) {
@@ -430,7 +432,7 @@ router.post('/inventory/move', asyncHandler(withServices(async ({ inventoryManag
 
 // POST /api/inventory/reserve
 // Reserve wine for future service
-router.post('/inventory/reserve', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.post('/inventory/reserve', validate(validators.inventoryReserve), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id, location, quantity, notes, created_by } = req.body;
 
     if (!vintage_id || !location || !quantity) {
@@ -463,7 +465,7 @@ router.post('/inventory/reserve', asyncHandler(withServices(async ({ inventoryMa
 
 // GET /api/inventory/ledger/:vintage_id
 // Get transaction history for a vintage
-router.get('/inventory/ledger/:vintage_id', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.get('/inventory/ledger/:vintage_id', validate(validators.inventoryLedger), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id } = req.params;
     const { limit = 50, offset = 0 } = req.query;
 
@@ -492,7 +494,7 @@ router.get('/inventory/ledger/:vintage_id', asyncHandler(withServices(async ({ i
 
 // GET /api/procurement/opportunities
 // Get procurement opportunities
-router.get('/procurement/opportunities', asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
+router.get('/procurement/opportunities', validate(validators.procurementOpportunities), asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
     const { region, regions, wine_type, wine_types, max_price, min_score, budget } = req.query;
 
     try {
@@ -520,7 +522,7 @@ router.get('/procurement/opportunities', asyncHandler(withServices(async ({ proc
 
 // POST /api/procurement/analyze
 // Analyze specific procurement decision
-router.post('/procurement/analyze', asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
+router.post('/procurement/analyze', validate(validators.procurementAnalyze), asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
     const { vintage_id, supplier_id, quantity, context } = req.body;
 
     if (!vintage_id || !supplier_id) {
@@ -552,7 +554,7 @@ router.post('/procurement/analyze', asyncHandler(withServices(async ({ procureme
 
 // POST /api/procurement/order
 // Generate purchase order
-router.post('/procurement/order', asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
+router.post('/procurement/order', validate(validators.procurementOrder), asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
     const { items, supplier_id, delivery_date, notes } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -595,7 +597,7 @@ router.post('/procurement/order', asyncHandler(withServices(async ({ procurement
 
 // GET /api/wines
 // Get wine catalog
-router.get('/wines', asyncHandler(withServices(async ({ db }, req, res) => {
+router.get('/wines', validate(validators.winesList), asyncHandler(withServices(async ({ db }, req, res) => {
     const { region, wine_type, producer, search, limit = 50, offset = 0 } = req.query;
 
     try {
@@ -656,7 +658,7 @@ router.get('/wines', asyncHandler(withServices(async ({ db }, req, res) => {
 
 // POST /api/wines
 // Add new wine to inventory with vintage intelligence
-router.post('/wines', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.post('/wines', validate(validators.winesCreate), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { wine, vintage, stock } = req.body;
 
     if (!wine || !vintage || !stock) {
@@ -684,7 +686,7 @@ router.post('/wines', asyncHandler(withServices(async ({ inventoryManager }, req
 
 // GET /api/wines/:id
 // Get specific wine details
-router.get('/wines/:id', asyncHandler(withServices(async ({ db }, req, res) => {
+router.get('/wines/:id', validate(validators.winesById), asyncHandler(withServices(async ({ db }, req, res) => {
     const { id } = req.params;
 
     try {
@@ -749,7 +751,7 @@ router.get('/wines/:id', asyncHandler(withServices(async ({ db }, req, res) => {
 
 // GET /api/vintage/analysis/:wine_id
 // Get vintage analysis for specific wine
-router.get('/vintage/analysis/:wine_id', asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
+router.get('/vintage/analysis/:wine_id', validate(validators.vintageAnalysis), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { wine_id } = req.params;
 
     try {
@@ -820,7 +822,7 @@ router.get('/vintage/analysis/:wine_id', asyncHandler(withServices(async ({ db, 
 
 // POST /api/vintage/enrich
 // Manually trigger vintage enrichment for a specific wine
-router.post('/vintage/enrich', asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
+router.post('/vintage/enrich', validate(validators.vintageEnrich), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { wine_id } = req.body;
 
     if (!wine_id) {
@@ -864,7 +866,7 @@ router.post('/vintage/enrich', asyncHandler(withServices(async ({ db, vintageInt
 
 // GET /api/vintage/procurement-recommendations
 // Get procurement recommendations for current inventory
-router.get('/vintage/procurement-recommendations', asyncHandler(withServices(async ({ vintageIntelligenceService }, req, res) => {
+router.get('/vintage/procurement-recommendations', validate(), asyncHandler(withServices(async ({ vintageIntelligenceService }, req, res) => {
     try {
         const recommendations = await vintageIntelligenceService.getInventoryProcurementRecommendations();
 
@@ -882,7 +884,7 @@ router.get('/vintage/procurement-recommendations', asyncHandler(withServices(asy
 
 // POST /api/vintage/batch-enrich
 // Batch enrich multiple wines with vintage intelligence
-router.post('/vintage/batch-enrich', asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
+router.post('/vintage/batch-enrich', validate(validators.vintageBatchEnrich), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { filters = {}, limit = 50 } = req.body;
 
     try {
@@ -947,7 +949,7 @@ router.post('/vintage/batch-enrich', asyncHandler(withServices(async ({ db, vint
 
 // GET /api/vintage/pairing-insight
 // Get weather-based pairing insights for a wine and dish context
-router.post('/vintage/pairing-insight', asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
+router.post('/vintage/pairing-insight', validate(validators.vintagePairingInsight), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { wine_id, dish_context } = req.body;
 
     if (!wine_id || !dish_context) {
@@ -1006,7 +1008,7 @@ router.post('/vintage/pairing-insight', asyncHandler(withServices(async ({ db, v
 
 // GET /api/system/health
 // System health check
-router.get('/system/health', asyncHandler(async (req, res) => {
+router.get('/system/health', validate(), asyncHandler(async (req, res) => {
     try {
         const db = Database.getInstance();
 
@@ -1039,7 +1041,7 @@ router.get('/system/health', asyncHandler(async (req, res) => {
 
 // GET /api/system/activity
 // Recent system activity derived from ledger and intake updates
-router.get('/system/activity', asyncHandler(withServices(async ({ db }, req, res) => {
+router.get('/system/activity', validate(validators.systemActivity), asyncHandler(withServices(async ({ db }, req, res) => {
     const { limit = 10 } = req.query;
 
     const parsedLimit = Number.parseInt(limit, 10);
@@ -1120,6 +1122,19 @@ router.get('/system/activity', asyncHandler(withServices(async ({ db }, req, res
         data: activity
     });
 })));
+
+// GET /api/system/spec
+// Serve the OpenAPI specification
+router.get('/system/spec', validate(), (req, res, next) => {
+    const specPath = path.join(__dirname, 'openapi.yaml');
+
+    res.type('application/yaml');
+    res.sendFile(specPath, (error) => {
+        if (error) {
+            next(error);
+        }
+    });
+});
 
 // 404 handler for unmatched API routes
 router.use((req, res) => {
