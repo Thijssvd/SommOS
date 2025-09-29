@@ -1098,6 +1098,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /vintage/enrich:
+    post:
+      tags: [Vintage Intelligence]
+      summary: Enrich a wine record with the latest intelligence data.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [wine_id]
+              properties:
+                wine_id:
+                  description: Identifier of the wine to enrich.
+                  oneOf:
+                    - type: integer
+                    - type: string
+      responses:
+        '200':
+          description: Enrichment completed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: object
+                    additionalProperties: true
+                  message:
+                    type: string
+        '400':
+          description: Missing or invalid wine identifier.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Wine not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unable to enrich wine data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /vintage/procurement-recommendations:
     get:
       tags: [Vintage Intelligence]

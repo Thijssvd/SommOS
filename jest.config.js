@@ -40,6 +40,11 @@ module.exports = {
       testEnvironment: 'node'
     },
     {
+      displayName: 'API Contract Tests',
+      testMatch: ['**/tests/api/**/*.test.js'],
+      testEnvironment: 'node'
+    },
+    {
       displayName: 'Frontend Unit Tests',
       testMatch: ['**/tests/frontend/**/*.test.js'],
       testEnvironment: 'jsdom',

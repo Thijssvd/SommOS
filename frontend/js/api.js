@@ -1,6 +1,16 @@
 // SommOS API Client
 // Handles all API communication with offline fallback
 
+class SommOSAPIError extends Error {
+    constructor(message, { status, code, details } = {}) {
+        super(message);
+        this.name = 'SommOSAPIError';
+        this.status = status;
+        this.code = code;
+        this.details = details;
+    }
+}
+
 class SommOSAPI {
     constructor() {
         const explicitBase = (typeof window !== 'undefined' && window.__SOMMOS_API_BASE__)
@@ -36,11 +46,12 @@ class SommOSAPI {
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         const config = {
+            ...options,
             headers: {
+                Accept: 'application/json',
                 'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
+                ...(options.headers || {})
+            }
         };
 
         try {
@@ -59,45 +70,59 @@ class SommOSAPI {
             clearTimeout(timeoutId);
 
             console.log(`API response status: ${response.status}`);
+            const contentType = response.headers?.get?.('content-type') || '';
+            const isJson = contentType.includes('application/json');
+            const isText = contentType.includes('text/') || contentType.includes('application/yaml');
 
-            if (!response.ok) {
-                let errorDetail = '';
-                if (typeof response.text === 'function') {
-                    try {
-                        errorDetail = await response.text();
-                    } catch (e) {
-                        errorDetail = '';
-                    }
-                } else if (typeof response.json === 'function') {
-                    try {
-                        const json = await response.json();
-                        errorDetail = JSON.stringify(json);
-                    } catch (e) {
-                        errorDetail = '';
-                    }
+            let parsedBody;
+
+            if (isJson) {
+                try {
+                    parsedBody = await response.json();
+                } catch (parseError) {
+                    console.warn('Failed to parse JSON response:', parseError);
+                    parsedBody = null;
                 }
-
-                const errorMessage = `HTTP ${response.status}: ${response.statusText}` +
-                    (errorDetail ? ` - ${errorDetail}` : '');
-                throw new Error(errorMessage);
+            } else if (isText) {
+                parsedBody = await response.text();
             }
 
-            const data = await response.json();
-            console.log(`API response data:`, data);
-            return data;
+            if (!response.ok) {
+                if (parsedBody && typeof parsedBody === 'object' && parsedBody.error) {
+                    const { code, message, details } = parsedBody.error;
+                    throw new SommOSAPIError(message || `HTTP ${response.status}`, {
+                        status: response.status,
+                        code: code || 'HTTP_ERROR',
+                        details
+                    });
+                }
+
+                throw new SommOSAPIError(`HTTP ${response.status}: ${response.statusText}`, {
+                    status: response.status,
+                    code: 'HTTP_ERROR',
+                    details: parsedBody
+                });
+            }
+
+            if (typeof parsedBody === 'undefined') {
+                return null;
+            }
+
+            console.log(`API response data:`, parsedBody);
+            return parsedBody;
         } catch (error) {
             console.error(`API request failed: ${endpoint}`, error);
-            
+
             // Provide more specific error messages
             if (error.name === 'AbortError') {
                 throw new Error(`Request timeout after ${this.timeout/1000} seconds. Please try again.`);
             }
-            
+
             if (error.message.includes('Failed to fetch')) {
                 throw new Error('Cannot connect to server. Please check if the backend is running.');
             }
-            
-            throw error;
+
+            throw error instanceof SommOSAPIError ? error : new SommOSAPIError(error.message, error);
         }
     }
 
@@ -112,6 +137,14 @@ class SommOSAPI {
 
     async getRecentActivity(limit = 10) {
         return this.request(`/system/activity?limit=${limit}`);
+    }
+
+    async getOpenAPISpec() {
+        return this.request('/system/spec', {
+            headers: {
+                Accept: 'application/yaml'
+            }
+        });
     }
 
     // Pairing endpoints
@@ -243,8 +276,18 @@ class SommOSAPI {
 
     // Procurement endpoints
     async getProcurementOpportunities(filters = {}) {
-        const params = new URLSearchParams(filters);
-        return this.request(`/procurement/opportunities?${params}`);
+        const params = new URLSearchParams();
+
+        Object.entries(filters || {}).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                params.append(key, value);
+            }
+        });
+
+        const query = params.toString();
+        const suffix = query ? `?${query}` : '';
+
+        return this.request(`/procurement/opportunities${suffix}`);
     }
 
     async analyzePurchaseDecision(vintageId, supplierId, quantity = 12, context = {}) {
@@ -273,8 +316,18 @@ class SommOSAPI {
 
     // Wine catalog endpoints
     async getWines(filters = {}) {
-        const params = new URLSearchParams(filters);
-        return this.request(`/wines?${params}`);
+        const params = new URLSearchParams();
+
+        Object.entries(filters || {}).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                params.append(key, value);
+            }
+        });
+
+        const query = params.toString();
+        const suffix = query ? `?${query}` : '';
+
+        return this.request(`/wines${suffix}`);
     }
 
     async getWineDetails(wineId) {
