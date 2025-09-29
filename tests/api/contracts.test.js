@@ -31,6 +31,24 @@ const extractRoutes = () => {
   };
 };
 
+const normalizeExpressPath = (pathWithParams) => pathWithParams.replace(/:([^/]+)/g, '{$1}');
+
+const collectOperations = (spec) => {
+  if (!spec.paths) {
+    return [];
+  }
+
+  return Object.entries(spec.paths).flatMap(([pathKey, pathItem]) =>
+    Object.entries(pathItem)
+      .filter(([method]) => ['get', 'post', 'put', 'delete', 'patch'].includes(method))
+      .map(([method, operation]) => ({
+        method,
+        path: pathKey,
+        operation,
+      }))
+  );
+};
+
 describe('OpenAPI contract', () => {
   const spec = loadSpec();
   const { list: expressRoutes, source } = extractRoutes();
@@ -40,11 +58,22 @@ describe('OpenAPI contract', () => {
     expect(spec.paths).toBeTruthy();
 
     expressRoutes.forEach(({ method, path: expressPath }) => {
-      const openApiPath = expressPath.replace(/:([^/]+)/g, '{$1}');
+      const openApiPath = normalizeExpressPath(expressPath);
       const pathEntry = spec.paths[openApiPath];
 
       expect(pathEntry).toBeDefined();
       expect(pathEntry[method]).toBeDefined();
+    });
+  });
+
+  test('does not document undeclared Express routes', () => {
+    const expressRouteIndex = new Set(
+      expressRoutes.map(({ method, path: expressPath }) => `${method} ${normalizeExpressPath(expressPath)}`)
+    );
+
+    collectOperations(spec).forEach(({ method, path }) => {
+      const key = `${method} ${path}`;
+      expect(expressRouteIndex.has(key)).toBe(true);
     });
   });
 
@@ -65,32 +94,59 @@ describe('OpenAPI contract', () => {
   test('declares standard error responses for each operation', () => {
     const errorRef = '#/components/schemas/ErrorResponse';
 
-    Object.entries(spec.paths).forEach(([, pathItem]) => {
-      Object.entries(pathItem).forEach(([verb, operation]) => {
-        if (['get', 'post', 'put', 'delete', 'patch'].includes(verb)) {
-          expect(operation.responses).toBeDefined();
+    collectOperations(spec).forEach(({ operation }) => {
+      expect(operation.responses).toBeDefined();
 
-          const responseEntries = Object.entries(operation.responses);
-          const errorResponses = responseEntries.filter(([status]) => !['200', '201', '202', '204'].includes(status));
+      const responseEntries = Object.entries(operation.responses || {});
+      const errorResponses = responseEntries.filter(([status]) => !/^2\d\d$/.test(status));
 
-          expect(errorResponses.length).toBeGreaterThan(0);
+      expect(errorResponses.length).toBeGreaterThan(0);
 
-          errorResponses.forEach(([, response]) => {
-            const jsonContent = response.content && response.content['application/json'];
+      errorResponses.forEach(([, response]) => {
+        const jsonContent = response.content && response.content['application/json'];
 
-            if (jsonContent && jsonContent.schema) {
-              const schema = jsonContent.schema;
-              if (schema.$ref) {
-                expect(schema.$ref).toBe(errorRef);
-              } else if (Array.isArray(schema.oneOf)) {
-                expect(schema.oneOf.some((entry) => entry.$ref === errorRef)).toBe(true);
-              } else {
-                throw new Error('Error responses must reference ErrorResponse schema');
-              }
-            }
-          });
+        if (jsonContent && jsonContent.schema) {
+          const schema = jsonContent.schema;
+          if (schema.$ref) {
+            expect(schema.$ref).toBe(errorRef);
+          } else if (Array.isArray(schema.oneOf)) {
+            expect(schema.oneOf.some((entry) => entry.$ref === errorRef)).toBe(true);
+          } else {
+            throw new Error('Error responses must reference ErrorResponse schema');
+          }
         }
       });
+    });
+  });
+
+  test('enforces success envelope on documented JSON responses', () => {
+    collectOperations(spec).forEach(({ operation, path, method }) => {
+      Object.entries(operation.responses || {})
+        .filter(([status]) => /^2\d\d$/.test(status))
+        .forEach(([status, response]) => {
+          const jsonContent = response.content && response.content['application/json'];
+
+          if (!jsonContent) {
+            return; // Non-JSON responses (e.g., YAML spec) are exempt.
+          }
+
+          expect(jsonContent.schema).toBeDefined();
+
+          const { schema } = jsonContent;
+          expect(schema.type).toBe('object');
+          expect(schema.properties).toBeDefined();
+          expect(schema.properties.success).toBeDefined();
+          expect(schema.properties.success.const).toBe(true);
+
+          const hasData = Object.prototype.hasOwnProperty.call(schema.properties, 'data');
+          const hasMessage = Object.prototype.hasOwnProperty.call(schema.properties, 'message');
+
+          if (!hasData && !hasMessage) {
+            throw new Error(
+              `Response ${status} for ${method.toUpperCase()} ${path} must include either a data or message property.`
+            );
+          }
+        });
     });
   });
 });
