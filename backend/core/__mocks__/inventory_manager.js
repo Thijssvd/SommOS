@@ -67,6 +67,49 @@ class InventoryManager {
         return results;
     }
 
+    async getInventoryList(filters = {}, options = {}) {
+        const items = await this.getCurrentStock(filters);
+        const total = items.length;
+        const limitValue = Number.parseInt(options.limit, 10);
+        const offsetValue = Number.parseInt(options.offset, 10);
+        const limit = Number.isFinite(limitValue) && limitValue > 0 ? limitValue : total;
+        const offset = Number.isFinite(offsetValue) && offsetValue >= 0 ? offsetValue : 0;
+
+        return {
+            items: limit >= total && offset === 0 ? items : items.slice(offset, offset + limit),
+            total,
+            limit,
+            offset
+        };
+    }
+
+    async getStockItemById(stockId) {
+        return this.sampleStock.find(item => String(item.id) === String(stockId)) || null;
+    }
+
+    async listLocations() {
+        const map = this.sampleStock.reduce((acc, item) => {
+            if (!acc[item.location]) {
+                acc[item.location] = {
+                    location: item.location,
+                    stock_items: 0,
+                    total_bottles: 0,
+                    reserved_bottles: 0,
+                    available_bottles: 0
+                };
+            }
+
+            const stats = acc[item.location];
+            stats.stock_items += 1;
+            stats.total_bottles += item.quantity;
+            stats.reserved_bottles += item.reserved_quantity || 0;
+            stats.available_bottles += (item.quantity || 0) - (item.reserved_quantity || 0);
+            return acc;
+        }, {});
+
+        return Object.values(map);
+    }
+
     async consumeWine(vintageId, location, quantity) {
         this.ledger.push({
             id: `ledger-${this.ledger.length + 1}`,

@@ -924,10 +924,57 @@ class InventoryManager {
         }
         
         query += ' ORDER BY w.name, v.year DESC';
-        
+
         return await this.db.all(query, params);
     }
-    
+
+    async getInventoryList(filters = {}, options = {}) {
+        const stock = await this.getCurrentStock(filters);
+
+        const total = stock.length;
+        const limitValue = Number.parseInt(options.limit, 10);
+        const offsetValue = Number.parseInt(options.offset, 10);
+        const limit = Number.isFinite(limitValue) && limitValue > 0 ? limitValue : total;
+        const offset = Number.isFinite(offsetValue) && offsetValue >= 0 ? offsetValue : 0;
+
+        const items = limit >= total && offset === 0
+            ? stock
+            : stock.slice(offset, offset + limit);
+
+        return {
+            items,
+            total,
+            limit,
+            offset
+        };
+    }
+
+    async getStockItemById(stockId) {
+        return await this.db.get(`
+            SELECT s.*, v.id as vintage_id, v.year, v.quality_score,
+                   w.id as wine_id, w.name, w.producer, w.region, w.wine_type,
+                   (s.quantity - s.reserved_quantity) as available_quantity
+            FROM Stock s
+            JOIN Vintages v ON v.id = s.vintage_id
+            JOIN Wines w ON w.id = v.wine_id
+            WHERE s.id = ?
+        `, [stockId]);
+    }
+
+    async listLocations() {
+        return await this.db.all(`
+            SELECT
+                location,
+                COUNT(*) as stock_items,
+                COALESCE(SUM(quantity), 0) as total_bottles,
+                COALESCE(SUM(reserved_quantity), 0) as reserved_bottles,
+                COALESCE(SUM(quantity - reserved_quantity), 0) as available_bottles
+            FROM Stock
+            GROUP BY location
+            ORDER BY location
+        `);
+    }
+
     /**
      * Consume wine with proper validation
      */
