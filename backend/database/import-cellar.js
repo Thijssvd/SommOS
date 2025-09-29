@@ -4,7 +4,7 @@ const path = require('path');
 
 // Database path
 const dbPath = path.join(__dirname, '../../data/sommos.db');
-const csvPath = '/Users/thijs/Downloads/sample_yacht_cellar_inventory.csv';
+const csvPath = path.join(__dirname, 'template_cellar.csv');
 
 // Wine type mapping from category to standardized wine types
 const categoryMapping = {
