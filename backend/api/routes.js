@@ -11,16 +11,60 @@ const VintageIntelligenceService = require('../core/vintage_intelligence');
 const wineGuidanceService = require('../core/wine_guidance_service');
 const Database = require('../database/connection');
 
-// Initialize engines
-const learningEngine = new LearningEngine();
-learningEngine.initialize().catch(error => {
-    console.warn('Learning engine initialization failed:', error.message);
-});
+let servicesPromise = null;
 
-const pairingEngine = new PairingEngine(null, learningEngine);
-const inventoryManager = new InventoryManager(null, learningEngine);
-const procurementEngine = new ProcurementEngine(null, learningEngine);
-const vintageIntelligenceService = new VintageIntelligenceService();
+async function createServices() {
+    const db = Database.getInstance();
+    const learningEngine = new LearningEngine(db);
+
+    try {
+        await learningEngine.initialize();
+    } catch (error) {
+        console.warn('Learning engine initialization failed:', error.message);
+    }
+
+    return {
+        db,
+        learningEngine,
+        pairingEngine: new PairingEngine(db, learningEngine),
+        inventoryManager: new InventoryManager(db, learningEngine),
+        procurementEngine: new ProcurementEngine(db, learningEngine),
+        vintageIntelligenceService: new VintageIntelligenceService(db)
+    };
+}
+
+async function getServices() {
+    if (!servicesPromise) {
+        servicesPromise = createServices();
+    }
+
+    try {
+        return await servicesPromise;
+    } catch (error) {
+        servicesPromise = null;
+        throw error;
+    }
+}
+
+const withServices = (handler, { onError } = {}) => async (req, res, next) => {
+    let services;
+
+    try {
+        services = await getServices();
+    } catch (error) {
+        if (typeof onError === 'function') {
+            onError(error, req, res, next);
+        } else if (!res.headersSent) {
+            res.status(error.status || 500).json({
+                success: false,
+                error: error.message
+            });
+        }
+        return;
+    }
+
+    return handler(services, req, res, next);
+};
 
 // Middleware for error handling
 const asyncHandler = (fn) => (req, res, next) => {
@@ -33,9 +77,9 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 // POST /api/pairing/recommend
 // Generate wine pairing recommendations
-router.post('/pairing/recommend', asyncHandler(async (req, res) => {
+router.post('/pairing/recommend', asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
     const { dish, context, guestPreferences, options } = req.body;
-    
+
     if (!dish) {
         return res.status(400).json({
             success: false,
@@ -45,8 +89,8 @@ router.post('/pairing/recommend', asyncHandler(async (req, res) => {
 
     try {
         const recommendations = await pairingEngine.generatePairings(
-            dish, 
-            context || {}, 
+            dish,
+            context || {},
             guestPreferences || {},
             options || {}
         );
@@ -68,16 +112,16 @@ router.post('/pairing/recommend', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/pairing/quick
 // Quick pairing for immediate service
-router.post('/pairing/quick', asyncHandler(async (req, res) => {
+router.post('/pairing/quick', asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
     const { dish, context, ownerLikes } = req.body;
-    
+
     try {
         const quickPairings = await pairingEngine.quickPairing(dish, context, ownerLikes);
-        
+
         res.json({
             success: true,
             data: quickPairings
@@ -88,11 +132,11 @@ router.post('/pairing/quick', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/pairing/feedback
 // Capture owner feedback to improve future pairings
-router.post('/pairing/feedback', asyncHandler(async (req, res) => {
+router.post('/pairing/feedback', asyncHandler(withServices(async ({ learningEngine }, req, res) => {
     const { recommendation_id, rating, notes, selected = true } = req.body || {};
 
     if (!recommendation_id || !rating) {
@@ -115,17 +159,48 @@ router.post('/pairing/feedback', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // ============================================================================
 // INVENTORY ENDPOINTS
 // ============================================================================
 
+// GET /api/inventory
+// Paginated inventory list
+router.get('/inventory', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+    const { location, wine_type, region, available_only, limit, offset } = req.query;
+
+    const result = await inventoryManager.getInventoryList(
+        {
+            location,
+            wine_type,
+            region,
+            available_only: available_only === 'true'
+        },
+        { limit, offset }
+    );
+
+    const data = result.items.map(item => ({
+        ...item,
+        ...wineGuidanceService.getGuidance(item)
+    }));
+
+    res.json({
+        success: true,
+        data,
+        meta: {
+            total: result.total,
+            limit: result.limit,
+            offset: result.offset
+        }
+    });
+})));
+
 // GET /api/inventory/stock
 // Get current stock levels
-router.get('/inventory/stock', asyncHandler(async (req, res) => {
+router.get('/inventory/stock', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { location, wine_type, region, available_only } = req.query;
-    
+
     try {
         const stock = await inventoryManager.getCurrentStock({
             location,
@@ -144,13 +219,47 @@ router.get('/inventory/stock', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
+
+// GET /api/inventory/:id
+// Retrieve a specific stock item by identifier
+router.get('/inventory/:id', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+    const { id } = req.params;
+
+    const stockItem = await inventoryManager.getStockItemById(id);
+
+    if (!stockItem) {
+        return res.status(404).json({
+            success: false,
+            error: 'Inventory item not found'
+        });
+    }
+
+    res.json({
+        success: true,
+        data: {
+            ...stockItem,
+            ...wineGuidanceService.getGuidance(stockItem)
+        }
+    });
+})));
+
+// GET /api/locations
+// List available storage locations
+router.get('/locations', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+    const locations = await inventoryManager.listLocations();
+
+    res.json({
+        success: true,
+        data: locations
+    });
+})));
 
 // POST /api/inventory/consume
 // Record wine consumption
-router.post('/inventory/consume', asyncHandler(async (req, res) => {
+router.post('/inventory/consume', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id, location, quantity, notes, created_by } = req.body;
-    
+
     if (!vintage_id || !location || !quantity) {
         return res.status(400).json({
             success: false,
@@ -160,10 +269,10 @@ router.post('/inventory/consume', asyncHandler(async (req, res) => {
 
     try {
         const result = await inventoryManager.consumeWine(
-            vintage_id, 
-            location, 
-            quantity, 
-            notes, 
+            vintage_id,
+            location,
+            quantity,
+            notes,
             created_by
         );
 
@@ -177,11 +286,11 @@ router.post('/inventory/consume', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/inventory/receive
 // Record wine receipt/delivery
-router.post('/inventory/receive', asyncHandler(async (req, res) => {
+router.post('/inventory/receive', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id, location, quantity, unit_cost, reference_id, notes, created_by } = req.body;
 
     if (!vintage_id || !location || !quantity) {
@@ -193,12 +302,12 @@ router.post('/inventory/receive', asyncHandler(async (req, res) => {
 
     try {
         const result = await inventoryManager.receiveWine(
-            vintage_id, 
-            location, 
-            quantity, 
-            unit_cost, 
-            reference_id, 
-            notes, 
+            vintage_id,
+            location,
+            quantity,
+            unit_cost,
+            reference_id,
+            notes,
             created_by
         );
 
@@ -212,11 +321,11 @@ router.post('/inventory/receive', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/inventory/intake
 // Create a new intake order from external sources
-router.post('/inventory/intake', asyncHandler(async (req, res) => {
+router.post('/inventory/intake', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     try {
         const result = await inventoryManager.createInventoryIntake(req.body || {});
         res.json({
@@ -230,11 +339,11 @@ router.post('/inventory/intake', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/inventory/intake/:intakeId/receive
 // Mark bottles as received against an intake order
-router.post('/inventory/intake/:intakeId/receive', asyncHandler(async (req, res) => {
+router.post('/inventory/intake/:intakeId/receive', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const intakeId = parseInt(req.params.intakeId, 10);
     const { receipts, created_by, notes } = req.body || {};
 
@@ -263,11 +372,11 @@ router.post('/inventory/intake/:intakeId/receive', asyncHandler(async (req, res)
             error: error.message
         });
     }
-}));
+})));
 
 // GET /api/inventory/intake/:intakeId/status
 // Verify whether all bottles from an intake have been received
-router.get('/inventory/intake/:intakeId/status', asyncHandler(async (req, res) => {
+router.get('/inventory/intake/:intakeId/status', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const intakeId = parseInt(req.params.intakeId, 10);
 
     try {
@@ -283,13 +392,13 @@ router.get('/inventory/intake/:intakeId/status', asyncHandler(async (req, res) =
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/inventory/move
 // Move wine between locations
-router.post('/inventory/move', asyncHandler(async (req, res) => {
+router.post('/inventory/move', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id, from_location, to_location, quantity, notes, created_by } = req.body;
-    
+
     if (!vintage_id || !from_location || !to_location || !quantity) {
         return res.status(400).json({
             success: false,
@@ -299,11 +408,11 @@ router.post('/inventory/move', asyncHandler(async (req, res) => {
 
     try {
         const result = await inventoryManager.moveWine(
-            vintage_id, 
-            from_location, 
-            to_location, 
-            quantity, 
-            notes, 
+            vintage_id,
+            from_location,
+            to_location,
+            quantity,
+            notes,
             created_by
         );
 
@@ -317,19 +426,26 @@ router.post('/inventory/move', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/inventory/reserve
 // Reserve wine for future service
-router.post('/inventory/reserve', asyncHandler(async (req, res) => {
+router.post('/inventory/reserve', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id, location, quantity, notes, created_by } = req.body;
-    
+
+    if (!vintage_id || !location || !quantity) {
+        return res.status(400).json({
+            success: false,
+            error: 'vintage_id, location, and quantity are required'
+        });
+    }
+
     try {
         const result = await inventoryManager.reserveWine(
-            vintage_id, 
-            location, 
-            quantity, 
-            notes, 
+            vintage_id,
+            location,
+            quantity,
+            notes,
             created_by
         );
 
@@ -343,19 +459,19 @@ router.post('/inventory/reserve', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // GET /api/inventory/ledger/:vintage_id
 // Get transaction history for a vintage
-router.get('/inventory/ledger/:vintage_id', asyncHandler(async (req, res) => {
+router.get('/inventory/ledger/:vintage_id', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { vintage_id } = req.params;
     const { limit = 50, offset = 0 } = req.query;
-    
+
     try {
         const ledger = await inventoryManager.getLedgerHistory(
-            vintage_id, 
-            parseInt(limit), 
-            parseInt(offset)
+            vintage_id,
+            parseInt(limit, 10),
+            parseInt(offset, 10)
         );
 
         res.json({
@@ -368,7 +484,7 @@ router.get('/inventory/ledger/:vintage_id', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // ============================================================================
 // PROCUREMENT ENDPOINTS
@@ -376,7 +492,7 @@ router.get('/inventory/ledger/:vintage_id', asyncHandler(async (req, res) => {
 
 // GET /api/procurement/opportunities
 // Get procurement opportunities
-router.get('/procurement/opportunities', asyncHandler(async (req, res) => {
+router.get('/procurement/opportunities', asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
     const { region, regions, wine_type, wine_types, max_price, min_score, budget } = req.query;
 
     try {
@@ -400,13 +516,13 @@ router.get('/procurement/opportunities', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/procurement/analyze
 // Analyze specific procurement decision
-router.post('/procurement/analyze', asyncHandler(async (req, res) => {
+router.post('/procurement/analyze', asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
     const { vintage_id, supplier_id, quantity, context } = req.body;
-    
+
     if (!vintage_id || !supplier_id) {
         return res.status(400).json({
             success: false,
@@ -416,9 +532,9 @@ router.post('/procurement/analyze', asyncHandler(async (req, res) => {
 
     try {
         const analysis = await procurementEngine.analyzePurchaseDecision(
-            vintage_id, 
-            supplier_id, 
-            quantity || 12, 
+            vintage_id,
+            supplier_id,
+            quantity || 12,
             context || {}
         );
 
@@ -432,11 +548,11 @@ router.post('/procurement/analyze', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/procurement/order
 // Generate purchase order
-router.post('/procurement/order', asyncHandler(async (req, res) => {
+router.post('/procurement/order', asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
     const { items, supplier_id, delivery_date, notes } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -457,7 +573,7 @@ router.post('/procurement/order', asyncHandler(async (req, res) => {
         const order = await procurementEngine.generatePurchaseOrder(
             items,
             supplier_id,
-            delivery_date, 
+            delivery_date,
             notes
         );
 
@@ -471,7 +587,7 @@ router.post('/procurement/order', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // ============================================================================
 // WINE CATALOG ENDPOINTS
@@ -479,11 +595,10 @@ router.post('/procurement/order', asyncHandler(async (req, res) => {
 
 // GET /api/wines
 // Get wine catalog
-router.get('/wines', asyncHandler(async (req, res) => {
+router.get('/wines', asyncHandler(withServices(async ({ db }, req, res) => {
     const { region, wine_type, producer, search, limit = 50, offset = 0 } = req.query;
-    
+
     try {
-        const db = Database.getInstance();
         let query = `
             SELECT w.*, v.year, v.quality_score, v.weather_score, v.critic_score,
                    v.peak_drinking_start, v.peak_drinking_end,
@@ -495,32 +610,32 @@ router.get('/wines', asyncHandler(async (req, res) => {
             LEFT JOIN Stock s ON v.id = s.vintage_id
             WHERE 1=1
         `;
-        
+
         const params = [];
-        
+
         if (region) {
             query += ' AND w.region LIKE ?';
             params.push(`%${region}%`);
         }
-        
+
         if (wine_type) {
             query += ' AND w.wine_type = ?';
             params.push(wine_type);
         }
-        
+
         if (producer) {
             query += ' AND w.producer LIKE ?';
             params.push(`%${producer}%`);
         }
-        
+
         if (search) {
             query += ' AND (w.name LIKE ? OR w.producer LIKE ? OR w.region LIKE ?)';
             params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
-        
+
         query += ' GROUP BY w.id, v.id ORDER BY w.name LIMIT ? OFFSET ?';
         params.push(parseInt(limit), parseInt(offset));
-        
+
         const wines = await db.all(query, params);
         const enrichedWines = wines.map(wine => ({
             ...wine,
@@ -537,23 +652,23 @@ router.get('/wines', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/wines
 // Add new wine to inventory with vintage intelligence
-router.post('/wines', asyncHandler(async (req, res) => {
+router.post('/wines', asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { wine, vintage, stock } = req.body;
-    
+
     if (!wine || !vintage || !stock) {
         return res.status(400).json({
             success: false,
             error: 'Wine, vintage, and stock information are required'
         });
     }
-    
+
     try {
         const result = await inventoryManager.addWineToInventory(wine, vintage, stock);
-        
+
         res.status(201).json({
             success: true,
             data: result,
@@ -565,16 +680,14 @@ router.post('/wines', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // GET /api/wines/:id
 // Get specific wine details
-router.get('/wines/:id', asyncHandler(async (req, res) => {
+router.get('/wines/:id', asyncHandler(withServices(async ({ db }, req, res) => {
     const { id } = req.params;
-    
+
     try {
-        const db = Database.getInstance();
-        
         // Get wine details
         const wineRecord = await db.get('SELECT * FROM Wines WHERE id = ?', [id]);
         if (!wineRecord) {
@@ -585,7 +698,7 @@ router.get('/wines/:id', asyncHandler(async (req, res) => {
         }
 
         const guidance = wineGuidanceService.getGuidance(wineRecord);
-        
+
         // Get vintages
         const vintages = await db.all(`
             SELECT v.*,
@@ -628,7 +741,7 @@ router.get('/wines/:id', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // ============================================================================
 // VINTAGE INTELLIGENCE ENDPOINTS
@@ -636,34 +749,32 @@ router.get('/wines/:id', asyncHandler(async (req, res) => {
 
 // GET /api/vintage/analysis/:wine_id
 // Get vintage analysis for specific wine
-router.get('/vintage/analysis/:wine_id', asyncHandler(async (req, res) => {
+router.get('/vintage/analysis/:wine_id', asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { wine_id } = req.params;
-    
+
     try {
-        const db = Database.getInstance();
-        
         // Get wine and vintage details
         const wine = await db.get(`
-            SELECT w.*, v.* 
+            SELECT w.*, v.*
             FROM Wines w
             JOIN Vintages v ON w.id = v.wine_id
             WHERE w.id = ?
         `, [wine_id]);
-        
+
         if (!wine) {
             return res.status(404).json({
                 success: false,
                 error: 'Wine not found'
             });
         }
-        
+
         // Get weather context for this wine
         const weatherAnalysis = await vintageIntelligenceService.getWeatherContextForPairing(wine);
-        
+
         // Parse production notes if available
         let vintageSummary = null;
         let procurementRec = null;
-        
+
         if (wine.production_notes) {
             try {
                 // Check if it's valid JSON first
@@ -681,7 +792,7 @@ router.get('/vintage/analysis/:wine_id', asyncHandler(async (req, res) => {
                 console.warn('Production notes treated as plain text:', parseError.message);
             }
         }
-        
+
         res.json({
             success: true,
             data: {
@@ -705,41 +816,39 @@ router.get('/vintage/analysis/:wine_id', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/vintage/enrich
 // Manually trigger vintage enrichment for a specific wine
-router.post('/vintage/enrich', asyncHandler(async (req, res) => {
+router.post('/vintage/enrich', asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { wine_id } = req.body;
-    
+
     if (!wine_id) {
         return res.status(400).json({
             success: false,
             error: 'wine_id is required'
         });
     }
-    
+
     try {
-        const db = Database.getInstance();
-        
         // Get wine details
         const wine = await db.get(`
-            SELECT w.*, v.* 
+            SELECT w.*, v.*
             FROM Wines w
             LEFT JOIN Vintages v ON w.id = v.wine_id
             WHERE w.id = ?
         `, [wine_id]);
-        
+
         if (!wine) {
             return res.status(404).json({
                 success: false,
                 error: 'Wine not found'
             });
         }
-        
+
         // Enrich the wine data
         const enrichedData = await vintageIntelligenceService.enrichWineData(wine);
-        
+
         res.json({
             success: true,
             data: enrichedData,
@@ -751,14 +860,14 @@ router.post('/vintage/enrich', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // GET /api/vintage/procurement-recommendations
 // Get procurement recommendations for current inventory
-router.get('/vintage/procurement-recommendations', asyncHandler(async (req, res) => {
+router.get('/vintage/procurement-recommendations', asyncHandler(withServices(async ({ vintageIntelligenceService }, req, res) => {
     try {
         const recommendations = await vintageIntelligenceService.getInventoryProcurementRecommendations();
-        
+
         res.json({
             success: true,
             data: recommendations
@@ -769,51 +878,49 @@ router.get('/vintage/procurement-recommendations', asyncHandler(async (req, res)
             error: error.message
         });
     }
-}));
+})));
 
 // POST /api/vintage/batch-enrich
 // Batch enrich multiple wines with vintage intelligence
-router.post('/vintage/batch-enrich', asyncHandler(async (req, res) => {
+router.post('/vintage/batch-enrich', asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { filters = {}, limit = 50 } = req.body;
-    
+
     try {
-        const db = Database.getInstance();
-        
         // Build query with filters
         let query = `
-            SELECT w.*, v.* 
+            SELECT w.*, v.*
             FROM Wines w
             LEFT JOIN Vintages v ON w.id = v.wine_id
             WHERE 1=1
         `;
-        
+
         const params = [];
-        
+
         if (filters.region) {
             query += ' AND w.region LIKE ?';
             params.push(`%${filters.region}%`);
         }
-        
+
         if (filters.wine_type) {
             query += ' AND w.wine_type = ?';
             params.push(filters.wine_type);
         }
-        
+
         if (filters.year_from) {
             query += ' AND v.year >= ?';
             params.push(filters.year_from);
         }
-        
+
         if (filters.year_to) {
             query += ' AND v.year <= ?';
             params.push(filters.year_to);
         }
-        
+
         query += ' ORDER BY w.name LIMIT ?';
         params.push(limit);
-        
+
         const wines = await db.all(query, params);
-        
+
         if (wines.length === 0) {
             return res.json({
                 success: true,
@@ -821,10 +928,10 @@ router.post('/vintage/batch-enrich', asyncHandler(async (req, res) => {
                 message: 'No wines found matching criteria'
             });
         }
-        
+
         // Process wines in batches
         const results = await vintageIntelligenceService.batchEnrichWines(wines);
-        
+
         res.json({
             success: true,
             data: results,
@@ -836,44 +943,42 @@ router.post('/vintage/batch-enrich', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // GET /api/vintage/pairing-insight
 // Get weather-based pairing insights for a wine and dish context
-router.post('/vintage/pairing-insight', asyncHandler(async (req, res) => {
+router.post('/vintage/pairing-insight', asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { wine_id, dish_context } = req.body;
-    
+
     if (!wine_id || !dish_context) {
         return res.status(400).json({
             success: false,
             error: 'wine_id and dish_context are required'
         });
     }
-    
+
     try {
-        const db = Database.getInstance();
-        
         // Get wine details
         const wine = await db.get(`
-            SELECT w.*, v.* 
+            SELECT w.*, v.*
             FROM Wines w
             LEFT JOIN Vintages v ON w.id = v.wine_id
             WHERE w.id = ?
         `, [wine_id]);
-        
+
         if (!wine) {
             return res.status(404).json({
                 success: false,
                 error: 'Wine not found'
             });
         }
-        
+
         // Get weather context
         const weatherAnalysis = await vintageIntelligenceService.getWeatherContextForPairing(wine);
-        
+
         // Generate pairing insight
         const insight = vintageIntelligenceService.generateWeatherPairingInsight(weatherAnalysis, dish_context);
-        
+
         res.json({
             success: true,
             data: {
@@ -893,7 +998,7 @@ router.post('/vintage/pairing-insight', asyncHandler(async (req, res) => {
             error: error.message
         });
     }
-}));
+})));
 
 // ============================================================================
 // SYSTEM ENDPOINTS
@@ -904,13 +1009,13 @@ router.post('/vintage/pairing-insight', asyncHandler(async (req, res) => {
 router.get('/system/health', asyncHandler(async (req, res) => {
     try {
         const db = Database.getInstance();
-        
+
         // Test database connection
         await db.get('SELECT 1');
-        
+
         // Get basic stats
         const stats = await db.all(`
-            SELECT 
+            SELECT
                 (SELECT COUNT(*) FROM Wines) as total_wines,
                 (SELECT COUNT(*) FROM Vintages) as total_vintages,
                 (SELECT COALESCE(SUM(quantity), 0) FROM Stock) as total_bottles,
@@ -934,15 +1039,13 @@ router.get('/system/health', asyncHandler(async (req, res) => {
 
 // GET /api/system/activity
 // Recent system activity derived from ledger and intake updates
-router.get('/system/activity', asyncHandler(async (req, res) => {
+router.get('/system/activity', asyncHandler(withServices(async ({ db }, req, res) => {
     const { limit = 10 } = req.query;
-    const db = Database.getInstance();
 
     const parsedLimit = Number.parseInt(limit, 10);
     const safeLimit = Number.isFinite(parsedLimit) ? parsedLimit : 10;
     const maxItems = Math.min(Math.max(safeLimit, 1), 50);
 
-    // Collect recent ledger movements
     const ledgerActivity = await db.all(`
         SELECT l.id, l.transaction_type, l.quantity, l.location, l.notes, l.created_by, l.created_at,
                l.reference_id,
@@ -1016,7 +1119,7 @@ router.get('/system/activity', asyncHandler(async (req, res) => {
         success: true,
         data: activity
     });
-}));
+})));
 
 // 404 handler for unmatched API routes
 router.use((req, res) => {
