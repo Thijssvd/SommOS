@@ -1,35 +1,114 @@
-'use strict';
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const fs = require('fs');
-let db = null;
 
-function getDbPath(){
-  const dir = process.env.DB_DIR || path.join(process.cwd(), 'data');
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  return path.join(dir, 'somm.db');
+class Database {
+    constructor(customPath = null) {
+        this.db = null;
+        this.dbPath = customPath || path.join(__dirname, '../../data/sommos.db');
+    }
+
+    static getInstance(customPath = null) {
+        if (!Database.instance || customPath) {
+            Database.instance = new Database(customPath);
+        }
+        return Database.instance;
+    }
+
+    async initialize() {
+        return new Promise((resolve, reject) => {
+            this.db = new sqlite3.Database(this.dbPath, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    console.log('Connected to SQLite database');
+                    resolve();
+                }
+            });
+        });
+    }
+
+    async ensureInitialized() {
+        if (!this.db) {
+            await this.initialize();
+        }
+    }
+
+    async exec(query) {
+        await this.ensureInitialized();
+        return new Promise((resolve, reject) => {
+            this.db.exec(query, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+
+    async get(query, params = []) {
+        await this.ensureInitialized();
+        return new Promise((resolve, reject) => {
+            this.db.get(query, params, (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+    }
+
+    async all(query, params = []) {
+        await this.ensureInitialized();
+        return new Promise((resolve, reject) => {
+            this.db.all(query, params, (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            });
+        });
+    }
+
+    async run(query, params = []) {
+        await this.ensureInitialized();
+        return new Promise((resolve, reject) => {
+            this.db.run(query, params, function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve({ 
+                        changes: this.changes, 
+                        lastID: this.lastID 
+                    });
+                }
+            });
+        });
+    }
+
+    async query(query, params = []) {
+        return this.all(query, params);
+    }
+
+    async close() {
+        return new Promise((resolve) => {
+            if (this.db) {
+                this.db.close((err) => {
+                    if (err) {
+                        console.error('Error closing database:', err.message);
+                    } else {
+                        console.log('Database connection closed');
+                    }
+                    this.db = null;
+                    resolve();
+                });
+            } else {
+                resolve();
+            }
+        });
+    }
 }
 
-function connect(){
-  if (db) return db;
-  const Database = require('better-sqlite3');
-  db = new Database(getDbPath());
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  return db;
-}
-
-function close(){
-  if (db) { db.close(); db = null; }
-}
-
-async function getDbStatus(){
-  try {
-    const d = connect();
-    const row = d.prepare('SELECT 1 as ok').get();
-    return { ok: row.ok === 1 };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
-
-module.exports = { connect, close, getDbStatus };
+module.exports = Database;

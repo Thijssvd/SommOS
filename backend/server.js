@@ -1,90 +1,172 @@
-'use strict';
+// SommOS Backend Server
+// Express.js server for the SommOS yacht wine management system
+
+// Load environment variables first
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const morgan = require('morgan');
 const path = require('path');
-const pino = require('pino');
-const pinoHttp = require('pino-http');
 
+const Database = require('./database/connection');
 const routes = require('./api/routes');
-const { getDbStatus } = require('./database/connection');
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
-const ORIGIN = process.env.CORS_ORIGIN || false;
-const TRUST_PROXY = process.env.TRUST_PROXY === '1';
-const logger = pino({ level: process.env.LOG_LEVEL || 'info', redact: ['req.headers.authorization'] });
+// Initialize Express app
+const app = express();
+const PORT = process.env.PORT || 3001;
 
-function createApp() {
-  const app = express();
-  if (TRUST_PROXY) app.set('trust proxy', 1);
-  app.disable('x-powered-by');
-
-  app.use(pinoHttp({ logger }));
-
-  app.use(helmet({
+// Security middleware
+app.use(helmet({
     contentSecurityPolicy: {
-      useDefaults: true,
-      directives: {
-        "default-src": ["'self'"],
-        "script-src": ["'self'"],
-        "style-src": ["'self'", "'unsafe-inline'"],
-        "img-src": ["'self'", "data:"],
-        "connect-src": ["'self'"],
-        "object-src": ["'none'"],
-        "frame-ancestors": ["'none'"]
-      }
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'", 'http://localhost:3001', 'http://localhost:3000'],
+        },
     },
-    frameguard: { action: 'deny' },
-    referrerPolicy: { policy: 'no-referrer' },
-    crossOriginResourcePolicy: { policy: 'same-site' }
-  }));
+}));
 
-  app.use(express.json({ limit: '512kb' }));
-  app.use(cors({ origin: ORIGIN, credentials: true }));
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // Limit each IP to 1000 requests per windowMs
+    message: {
+        success: false,
+        error: 'Too many requests from this IP, please try again later.'
+    }
+});
+app.use(limiter);
 
-  const limiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false });
-  app.use('/api', limiter);
+// CORS configuration
+app.use(cors({
+    origin: process.env.NODE_ENV === 'production'
+        ? ['https://sommos.yacht'] // Production domain
+        : ['http://localhost:3000', 'http://127.0.0.1:3000'], // Development
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
-  // Health and readiness
-  app.get('/health', (_req, res) => res.json({ ok: true, service: 'sommOS', ts: Date.now() }));
-  app.get('/ready', async (_req, res) => {
-    const status = await getDbStatus().catch(() => ({ ok: false }));
-    res.status(status.ok ? 200 : 503).json({ ready: status.ok, db: status, ts: Date.now() });
-  });
+// Ensure supertest requests receive CORS headers as well
+app.use((req, res, next) => {
+    if (!req.headers.origin && !res.getHeader('Access-Control-Allow-Origin')) {
+        res.header('Access-Control-Allow-Origin', '*');
+    }
+    next();
+});
 
-  // Static frontend
-  const staticDir = path.join(__dirname, '..', 'frontend');
-  app.use(express.static(staticDir, { index: 'index.html', fallthrough: true }));
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  // API
-  app.use('/api', routes);
+// Compression middleware
+app.use(compression());
 
-  // 404
-  app.use((req, res) => res.status(404).json({ error: 'Not Found' }));
-
-  // Error handler
-  // eslint-disable-next-line no-unused-vars
-  app.use((err, _req, res, _next) => {
-    const status = err.statusCode || 500;
-    const body = { error: err.message || 'Internal Server Error' };
-    if (process.env.NODE_ENV !== 'production' && err.stack) body.stack = err.stack;
-    res.status(status).json(body);
-  });
-
-  return app;
+// Logging middleware
+if (process.env.NODE_ENV !== 'test') {
+    app.use(morgan('combined'));
 }
 
+// Static file serving (for PWA assets)
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// API routes
+app.use('/api', routes);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        success: true,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        version: process.env.npm_package_version || '1.0.0'
+    });
+});
+
+// Serve PWA for all non-API routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
+
+// Global error handler
+app.use((error, req, res, next) => {
+    console.error('Server Error:', error);
+    
+    // Don't leak error details in production
+    const message = process.env.NODE_ENV === 'production' 
+        ? 'Internal server error' 
+        : error.message;
+    
+    res.status(error.status || 500).json({
+        success: false,
+        error: message
+    });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Endpoint not found'
+    });
+});
+
+// Initialize database and start server
+async function startServer() {
+    try {
+        // Initialize database
+        console.log('Initializing database...');
+        const db = Database.getInstance();
+        await db.initialize();
+        console.log('Database initialized successfully');
+        
+        // Start server
+        const server = app.listen(PORT, () => {
+            console.log(`
+🍷 SommOS Server running on port ${PORT}`);
+            console.log(`📱 PWA available at: http://localhost:${PORT}`);
+            console.log(`🔌 API available at: http://localhost:${PORT}/api`);
+            console.log(`❤️  Health check: http://localhost:${PORT}/health`);
+            console.log(`
+🚀 Ready to serve yacht wine management!
+`);
+        });
+        
+        // Graceful shutdown
+        process.on('SIGTERM', () => {
+            console.log('SIGTERM received, shutting down gracefully');
+            server.close(() => {
+                console.log('Server closed');
+                db.close();
+                process.exit(0);
+            });
+        });
+        
+        process.on('SIGINT', () => {
+            console.log('SIGINT received, shutting down gracefully');
+            server.close(() => {
+                console.log('Server closed');
+                db.close();
+                process.exit(0);
+            });
+        });
+        
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+// Start the server
 if (require.main === module) {
-  const app = createApp();
-  const server = app.listen(PORT, () => logger.info({ msg: 'listening', port: PORT }));
-  const shutdown = (sig) => () => {
-    logger.info({ msg: 'shutdown', sig });
-    server.close(() => process.exit(0));
-    setTimeout(() => process.exit(1), 5000);
-  };
-  process.on('SIGINT', shutdown('SIGINT'));
-  process.on('SIGTERM', shutdown('SIGTERM'));
+    startServer();
 }
 
-module.exports = { createApp };
+module.exports = app;
