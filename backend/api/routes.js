@@ -13,6 +13,27 @@ const wineGuidanceService = require('../core/wine_guidance_service');
 const Database = require('../database/connection');
 const { validate, validators } = require('../middleware/validate');
 const { authService, requireAuth, requireRole } = require('../middleware/auth');
+const {
+    serializeUser,
+    serializeInventoryItem,
+    serializeInventoryItems,
+    serializeInventoryLocations,
+    serializeInventoryAction,
+    serializeIntakeSummary,
+    serializeIntakeReceive,
+    serializeIntakeStatus,
+    serializePairings,
+    serializeProcurementRecommendations,
+    serializeProcurementAnalysis,
+    serializePurchaseOrder,
+    serializeWineList,
+    serializeWineDetail,
+    serializeVintage,
+    serializeLedger,
+    serializeSyncRows,
+    serializeVintageEnrichmentList,
+    serializeVintageProcurementRecommendations,
+} = require('../utils/serialize');
 const authRouter = require('./auth');
 
 let servicesPromise = null;
@@ -120,7 +141,7 @@ router.post(
 
             return res.status(201).json({
                 success: true,
-                data: user,
+                data: serializeUser(user),
                 meta: {
                     access_token_expires_in: Math.floor(tokens.accessTtlMs / 1000),
                     refresh_token_expires_in: Math.floor(tokens.refreshTtlMs / 1000),
@@ -178,43 +199,12 @@ router.post(
     })
 );
 
-const GUEST_VISIBLE_INVENTORY_FIELDS = [
-    'id',
-    'vintage_id',
-    'name',
-    'producer',
-    'region',
-    'country',
-    'wine_type',
-    'grape_varieties',
-    'style',
-    'year',
-    'available_quantity',
-    'location',
-];
-
 function formatInventoryItemByRole(item, role) {
-    const guidance = wineGuidanceService.getGuidance(item);
-
-    if (role === 'guest') {
-        const limited = {};
-
-        for (const field of GUEST_VISIBLE_INVENTORY_FIELDS) {
-            if (typeof item[field] !== 'undefined') {
-                limited[field] = item[field];
-            }
-        }
-
-        return {
-            ...limited,
-            ...guidance,
-        };
-    }
-
-    return {
-        ...item,
-        ...guidance,
-    };
+    const normalizedRole = role === 'admin' || role === 'crew' ? role : 'guest';
+    return serializeInventoryItem(item, {
+        role: normalizedRole,
+        guidance: wineGuidanceService.getGuidance(item),
+    });
 }
 
 // ============================================================================
@@ -230,20 +220,21 @@ router.post('/pairing/recommend', requireRole('admin', 'crew'), validate(validat
         return sendError(res, 400, 'MISSING_DISH', 'Dish information is required.');
     }
 
-    try {
-        const recommendations = await pairingEngine.generatePairings(
-            dish,
-            context || {},
-            guestPreferences || {},
-            options || {}
-        );
+        try {
+            const recommendations = await pairingEngine.generatePairings(
+                dish,
+                context || {},
+                guestPreferences || {},
+                options || {}
+            );
 
-        const responsePayload = {
-            success: true,
-            data: recommendations
-        };
+            const sanitized = serializePairings(recommendations);
+            const responsePayload = {
+                success: true,
+                data: sanitized
+            };
 
-        const sessionId = Array.isArray(recommendations) && recommendations[0]?.learning_session_id;
+            const sessionId = Array.isArray(sanitized) && sanitized[0]?.learning_session_id;
         if (sessionId) {
             responsePayload.meta = { learning_session_id: sessionId };
         }
@@ -264,7 +255,7 @@ router.post('/pairing/quick', requireRole('admin', 'crew'), validate(validators.
 
         res.json({
             success: true,
-            data: quickPairings
+            data: serializePairings(quickPairings)
         });
     } catch (error) {
         sendError(res, 500, 'PAIRING_QUICK_FAILED', error.message || 'Failed to generate quick pairing.');
@@ -304,13 +295,16 @@ router.get(
     validate(validators.inventoryList),
     asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
         const { location, wine_type, region, available_only, limit, offset } = req.query;
+        const availableOnlyFlag = typeof available_only === 'string'
+            ? available_only === 'true'
+            : Boolean(available_only);
 
         const result = await inventoryManager.getInventoryList(
             {
                 location,
                 wine_type,
                 region,
-                available_only: available_only === 'true'
+                available_only: availableOnlyFlag
             },
             { limit, offset }
         );
@@ -339,19 +333,27 @@ router.get(
     validate(validators.inventoryStock),
     asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
         const { location, wine_type, region, available_only } = req.query;
+        const availableOnlyFlag = typeof available_only === 'string'
+            ? available_only === 'true'
+            : Boolean(available_only);
 
         try {
             const stock = await inventoryManager.getCurrentStock({
                 location,
-            wine_type,
-            region,
-            available_only: available_only === 'true'
-        });
+                wine_type,
+                region,
+                available_only: availableOnlyFlag
+            });
 
-        res.json({
-            success: true,
-            data: stock
-        });
+            const role = req.user?.role === 'admin' ? 'admin' : 'crew';
+            const data = serializeInventoryItems(stock, role, {
+                guidanceResolver: (item) => wineGuidanceService.getGuidance(item),
+            });
+
+            res.json({
+                success: true,
+                data
+            });
     } catch (error) {
         sendError(res, 500, 'INVENTORY_STOCK_ERROR', error.message || 'Failed to retrieve inventory stock.');
     }
@@ -375,10 +377,10 @@ router.get(
 
         res.json({
             success: true,
-            data: {
-                ...stockItem,
-                ...wineGuidanceService.getGuidance(stockItem)
-            }
+            data: serializeInventoryItem(stockItem, {
+                role: 'crew',
+                guidance: wineGuidanceService.getGuidance(stockItem),
+            })
         });
     }))
 );
@@ -390,7 +392,7 @@ router.get('/locations', validate(), asyncHandler(withServices(async ({ inventor
 
     res.json({
         success: true,
-        data: locations
+        data: serializeInventoryLocations(locations)
     });
 })));
 
@@ -424,7 +426,7 @@ router.post(
 
             res.json({
                 success: true,
-                data: result
+                data: serializeInventoryAction(result)
             });
         } catch (error) {
             const conflict = typeof InventoryManager.isConflictError === 'function'
@@ -469,7 +471,7 @@ router.post(
 
             res.json({
                 success: true,
-                data: result
+                data: serializeInventoryAction(result)
             });
         } catch (error) {
             sendError(res, 500, 'INVENTORY_RECEIVE_FAILED', error.message || 'Failed to record receipt.');
@@ -488,7 +490,7 @@ router.post(
             const result = await inventoryManager.createInventoryIntake(req.body || {});
             res.json({
                 success: true,
-                data: result
+                data: serializeIntakeSummary(result)
             });
         } catch (error) {
             const clientSide = /required|Unable|not found|extract/i.test(error.message || '');
@@ -527,7 +529,7 @@ router.post(
 
             res.json({
                 success: true,
-                data: result
+                data: serializeIntakeReceive(result)
             });
         } catch (error) {
             const clientSide = /required|Unable|not found/i.test(error.message || '');
@@ -551,7 +553,7 @@ router.get(
             const result = await inventoryManager.getInventoryIntakeStatus(intakeId);
             res.json({
                 success: true,
-                data: result
+                data: serializeIntakeStatus(result)
             });
         } catch (error) {
             const notFound = /required|not found/i.test(error.message || '');
@@ -593,7 +595,7 @@ router.post(
 
             res.json({
                 success: true,
-                data: result
+                data: serializeInventoryAction(result)
             });
         } catch (error) {
             const conflict = typeof InventoryManager.isConflictError === 'function'
@@ -636,7 +638,7 @@ router.post(
 
             res.json({
                 success: true,
-                data: result
+                data: serializeInventoryAction(result)
             });
         } catch (error) {
             const conflict = typeof InventoryManager.isConflictError === 'function'
@@ -668,7 +670,7 @@ router.get(
 
             res.json({
                 success: true,
-                data: ledger
+                data: serializeLedger(ledger)
             });
         } catch (error) {
             sendError(res, 500, 'INVENTORY_LEDGER_FAILED', error.message || 'Failed to retrieve inventory ledger.');
@@ -702,7 +704,7 @@ router.get(
 
             res.json({
                 success: true,
-                data: opportunities
+                data: serializeProcurementRecommendations(opportunities)
             });
         } catch (error) {
             sendError(res, 500, 'PROCUREMENT_ANALYSIS_FAILED', error.message || 'Failed to analyze procurement decision.');
@@ -733,7 +735,7 @@ router.post(
 
             res.json({
                 success: true,
-                data: analysis
+                data: serializeProcurementAnalysis(analysis)
             });
         } catch (error) {
             sendError(res, 500, 'PROCUREMENT_ANALYSIS_FAILED', error.message || 'Failed to analyze procurement decision.');
@@ -768,7 +770,7 @@ router.post(
 
             res.json({
                 success: true,
-                data: order
+                data: serializePurchaseOrder(order)
             });
         } catch (error) {
             sendError(res, 500, 'PROCUREMENT_ORDER_FAILED', error.message || 'Failed to generate purchase order.');
@@ -824,14 +826,15 @@ router.get('/wines', validate(validators.winesList), asyncHandler(withServices(a
         params.push(parseInt(limit), parseInt(offset));
 
         const wines = await db.all(query, params);
-        const enrichedWines = wines.map(wine => ({
-            ...wine,
-            ...wineGuidanceService.getGuidance(wine)
-        }));
+        const data = serializeWineList(
+            wines,
+            (wine) => wineGuidanceService.getGuidance(wine),
+            ['year', 'total_stock', 'avg_cost_per_bottle', 'total_value', 'peak_drinking_start', 'peak_drinking_end']
+        );
 
         res.json({
             success: true,
-            data: enrichedWines
+            data
         });
     } catch (error) {
         sendError(res, 500, 'WINES_LIST_FAILED', error.message || 'Failed to retrieve wines.');
@@ -854,9 +857,24 @@ router.post('/wines', requireRole('admin', 'crew'), validate(validators.winesCre
             origin: req.body?.sync?.origin || 'inventory.wine.create'
         });
 
+        const responseData = {
+            success: Boolean(result?.success),
+            wine: result?.wine
+                ? serializeWine(result.wine, {
+                    guidance: wineGuidanceService.getGuidance(result.wine),
+                    extraFields: ['year'],
+                })
+                : null,
+            vintage: result?.vintage ? serializeVintage(result.vintage) : null,
+        };
+
+        if (result?.enrichmentError) {
+            responseData.enrichment_error = result.enrichmentError;
+        }
+
         res.status(201).json({
             success: true,
-            data: result,
+            data: responseData,
             message: 'Wine added to inventory with vintage intelligence analysis'
         });
     } catch (error) {
@@ -898,21 +916,31 @@ router.get('/wines/:id', validate(validators.winesById), asyncHandler(withServic
         const totalStock = vintages.reduce((sum, vintage) => sum + (vintage.total_stock || 0), 0);
         const totalValue = vintages.reduce((sum, vintage) => sum + (vintage.total_value || 0), 0);
         const averageCost = totalStock > 0 ? Number((totalValue / totalStock).toFixed(2)) : null;
+        const normalizedWine = {
+            ...wineRecord,
+            quality_score: wineRecord.quality_score ?? primaryVintage.quality_score ?? null,
+            weather_score: wineRecord.weather_score ?? primaryVintage.weather_score ?? null,
+            critic_score: wineRecord.critic_score ?? primaryVintage.critic_score ?? null,
+            peak_drinking_start: wineRecord.peak_drinking_start ?? primaryVintage.peak_drinking_start ?? null,
+            peak_drinking_end: wineRecord.peak_drinking_end ?? primaryVintage.peak_drinking_end ?? null,
+            year: primaryVintage.year ?? wineRecord.year ?? null,
+        };
 
-        res.json({
-            success: true,
-            data: {
-                ...wineRecord,
-                ...guidance,
-                quality_score: wineRecord.quality_score ?? primaryVintage.quality_score ?? null,
-                weather_score: wineRecord.weather_score ?? primaryVintage.weather_score ?? null,
-                critic_score: wineRecord.critic_score ?? primaryVintage.critic_score ?? null,
+        const data = serializeWineDetail({
+            wine: normalizedWine,
+            vintages,
+            aliases,
+            aggregates: {
                 total_stock: totalStock,
                 total_value: Number(totalValue.toFixed(2)),
                 avg_cost_per_bottle: averageCost,
-                vintages,
-                aliases
-            }
+            },
+            guidance,
+        });
+
+        res.json({
+            success: true,
+            data
         });
     } catch (error) {
         sendError(res, 500, 'WINE_DETAILS_FAILED', error.message || 'Failed to retrieve wine details.');
@@ -1016,10 +1044,11 @@ router.post(
 
             // Enrich the wine data
             const enrichedData = await vintageIntelligenceService.enrichWineData(wine);
+            const [sanitized] = serializeVintageEnrichmentList([enrichedData]);
 
             res.json({
                 success: true,
-                data: enrichedData,
+                data: sanitized,
                 message: 'Wine enriched with vintage intelligence'
             });
         } catch (error) {
@@ -1036,7 +1065,7 @@ router.get('/vintage/procurement-recommendations', validate(), asyncHandler(with
 
         res.json({
             success: true,
-            data: recommendations
+            data: serializeVintageProcurementRecommendations(recommendations)
         });
     } catch (error) {
         sendError(res, 500, 'VINTAGE_PROCUREMENT_RECOMMENDATIONS_FAILED', error.message || 'Failed to retrieve procurement recommendations.');
@@ -1094,11 +1123,12 @@ router.post('/vintage/batch-enrich', requireRole('admin', 'crew'), validate(vali
 
         // Process wines in batches
         const results = await vintageIntelligenceService.batchEnrichWines(wines);
+        const sanitized = serializeVintageEnrichmentList(results);
 
         res.json({
             success: true,
-            data: results,
-            message: `Processed ${results.length} wines for vintage intelligence`
+            data: sanitized,
+            message: `Processed ${sanitized.length} wines for vintage intelligence`
         });
     } catch (error) {
         sendError(res, 500, 'VINTAGE_BATCH_ENRICH_FAILED', error.message || 'Failed to batch enrich wines.');
@@ -1206,9 +1236,10 @@ router.get('/sync/changes', validate(validators.syncChanges), asyncHandler(withS
             [since]
         );
 
-        payload[key] = rows;
+        const sanitizedRows = serializeSyncRows(table, rows);
+        payload[key] = sanitizedRows;
 
-        for (const row of rows) {
+        for (const row of sanitizedRows) {
             const rowTimestamp = typeof row.updated_at === 'number'
                 ? row.updated_at
                 : Number.parseInt(row.updated_at, 10);

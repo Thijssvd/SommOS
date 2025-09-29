@@ -42,7 +42,7 @@ CREATE TABLE Vintages (
     updated_by TEXT DEFAULT 'system',
     op_id TEXT UNIQUE,
     origin TEXT DEFAULT 'server',
-    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE CASCADE,
+    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE RESTRICT,
     UNIQUE(wine_id, year)
 );
 
@@ -50,8 +50,8 @@ CREATE TABLE Stock (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     vintage_id INTEGER NOT NULL,
     location TEXT NOT NULL, -- Cellar location code
-    quantity INTEGER NOT NULL DEFAULT 0,
-    reserved_quantity INTEGER NOT NULL DEFAULT 0,
+    quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    reserved_quantity INTEGER NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
     cost_per_bottle DECIMAL(10,2),
     current_value DECIMAL(10,2),
     storage_conditions TEXT, -- JSON: temperature, humidity, etc.
@@ -62,7 +62,7 @@ CREATE TABLE Stock (
     updated_by TEXT DEFAULT 'system',
     op_id TEXT UNIQUE,
     origin TEXT DEFAULT 'server',
-    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE CASCADE,
+    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE RESTRICT,
     UNIQUE(vintage_id, location)
 );
 
@@ -71,14 +71,14 @@ CREATE TABLE Ledger (
     vintage_id INTEGER NOT NULL,
     location TEXT NOT NULL,
     transaction_type TEXT NOT NULL CHECK (transaction_type IN ('IN', 'OUT', 'MOVE', 'ADJUST', 'RESERVE', 'UNRESERVE')),
-    quantity INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity >= 0),
     unit_cost DECIMAL(10,2),
     total_cost DECIMAL(10,2),
     reference_id TEXT, -- Order ID, invoice number, etc.
     notes TEXT,
     created_by TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE CASCADE
+    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE RESTRICT
 );
 
 -- Weather Intelligence Tables
@@ -148,7 +148,7 @@ CREATE TABLE PriceBook (
     vintage_id INTEGER NOT NULL,
     supplier_id INTEGER NOT NULL,
     price_per_bottle DECIMAL(10,2) NOT NULL,
-    minimum_order INTEGER DEFAULT 1,
+    minimum_order INTEGER DEFAULT 1 CHECK (minimum_order >= 0),
     availability_status TEXT CHECK (availability_status IN ('In Stock', 'Limited', 'Pre-order', 'Discontinued')),
     last_updated DATE NOT NULL,
     valid_until DATE,
@@ -158,8 +158,8 @@ CREATE TABLE PriceBook (
     updated_by TEXT DEFAULT 'system',
     op_id TEXT UNIQUE,
     origin TEXT DEFAULT 'server',
-    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE CASCADE,
-    FOREIGN KEY (supplier_id) REFERENCES Suppliers(id) ON DELETE CASCADE,
+    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE RESTRICT,
+    FOREIGN KEY (supplier_id) REFERENCES Suppliers(id) ON DELETE RESTRICT,
     UNIQUE(vintage_id, supplier_id)
 );
 
@@ -179,7 +179,7 @@ CREATE TABLE InventoryIntakeOrders (
     updated_by TEXT DEFAULT 'system',
     op_id TEXT UNIQUE,
     origin TEXT DEFAULT 'server',
-    FOREIGN KEY (supplier_id) REFERENCES Suppliers(id) ON DELETE SET NULL,
+    FOREIGN KEY (supplier_id) REFERENCES Suppliers(id) ON DELETE RESTRICT,
     UNIQUE(reference, supplier_id)
 );
 
@@ -194,8 +194,8 @@ CREATE TABLE InventoryIntakeItems (
     wine_type TEXT,
     grape_varieties TEXT,
     vintage_year INTEGER,
-    quantity_ordered INTEGER NOT NULL,
-    quantity_received INTEGER NOT NULL DEFAULT 0,
+    quantity_ordered INTEGER NOT NULL CHECK (quantity_ordered >= 0),
+    quantity_received INTEGER NOT NULL DEFAULT 0 CHECK (quantity_received >= 0),
     unit_cost DECIMAL(10,2),
     location TEXT,
     status TEXT NOT NULL CHECK (status IN ('ORDERED', 'PARTIAL', 'RECEIVED', 'CANCELLED')) DEFAULT 'ORDERED',
@@ -210,9 +210,10 @@ CREATE TABLE InventoryIntakeItems (
     updated_by TEXT DEFAULT 'system',
     op_id TEXT UNIQUE,
     origin TEXT DEFAULT 'server',
-    FOREIGN KEY (intake_id) REFERENCES InventoryIntakeOrders(id) ON DELETE CASCADE,
-    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE SET NULL,
-    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE SET NULL
+    FOREIGN KEY (intake_id) REFERENCES InventoryIntakeOrders(id) ON DELETE RESTRICT,
+    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE RESTRICT,
+    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE RESTRICT,
+    UNIQUE(intake_id, external_reference)
 );
 
 CREATE INDEX idx_inventory_intake_items_intake_id ON InventoryIntakeItems(intake_id);
@@ -225,7 +226,8 @@ CREATE TABLE Aliases (
     alias_type TEXT CHECK (alias_type IN ('Common Name', 'Local Name', 'Historical Name', 'Nickname')),
     region TEXT, -- Where this alias is commonly used
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE CASCADE
+    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE RESTRICT,
+    UNIQUE(wine_id, alias_name)
 );
 
 -- System Tables
@@ -282,7 +284,7 @@ CREATE TABLE LearningPairingRecommendations (
     ai_enhanced BOOLEAN DEFAULT 0,
     ranking INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (session_id) REFERENCES LearningPairingSessions(id) ON DELETE CASCADE
+    FOREIGN KEY (session_id) REFERENCES LearningPairingSessions(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE LearningPairingFeedback (
@@ -292,7 +294,7 @@ CREATE TABLE LearningPairingFeedback (
     notes TEXT,
     selected BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (recommendation_id) REFERENCES LearningPairingRecommendations(id) ON DELETE CASCADE
+    FOREIGN KEY (recommendation_id) REFERENCES LearningPairingRecommendations(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE LearningConsumptionEvents (
@@ -300,7 +302,7 @@ CREATE TABLE LearningConsumptionEvents (
     vintage_id INTEGER,
     wine_id INTEGER,
     wine_type TEXT,
-    quantity REAL NOT NULL,
+    quantity REAL NOT NULL CHECK (quantity >= 0),
     location TEXT,
     event_type TEXT CHECK (event_type IN ('consume', 'receive', 'adjust')) DEFAULT 'consume',
     metadata TEXT,
@@ -353,7 +355,7 @@ CREATE TABLE IF NOT EXISTS RefreshTokens (
     token_hash TEXT NOT NULL UNIQUE,
     expires_at DATETIME NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS Invites (

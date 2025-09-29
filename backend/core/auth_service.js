@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const Database = require('../database/connection');
 const { getConfig } = require('../config/env');
+const { serializeUser: serializeUserPayload } = require('../utils/serialize');
 
 const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -95,17 +96,7 @@ class AuthService {
     }
 
     serializeUser(user) {
-        if (!user) {
-            return null;
-        }
-
-        return {
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            created_at: user.created_at,
-            last_login: user.last_login,
-        };
+        return serializeUserPayload(user);
     }
 
     generateAccessToken(user, ttlMs = ACCESS_TOKEN_TTL_MS) {
