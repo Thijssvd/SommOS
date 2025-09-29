@@ -254,8 +254,11 @@ const validate = (schemaConfig) => {
 
         return res.status(400).json({
           success: false,
-          error: "Invalid request.",
-          details,
+          error: {
+            code: "INVALID_REQUEST",
+            message: "Invalid request.",
+            details,
+          },
         });
       }
 

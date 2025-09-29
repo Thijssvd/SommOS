@@ -2,6 +2,7 @@
 // Express.js routes for the SommOS yacht wine management system
 
 const express = require('express');
+const path = require('path');
 const router = express.Router();
 const PairingEngine = require('../core/pairing_engine');
 const InventoryManager = require('../core/inventory_manager');
@@ -47,6 +48,22 @@ async function getServices() {
     }
 }
 
+const sendError = (res, status, code, message, details) => {
+    const payload = {
+        success: false,
+        error: {
+            code,
+            message
+        }
+    };
+
+    if (typeof details !== 'undefined') {
+        payload.error.details = details;
+    }
+
+    return res.status(status).json(payload);
+};
+
 const withServices = (handler, { onError } = {}) => async (req, res, next) => {
     let services;
 
@@ -56,10 +73,12 @@ const withServices = (handler, { onError } = {}) => async (req, res, next) => {
         if (typeof onError === 'function') {
             onError(error, req, res, next);
         } else if (!res.headersSent) {
-            res.status(error.status || 500).json({
-                success: false,
-                error: error.message
-            });
+            sendError(
+                res,
+                error.status || 500,
+                error.code || 'SERVICE_INITIALIZATION_FAILED',
+                error.message || 'Failed to initialize services.'
+            );
         }
         return;
     }
@@ -82,10 +101,7 @@ router.post('/pairing/recommend', validate(validators.pairingRecommend), asyncHa
     const { dish, context, guestPreferences, options } = req.body;
 
     if (!dish) {
-        return res.status(400).json({
-            success: false,
-            error: 'Dish information is required'
-        });
+        return sendError(res, 400, 'MISSING_DISH', 'Dish information is required.');
     }
 
     try {
@@ -108,12 +124,9 @@ router.post('/pairing/recommend', validate(validators.pairingRecommend), asyncHa
 
         res.json(responsePayload);
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'PAIRING_RECOMMENDATION_FAILED', error.message || 'Failed to generate recommendations.');
     }
-})));
+}))); 
 
 // POST /api/pairing/quick
 // Quick pairing for immediate service
@@ -128,12 +141,9 @@ router.post('/pairing/quick', validate(validators.pairingQuick), asyncHandler(wi
             data: quickPairings
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'PAIRING_QUICK_FAILED', error.message || 'Failed to generate quick pairing.');
     }
-})));
+}))); 
 
 // POST /api/pairing/feedback
 // Capture owner feedback to improve future pairings
@@ -141,10 +151,7 @@ router.post('/pairing/feedback', validate(validators.pairingFeedback), asyncHand
     const { recommendation_id, rating, notes, selected = true } = req.body || {};
 
     if (!recommendation_id || !rating) {
-        return res.status(400).json({
-            success: false,
-            error: 'recommendation_id and rating are required'
-        });
+        return sendError(res, 400, 'MISSING_FEEDBACK_FIELDS', 'recommendation_id and rating are required.');
     }
 
     try {
@@ -155,12 +162,9 @@ router.post('/pairing/feedback', validate(validators.pairingFeedback), asyncHand
             message: 'Feedback recorded'
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'PAIRING_FEEDBACK_FAILED', error.message || 'Failed to record feedback.');
     }
-})));
+}))); 
 
 // ============================================================================
 // INVENTORY ENDPOINTS
@@ -215,12 +219,9 @@ router.get('/inventory/stock', validate(validators.inventoryStock), asyncHandler
             data: stock
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'INVENTORY_STOCK_ERROR', error.message || 'Failed to retrieve inventory stock.');
     }
-})));
+}))); 
 
 // GET /api/inventory/:id
 // Retrieve a specific stock item by identifier
@@ -230,10 +231,7 @@ router.get('/inventory/:id', validate(validators.inventoryById), asyncHandler(wi
     const stockItem = await inventoryManager.getStockItemById(id);
 
     if (!stockItem) {
-        return res.status(404).json({
-            success: false,
-            error: 'Inventory item not found'
-        });
+        return sendError(res, 404, 'INVENTORY_NOT_FOUND', 'Inventory item not found.');
     }
 
     res.json({
@@ -262,10 +260,12 @@ router.post('/inventory/consume', validate(validators.inventoryConsume), asyncHa
     const { vintage_id, location, quantity, notes, created_by } = req.body;
 
     if (!vintage_id || !location || !quantity) {
-        return res.status(400).json({
-            success: false,
-            error: 'vintage_id, location, and quantity are required'
-        });
+        return sendError(
+            res,
+            400,
+            'INVENTORY_CONSUME_VALIDATION',
+            'vintage_id, location, and quantity are required.'
+        );
     }
 
     try {
@@ -282,12 +282,9 @@ router.post('/inventory/consume', validate(validators.inventoryConsume), asyncHa
             data: result
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'INVENTORY_CONSUME_FAILED', error.message || 'Failed to record consumption.');
     }
-})));
+}))); 
 
 // POST /api/inventory/receive
 // Record wine receipt/delivery
@@ -295,10 +292,12 @@ router.post('/inventory/receive', validate(validators.inventoryReceive), asyncHa
     const { vintage_id, location, quantity, unit_cost, reference_id, notes, created_by } = req.body;
 
     if (!vintage_id || !location || !quantity) {
-        return res.status(400).json({
-            success: false,
-            error: 'vintage_id, location, and quantity are required'
-        });
+        return sendError(
+            res,
+            400,
+            'INVENTORY_RECEIVE_VALIDATION',
+            'vintage_id, location, and quantity are required.'
+        );
     }
 
     try {
@@ -317,12 +316,9 @@ router.post('/inventory/receive', validate(validators.inventoryReceive), asyncHa
             data: result
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'INVENTORY_RECEIVE_FAILED', error.message || 'Failed to record receipt.');
     }
-})));
+}))); 
 
 // POST /api/inventory/intake
 // Create a new intake order from external sources
@@ -334,13 +330,12 @@ router.post('/inventory/intake', validate(validators.inventoryIntake), asyncHand
             data: result
         });
     } catch (error) {
-        const statusCode = /required|Unable|not found|extract/i.test(error.message) ? 400 : 500;
-        res.status(statusCode).json({
-            success: false,
-            error: error.message
-        });
+        const clientSide = /required|Unable|not found|extract/i.test(error.message || '');
+        const statusCode = clientSide ? 400 : 500;
+        const code = clientSide ? 'INVENTORY_INTAKE_INVALID' : 'INVENTORY_INTAKE_FAILED';
+        sendError(res, statusCode, code, error.message || 'Failed to create inventory intake.');
     }
-})));
+}))); 
 
 // POST /api/inventory/intake/:intakeId/receive
 // Mark bottles as received against an intake order
@@ -349,10 +344,12 @@ router.post('/inventory/intake/:intakeId/receive', validate(validators.inventory
     const { receipts, created_by, notes } = req.body || {};
 
     if (!Array.isArray(receipts) || receipts.length === 0) {
-        return res.status(400).json({
-            success: false,
-            error: 'receipts array with at least one entry is required'
-        });
+        return sendError(
+            res,
+            400,
+            'INVENTORY_INTAKE_RECEIPTS_REQUIRED',
+            'receipts array with at least one entry is required.'
+        );
     }
 
     try {
@@ -367,13 +364,12 @@ router.post('/inventory/intake/:intakeId/receive', validate(validators.inventory
             data: result
         });
     } catch (error) {
-        const statusCode = /required|Unable|not found/i.test(error.message) ? 400 : 500;
-        res.status(statusCode).json({
-            success: false,
-            error: error.message
-        });
+        const clientSide = /required|Unable|not found/i.test(error.message || '');
+        const statusCode = clientSide ? 400 : 500;
+        const code = clientSide ? 'INVENTORY_INTAKE_RECEIVE_INVALID' : 'INVENTORY_INTAKE_RECEIVE_FAILED';
+        sendError(res, statusCode, code, error.message || 'Failed to receive inventory intake.');
     }
-})));
+}))); 
 
 // GET /api/inventory/intake/:intakeId/status
 // Verify whether all bottles from an intake have been received
@@ -387,13 +383,12 @@ router.get('/inventory/intake/:intakeId/status', validate(validators.inventoryIn
             data: result
         });
     } catch (error) {
-        const statusCode = /required|not found/i.test(error.message) ? 404 : 500;
-        res.status(statusCode).json({
-            success: false,
-            error: error.message
-        });
+        const notFound = /required|not found/i.test(error.message || '');
+        const statusCode = notFound ? 404 : 500;
+        const code = notFound ? 'INVENTORY_INTAKE_STATUS_NOT_FOUND' : 'INVENTORY_INTAKE_STATUS_FAILED';
+        sendError(res, statusCode, code, error.message || 'Failed to retrieve inventory intake status.');
     }
-})));
+}))); 
 
 // POST /api/inventory/move
 // Move wine between locations
@@ -401,10 +396,12 @@ router.post('/inventory/move', validate(validators.inventoryMove), asyncHandler(
     const { vintage_id, from_location, to_location, quantity, notes, created_by } = req.body;
 
     if (!vintage_id || !from_location || !to_location || !quantity) {
-        return res.status(400).json({
-            success: false,
-            error: 'vintage_id, from_location, to_location, and quantity are required'
-        });
+        return sendError(
+            res,
+            400,
+            'INVENTORY_MOVE_VALIDATION',
+            'vintage_id, from_location, to_location, and quantity are required.'
+        );
     }
 
     try {
@@ -422,12 +419,9 @@ router.post('/inventory/move', validate(validators.inventoryMove), asyncHandler(
             data: result
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'INVENTORY_MOVE_FAILED', error.message || 'Failed to move inventory.');
     }
-})));
+}))); 
 
 // POST /api/inventory/reserve
 // Reserve wine for future service
@@ -435,10 +429,12 @@ router.post('/inventory/reserve', validate(validators.inventoryReserve), asyncHa
     const { vintage_id, location, quantity, notes, created_by } = req.body;
 
     if (!vintage_id || !location || !quantity) {
-        return res.status(400).json({
-            success: false,
-            error: 'vintage_id, location, and quantity are required'
-        });
+        return sendError(
+            res,
+            400,
+            'INVENTORY_RESERVE_VALIDATION',
+            'vintage_id, location, and quantity are required.'
+        );
     }
 
     try {
@@ -455,12 +451,9 @@ router.post('/inventory/reserve', validate(validators.inventoryReserve), asyncHa
             data: result
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'INVENTORY_RESERVE_FAILED', error.message || 'Failed to reserve inventory.');
     }
-})));
+}))); 
 
 // GET /api/inventory/ledger/:vintage_id
 // Get transaction history for a vintage
@@ -480,12 +473,9 @@ router.get('/inventory/ledger/:vintage_id', validate(validators.inventoryLedger)
             data: ledger
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'INVENTORY_LEDGER_FAILED', error.message || 'Failed to retrieve inventory ledger.');
     }
-})));
+}))); 
 
 // ============================================================================
 // PROCUREMENT ENDPOINTS
@@ -512,12 +502,9 @@ router.get('/procurement/opportunities', validate(validators.procurementOpportun
             data: opportunities
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'PROCUREMENT_ANALYSIS_FAILED', error.message || 'Failed to analyze procurement decision.');
     }
-})));
+}))); 
 
 // POST /api/procurement/analyze
 // Analyze specific procurement decision
@@ -525,10 +512,7 @@ router.post('/procurement/analyze', validate(validators.procurementAnalyze), asy
     const { vintage_id, supplier_id, quantity, context } = req.body;
 
     if (!vintage_id || !supplier_id) {
-        return res.status(400).json({
-            success: false,
-            error: 'vintage_id and supplier_id are required'
-        });
+        return sendError(res, 400, 'PROCUREMENT_ANALYZE_VALIDATION', 'vintage_id and supplier_id are required.');
     }
 
     try {
@@ -544,12 +528,9 @@ router.post('/procurement/analyze', validate(validators.procurementAnalyze), asy
             data: analysis
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'PROCUREMENT_ANALYSIS_FAILED', error.message || 'Failed to analyze procurement decision.');
     }
-})));
+}))); 
 
 // POST /api/procurement/order
 // Generate purchase order
@@ -557,17 +538,11 @@ router.post('/procurement/order', validate(validators.procurementOrder), asyncHa
     const { items, supplier_id, delivery_date, notes } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({
-            success: false,
-            error: 'Items array is required'
-        });
+        return sendError(res, 400, 'PROCUREMENT_ORDER_ITEMS_REQUIRED', 'Items array is required.');
     }
 
     if (!supplier_id) {
-        return res.status(400).json({
-            success: false,
-            error: 'supplier_id is required'
-        });
+        return sendError(res, 400, 'PROCUREMENT_ORDER_SUPPLIER_REQUIRED', 'supplier_id is required.');
     }
 
     try {
@@ -583,12 +558,9 @@ router.post('/procurement/order', validate(validators.procurementOrder), asyncHa
             data: order
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'PROCUREMENT_ORDER_FAILED', error.message || 'Failed to generate purchase order.');
     }
-})));
+}))); 
 
 // ============================================================================
 // WINE CATALOG ENDPOINTS
@@ -648,12 +620,9 @@ router.get('/wines', validate(validators.winesList), asyncHandler(withServices(a
             data: enrichedWines
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'WINES_LIST_FAILED', error.message || 'Failed to retrieve wines.');
     }
-})));
+}))); 
 
 // POST /api/wines
 // Add new wine to inventory with vintage intelligence
@@ -661,10 +630,7 @@ router.post('/wines', validate(validators.winesCreate), asyncHandler(withService
     const { wine, vintage, stock } = req.body;
 
     if (!wine || !vintage || !stock) {
-        return res.status(400).json({
-            success: false,
-            error: 'Wine, vintage, and stock information are required'
-        });
+        return sendError(res, 400, 'WINES_CREATE_VALIDATION', 'Wine, vintage, and stock information are required.');
     }
 
     try {
@@ -676,12 +642,9 @@ router.post('/wines', validate(validators.winesCreate), asyncHandler(withService
             message: 'Wine added to inventory with vintage intelligence analysis'
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'WINES_CREATE_FAILED', error.message || 'Failed to add wine to inventory.');
     }
-})));
+}))); 
 
 // GET /api/wines/:id
 // Get specific wine details
@@ -692,10 +655,7 @@ router.get('/wines/:id', validate(validators.winesById), asyncHandler(withServic
         // Get wine details
         const wineRecord = await db.get('SELECT * FROM Wines WHERE id = ?', [id]);
         if (!wineRecord) {
-            return res.status(404).json({
-                success: false,
-                error: 'Wine not found'
-            });
+            return sendError(res, 404, 'WINE_NOT_FOUND', 'Wine not found.');
         }
 
         const guidance = wineGuidanceService.getGuidance(wineRecord);
@@ -737,12 +697,9 @@ router.get('/wines/:id', validate(validators.winesById), asyncHandler(withServic
             }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'WINE_DETAILS_FAILED', error.message || 'Failed to retrieve wine details.');
     }
-})));
+}))); 
 
 // ============================================================================
 // VINTAGE INTELLIGENCE ENDPOINTS
@@ -763,10 +720,7 @@ router.get('/vintage/analysis/:wine_id', validate(validators.vintageAnalysis), a
         `, [wine_id]);
 
         if (!wine) {
-            return res.status(404).json({
-                success: false,
-                error: 'Wine not found'
-            });
+            return sendError(res, 404, 'WINE_NOT_FOUND', 'Wine not found.');
         }
 
         // Get weather context for this wine
@@ -812,12 +766,9 @@ router.get('/vintage/analysis/:wine_id', validate(validators.vintageAnalysis), a
             }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'VINTAGE_ANALYSIS_FAILED', error.message || 'Failed to retrieve vintage analysis.');
     }
-})));
+}))); 
 
 // POST /api/vintage/enrich
 // Manually trigger vintage enrichment for a specific wine
@@ -825,10 +776,7 @@ router.post('/vintage/enrich', validate(validators.vintageEnrich), asyncHandler(
     const { wine_id } = req.body;
 
     if (!wine_id) {
-        return res.status(400).json({
-            success: false,
-            error: 'wine_id is required'
-        });
+        return sendError(res, 400, 'VINTAGE_ENRICH_VALIDATION', 'wine_id is required.');
     }
 
     try {
@@ -841,10 +789,7 @@ router.post('/vintage/enrich', validate(validators.vintageEnrich), asyncHandler(
         `, [wine_id]);
 
         if (!wine) {
-            return res.status(404).json({
-                success: false,
-                error: 'Wine not found'
-            });
+            return sendError(res, 404, 'WINE_NOT_FOUND', 'Wine not found.');
         }
 
         // Enrich the wine data
@@ -856,12 +801,9 @@ router.post('/vintage/enrich', validate(validators.vintageEnrich), asyncHandler(
             message: 'Wine enriched with vintage intelligence'
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'VINTAGE_ENRICH_FAILED', error.message || 'Failed to enrich wine data.');
     }
-})));
+}))); 
 
 // GET /api/vintage/procurement-recommendations
 // Get procurement recommendations for current inventory
@@ -874,12 +816,9 @@ router.get('/vintage/procurement-recommendations', validate(), asyncHandler(with
             data: recommendations
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'VINTAGE_PROCUREMENT_RECOMMENDATIONS_FAILED', error.message || 'Failed to retrieve procurement recommendations.');
     }
-})));
+}))); 
 
 // POST /api/vintage/batch-enrich
 // Batch enrich multiple wines with vintage intelligence
@@ -939,12 +878,9 @@ router.post('/vintage/batch-enrich', validate(validators.vintageBatchEnrich), as
             message: `Processed ${results.length} wines for vintage intelligence`
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'VINTAGE_BATCH_ENRICH_FAILED', error.message || 'Failed to batch enrich wines.');
     }
-})));
+}))); 
 
 // GET /api/vintage/pairing-insight
 // Get weather-based pairing insights for a wine and dish context
@@ -952,10 +888,7 @@ router.post('/vintage/pairing-insight', validate(validators.vintagePairingInsigh
     const { wine_id, dish_context } = req.body;
 
     if (!wine_id || !dish_context) {
-        return res.status(400).json({
-            success: false,
-            error: 'wine_id and dish_context are required'
-        });
+        return sendError(res, 400, 'VINTAGE_PAIRING_INSIGHT_VALIDATION', 'wine_id and dish_context are required.');
     }
 
     try {
@@ -968,10 +901,7 @@ router.post('/vintage/pairing-insight', validate(validators.vintagePairingInsigh
         `, [wine_id]);
 
         if (!wine) {
-            return res.status(404).json({
-                success: false,
-                error: 'Wine not found'
-            });
+            return sendError(res, 404, 'WINE_NOT_FOUND', 'Wine not found.');
         }
 
         // Get weather context
@@ -994,12 +924,9 @@ router.post('/vintage/pairing-insight', validate(validators.vintagePairingInsigh
             }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        sendError(res, 500, 'VINTAGE_PAIRING_INSIGHT_FAILED', error.message || 'Failed to generate pairing insight.');
     }
-})));
+}))); 
 
 // ============================================================================
 // SYSTEM ENDPOINTS
@@ -1030,11 +957,7 @@ router.get('/system/health', validate(), asyncHandler(async (req, res) => {
             data: stats[0]
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            status: 'unhealthy',
-            error: error.message
-        });
+        sendError(res, 500, 'SYSTEM_HEALTH_FAILED', error.message || 'Failed to retrieve system health.');
     }
 }));
 
@@ -1122,22 +1045,37 @@ router.get('/system/activity', validate(validators.systemActivity), asyncHandler
     });
 })));
 
+// GET /api/system/spec
+// Serve the OpenAPI specification
+router.get('/system/spec', validate(), (req, res, next) => {
+    const specPath = path.join(__dirname, 'openapi.yaml');
+
+    res.type('application/yaml');
+    res.sendFile(specPath, (error) => {
+        if (error) {
+            next(error);
+        }
+    });
+});
+
 // 404 handler for unmatched API routes
 router.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        error: 'Endpoint not found'
-    });
+    sendError(res, 404, 'NOT_FOUND', 'Endpoint not found.');
 });
 
 // Error handling middleware
 router.use((error, req, res, next) => {
     console.error('API Error:', error);
 
-    res.status(error.status || 500).json({
-        success: false,
-        error: error.message || 'Internal server error'
-    });
+    if (res.headersSent) {
+        return next(error);
+    }
+
+    const status = error.status || 500;
+    const code = error.code || (status >= 500 ? 'INTERNAL_SERVER_ERROR' : 'REQUEST_FAILED');
+    const message = error.message || 'Internal server error';
+
+    sendError(res, status, code, message);
 });
 
 module.exports = router;

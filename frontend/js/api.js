@@ -1,6 +1,16 @@
 // SommOS API Client
 // Handles all API communication with offline fallback
 
+class SommOSAPIError extends Error {
+    constructor(message, { status, code, details } = {}) {
+        super(message);
+        this.name = 'SommOSAPIError';
+        this.status = status;
+        this.code = code;
+        this.details = details;
+    }
+}
+
 class SommOSAPI {
     constructor() {
         const explicitBase = (typeof window !== 'undefined' && window.__SOMMOS_API_BASE__)
@@ -36,12 +46,17 @@ class SommOSAPI {
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         const config = {
+            ...options,
             headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
+                Accept: options.headers?.Accept || 'application/json',
+                'Content-Type': options.body ? 'application/json' : undefined,
+                ...(options.headers || {})
+            }
         };
+
+        if (!config.headers['Content-Type']) {
+            delete config.headers['Content-Type'];
+        }
 
         try {
             const controller = new AbortController();
@@ -59,46 +74,156 @@ class SommOSAPI {
             clearTimeout(timeoutId);
 
             console.log(`API response status: ${response.status}`);
+            const contentType = response.headers?.get?.('content-type') || '';
+            const isJson = contentType.includes('application/json');
+            const isText = contentType.includes('text/') || contentType.includes('application/yaml');
 
-            if (!response.ok) {
-                let errorDetail = '';
-                if (typeof response.text === 'function') {
-                    try {
-                        errorDetail = await response.text();
-                    } catch (e) {
-                        errorDetail = '';
-                    }
-                } else if (typeof response.json === 'function') {
-                    try {
-                        const json = await response.json();
-                        errorDetail = JSON.stringify(json);
-                    } catch (e) {
-                        errorDetail = '';
-                    }
+            let parsedBody;
+
+            if (isJson) {
+                try {
+                    parsedBody = await response.json();
+                } catch (parseError) {
+                    console.warn('Failed to parse JSON response:', parseError);
+                    parsedBody = null;
                 }
-
-                const errorMessage = `HTTP ${response.status}: ${response.statusText}` +
-                    (errorDetail ? ` - ${errorDetail}` : '');
-                throw new Error(errorMessage);
+            } else if (isText) {
+                parsedBody = await response.text();
             }
 
-            const data = await response.json();
-            console.log(`API response data:`, data);
-            return data;
+            if (!response.ok) {
+                if (parsedBody && typeof parsedBody === 'object' && parsedBody.error) {
+                    const { code, message, details } = parsedBody.error;
+                    throw new SommOSAPIError(message || `HTTP ${response.status}`, {
+                        status: response.status,
+                        code: code || 'HTTP_ERROR',
+                        details
+                    });
+                }
+
+                throw new SommOSAPIError(`HTTP ${response.status}: ${response.statusText}`, {
+                    status: response.status,
+                    code: 'HTTP_ERROR',
+                    details: parsedBody
+                });
+            }
+
+            if (typeof parsedBody === 'undefined') {
+                return null;
+            }
+
+            if (isJson && parsedBody && typeof parsedBody === 'object') {
+                if (parsedBody.error) {
+                    const { code, message, details } = parsedBody.error;
+                    throw new SommOSAPIError(message || 'Request failed', {
+                        status: response.status,
+                        code: code || 'REQUEST_FAILED',
+                        details
+                    });
+                }
+
+                const normalized = {
+                    success: Object.prototype.hasOwnProperty.call(parsedBody, 'success') ? parsedBody.success : true,
+                    data: Object.prototype.hasOwnProperty.call(parsedBody, 'data') ? parsedBody.data : parsedBody,
+                    meta: parsedBody.meta,
+                    message: parsedBody.message,
+                    status: parsedBody.status,
+                    raw: parsedBody
+                };
+
+                if (typeof normalized.meta === 'undefined') {
+                    delete normalized.meta;
+                }
+
+                if (typeof normalized.success === 'undefined') {
+                    delete normalized.success;
+                }
+
+                if (typeof normalized.message === 'undefined') {
+                    delete normalized.message;
+                }
+
+                if (typeof normalized.status === 'undefined') {
+                    delete normalized.status;
+                }
+
+                console.log('API response data:', normalized.raw);
+                return normalized;
+            }
+
+            console.log('API response data:', parsedBody);
+            return parsedBody;
         } catch (error) {
             console.error(`API request failed: ${endpoint}`, error);
-            
+
             // Provide more specific error messages
             if (error.name === 'AbortError') {
                 throw new Error(`Request timeout after ${this.timeout/1000} seconds. Please try again.`);
             }
-            
+
             if (error.message.includes('Failed to fetch')) {
                 throw new Error('Cannot connect to server. Please check if the backend is running.');
             }
-            
-            throw error;
+
+            throw error instanceof SommOSAPIError ? error : new SommOSAPIError(error.message, error);
         }
+    }
+
+    static buildQuery(params = {}) {
+        const search = new URLSearchParams();
+
+        Object.entries(params).forEach(([key, value]) => {
+            if (value === undefined || value === null || value === '') {
+                return;
+            }
+
+            const appendValue = (val) => {
+                if (val === undefined || val === null || val === '') {
+                    return;
+                }
+
+                if (typeof val === 'boolean') {
+                    search.append(key, val ? 'true' : 'false');
+                    return;
+                }
+
+                search.append(key, `${val}`);
+            };
+
+            if (Array.isArray(value)) {
+                value.forEach(appendValue);
+            } else {
+                appendValue(value);
+            }
+        });
+
+        const query = search.toString();
+        return query ? `?${query}` : '';
+    }
+
+    static cleanPayload(payload = {}) {
+        if (!payload || typeof payload !== 'object') {
+            return payload;
+        }
+
+        return Object.entries(payload).reduce((acc, [key, value]) => {
+            if (value === undefined) {
+                return acc;
+            }
+
+            if (Array.isArray(value)) {
+                acc[key] = value;
+                return acc;
+            }
+
+            if (value && typeof value === 'object') {
+                acc[key] = SommOSAPI.cleanPayload(value);
+                return acc;
+            }
+
+            acc[key] = value;
+            return acc;
+        }, {});
     }
 
     // System endpoints
@@ -111,7 +236,16 @@ class SommOSAPI {
     }
 
     async getRecentActivity(limit = 10) {
-        return this.request(`/system/activity?limit=${limit}`);
+        const query = SommOSAPI.buildQuery({ limit });
+        return this.request(`/system/activity${query}`);
+    }
+
+    async getOpenAPISpec() {
+        return this.request('/system/spec', {
+            headers: {
+                Accept: 'application/yaml'
+            }
+        });
     }
 
     // Pairing endpoints
@@ -137,39 +271,54 @@ class SommOSAPI {
         });
     }
 
+    async submitPairingFeedback({ recommendation_id, rating, notes, selected }) {
+        return this.request('/pairing/feedback', {
+            method: 'POST',
+            body: JSON.stringify(SommOSAPI.cleanPayload({
+                recommendation_id,
+                rating,
+                notes,
+                selected
+            }))
+        });
+    }
+
     // Inventory endpoints
     async getInventory(filters = {}) {
-        const params = new URLSearchParams();
+        const query = SommOSAPI.buildQuery(filters);
+        return this.request(`/inventory${query}`);
+    }
 
-        Object.entries(filters || {}).forEach(([key, value]) => {
-            if (value !== undefined && value !== null && value !== '') {
-                params.append(key, value);
-            }
-        });
+    async getInventoryStock(filters = {}) {
+        const query = SommOSAPI.buildQuery(filters);
+        return this.request(`/inventory/stock${query}`);
+    }
 
-        const queryString = params.toString();
-        const suffix = queryString ? `?${queryString}` : '';
+    async getInventoryItem(id) {
+        return this.request(`/inventory/${id}`);
+    }
 
-        return this.request(`/inventory/stock${suffix}`);
+    async listLocations() {
+        return this.request('/locations');
     }
 
     async consumeWine(vintageId, location, quantity, notes = '', createdBy = 'SommOS') {
         return this.request('/inventory/consume', {
             method: 'POST',
-            body: JSON.stringify({
+            body: JSON.stringify(SommOSAPI.cleanPayload({
                 vintage_id: vintageId,
                 location,
                 quantity,
                 notes,
                 created_by: createdBy
-            })
+            }))
         });
     }
 
     async receiveWine(vintageId, location, quantity, unitCost, referenceId = '', notes = '', createdBy = 'SommOS') {
         return this.request('/inventory/receive', {
             method: 'POST',
-            body: JSON.stringify({
+            body: JSON.stringify(SommOSAPI.cleanPayload({
                 vintage_id: vintageId,
                 location,
                 quantity,
@@ -177,25 +326,25 @@ class SommOSAPI {
                 reference_id: referenceId,
                 notes,
                 created_by: createdBy
-            })
+            }))
         });
     }
 
     async createInventoryIntake(intakePayload) {
         return this.request('/inventory/intake', {
             method: 'POST',
-            body: JSON.stringify(intakePayload)
+            body: JSON.stringify(SommOSAPI.cleanPayload(intakePayload))
         });
     }
 
     async receiveInventoryIntake(intakeId, receipts, options = {}) {
         return this.request(`/inventory/intake/${intakeId}/receive`, {
             method: 'POST',
-            body: JSON.stringify({
+            body: JSON.stringify(SommOSAPI.cleanPayload({
                 receipts,
                 created_by: options.createdBy || options.created_by,
                 notes: options.notes
-            })
+            }))
         });
     }
 
@@ -206,32 +355,33 @@ class SommOSAPI {
     async moveWine(vintageId, fromLocation, toLocation, quantity, notes = '', createdBy = 'SommOS') {
         return this.request('/inventory/move', {
             method: 'POST',
-            body: JSON.stringify({
+            body: JSON.stringify(SommOSAPI.cleanPayload({
                 vintage_id: vintageId,
                 from_location: fromLocation,
                 to_location: toLocation,
                 quantity,
                 notes,
                 created_by: createdBy
-            })
+            }))
         });
     }
 
     async reserveWine(vintageId, location, quantity, notes = '', createdBy = 'SommOS') {
         return this.request('/inventory/reserve', {
             method: 'POST',
-            body: JSON.stringify({
+            body: JSON.stringify(SommOSAPI.cleanPayload({
                 vintage_id: vintageId,
                 location,
                 quantity,
                 notes,
                 created_by: createdBy
-            })
+            }))
         });
     }
 
     async getLedgerHistory(vintageId, limit = 50, offset = 0) {
-        return this.request(`/inventory/ledger/${vintageId}?limit=${limit}&offset=${offset}`);
+        const query = SommOSAPI.buildQuery({ limit, offset });
+        return this.request(`/inventory/ledger/${vintageId}${query}`);
     }
 
     async recordConsumption(consumptionData) {
@@ -243,41 +393,87 @@ class SommOSAPI {
 
     // Procurement endpoints
     async getProcurementOpportunities(filters = {}) {
-        const params = new URLSearchParams(filters);
-        return this.request(`/procurement/opportunities?${params}`);
+        const query = SommOSAPI.buildQuery(filters);
+        return this.request(`/procurement/opportunities${query}`);
     }
 
     async analyzePurchaseDecision(vintageId, supplierId, quantity = 12, context = {}) {
         return this.request('/procurement/analyze', {
             method: 'POST',
-            body: JSON.stringify({
+            body: JSON.stringify(SommOSAPI.cleanPayload({
                 vintage_id: vintageId,
                 supplier_id: supplierId,
                 quantity,
                 context
-            })
+            }))
         });
     }
 
     async generatePurchaseOrder(items, supplierId, deliveryDate = null, notes = '') {
         return this.request('/procurement/order', {
             method: 'POST',
-            body: JSON.stringify({
+            body: JSON.stringify(SommOSAPI.cleanPayload({
                 items,
                 supplier_id: supplierId,
                 delivery_date: deliveryDate,
                 notes
-            })
+            }))
         });
     }
 
     // Wine catalog endpoints
     async getWines(filters = {}) {
-        const params = new URLSearchParams(filters);
-        return this.request(`/wines?${params}`);
+        const query = SommOSAPI.buildQuery(filters);
+        return this.request(`/wines${query}`);
     }
 
     async getWineDetails(wineId) {
         return this.request(`/wines/${wineId}`);
     }
+
+    async createWine(payload) {
+        return this.request('/wines', {
+            method: 'POST',
+            body: JSON.stringify(SommOSAPI.cleanPayload(payload))
+        });
+    }
+
+    // Vintage intelligence endpoints
+    async getVintageAnalysis(wineId) {
+        return this.request(`/vintage/analysis/${wineId}`);
+    }
+
+    async enrichVintage(wineId) {
+        return this.request('/vintage/enrich', {
+            method: 'POST',
+            body: JSON.stringify({ wine_id: wineId })
+        });
+    }
+
+    async getVintageProcurementRecommendations() {
+        return this.request('/vintage/procurement-recommendations');
+    }
+
+    async batchEnrichVintage({ filters = {}, limit } = {}) {
+        return this.request('/vintage/batch-enrich', {
+            method: 'POST',
+            body: JSON.stringify(SommOSAPI.cleanPayload({ filters, limit }))
+        });
+    }
+
+    async getVintagePairingInsight({ wine_id, dish_context }) {
+        return this.request('/vintage/pairing-insight', {
+            method: 'POST',
+            body: JSON.stringify(SommOSAPI.cleanPayload({ wine_id, dish_context }))
+        });
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.SommOSAPIError = SommOSAPIError;
+    window.SommOSAPI = SommOSAPI;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { SommOSAPI, SommOSAPIError };
 }
