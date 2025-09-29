@@ -468,3 +468,12 @@ class SommOSAPI {
         });
     }
 }
+
+if (typeof window !== 'undefined') {
+    window.SommOSAPIError = SommOSAPIError;
+    window.SommOSAPI = SommOSAPI;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { SommOSAPI, SommOSAPIError };
+}
