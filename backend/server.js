@@ -15,6 +15,22 @@ const path = require('path');
 const Database = require('./database/connection');
 const routes = require('./api/routes');
 
+const formatErrorPayload = (code, message, details) => {
+    const payload = {
+        success: false,
+        error: {
+            code,
+            message
+        }
+    };
+
+    if (typeof details !== 'undefined') {
+        payload.error.details = details;
+    }
+
+    return payload;
+};
+
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -37,10 +53,10 @@ app.use(helmet({
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 1000, // Limit each IP to 1000 requests per windowMs
-    message: {
-        success: false,
-        error: 'Too many requests from this IP, please try again later.'
-    }
+    message: formatErrorPayload(
+        'RATE_LIMIT_EXCEEDED',
+        'Too many requests from this IP, please try again later.'
+    )
 });
 app.use(limiter);
 
@@ -104,18 +120,20 @@ app.use((error, req, res, next) => {
         ? 'Internal server error' 
         : error.message;
     
-    res.status(error.status || 500).json({
-        success: false,
-        error: message
-    });
+    res.status(error.status || 500).json(
+        formatErrorPayload(
+            error.code || 'INTERNAL_SERVER_ERROR',
+            message,
+            error.details
+        )
+    );
 });
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        error: 'Endpoint not found'
-    });
+    res
+        .status(404)
+        .json(formatErrorPayload('NOT_FOUND', 'Endpoint not found'));
 });
 
 // Initialize database and start server
