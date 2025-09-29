@@ -11,10 +11,12 @@
  */
 
 const axios = require('axios');
+const { getConfig } = require('../config/env');
 
 class OpenMeteoService {
     constructor() {
-        this.baseUrl = 'https://archive-api.open-meteo.com/v1/archive';
+        const config = getConfig();
+        this.baseUrl = config.openMeteo.baseUrl;
         this.geocodingUrl = 'https://geocoding-api.open-meteo.com/v1/search';
 
         // Wine region coordinates cache to minimize geocoding requests
@@ -25,8 +27,9 @@ class OpenMeteoService {
     }
 
     shouldBypassNetwork() {
-        return ['test', 'performance'].includes(process.env.NODE_ENV) ||
-            process.env.SOMMOS_DISABLE_EXTERNAL_CALLS === 'true';
+        const config = getConfig();
+        return ['test', 'performance'].includes(config.nodeEnv) ||
+            config.features.disableExternalCalls;
     }
 
     /**

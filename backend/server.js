@@ -1,8 +1,44 @@
 // SommOS Backend Server
 // Express.js server for the SommOS yacht wine management system
 
-// Load environment variables first
-require('dotenv').config();
+// Centralized environment configuration
+const { getConfig } = require('./config/env');
+const env = getConfig();
+
+const REQUIRED_SECRETS = ['SESSION_SECRET', 'JWT_SECRET'];
+
+function ensureRequiredSecrets(config) {
+    const secretValues = {
+        SESSION_SECRET: config.auth.sessionSecret,
+        JWT_SECRET: config.auth.jwtSecret,
+    };
+
+    const missing = REQUIRED_SECRETS.filter((key) => !secretValues[key]);
+
+    if (missing.length === 0) {
+        console.log('🔐 Required secrets verified');
+        return true;
+    }
+
+    if (config.isProduction) {
+        console.error('❌ Missing required secrets.');
+        missing.forEach((secret) => {
+            console.error(`   - ${secret} is not set`);
+        });
+        console.error('Please set the missing secrets before starting the server.');
+        console.error('Hint: run `npm run generate:secrets` and update your environment file.');
+
+        process.exit(1);
+    }
+
+    console.warn('⚠️  Missing secrets detected (non-production environment).');
+    missing.forEach((secret) => {
+        console.warn(`   - ${secret} is not set`);
+    });
+    console.warn('The server will continue starting for local development, but secure cookies and tokens will be disabled.');
+
+    return false;
+}
 
 const express = require('express');
 const cors = require('cors');
@@ -33,7 +69,8 @@ const formatErrorPayload = (code, message, details) => {
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = env.port;
+const NODE_ENV = env.nodeEnv;
 
 // Security middleware
 app.use(helmet({
@@ -62,7 +99,7 @@ app.use(limiter);
 
 // CORS configuration
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production'
+    origin: NODE_ENV === 'production'
         ? ['https://sommos.yacht'] // Production domain
         : ['http://localhost:3000', 'http://127.0.0.1:3000'], // Development
     credentials: true,
@@ -86,7 +123,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(compression());
 
 // Logging middleware
-if (process.env.NODE_ENV !== 'test') {
+if (NODE_ENV !== 'test') {
     app.use(morgan('combined'));
 }
 
@@ -102,7 +139,7 @@ app.get('/health', (req, res) => {
         success: true,
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        version: process.env.npm_package_version || '1.0.0'
+        version: env.app.version
     });
 });
 
@@ -116,7 +153,7 @@ app.use((error, req, res, next) => {
     console.error('Server Error:', error);
     
     // Don't leak error details in production
-    const message = process.env.NODE_ENV === 'production' 
+    const message = NODE_ENV === 'production'
         ? 'Internal server error' 
         : error.message;
     
@@ -139,6 +176,8 @@ app.use((req, res) => {
 // Initialize database and start server
 async function startServer() {
     try {
+        ensureRequiredSecrets(env);
+
         // Initialize database
         console.log('Initializing database...');
         const db = Database.getInstance();

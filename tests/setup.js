@@ -29,6 +29,11 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_PATH = ':memory:';
 process.env.PORT = '0';
 process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.SESSION_SECRET = 'test-session-secret';
+process.env.OPEN_METEO_BASE = 'https://archive-api.open-meteo.com/v1/archive';
+
+const { refreshConfig } = require('../backend/config/env');
+refreshConfig();
 
 // Mock OpenAI API for tests
 jest.mock('openai', () => {

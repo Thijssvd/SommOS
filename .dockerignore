@@ -1,0 +1,11 @@
+node_modules
+frontend/node_modules
+.git
+.env*
+!.env.secrets-template
+!.env.example
+logs
+coverage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -5,13 +5,15 @@
 
 const OpenAI = require('openai');
 const Database = require('../database/connection');
+const { getConfig } = require('../config/env');
 
 class PairingEngine {
     constructor(database, learningEngine = null) {
         this.db = database || Database.getInstance();
         this.learningEngine = learningEngine;
-        this.openai = process.env.OPENAI_API_KEY ? new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
+        const config = getConfig();
+        this.openai = config.openAI.apiKey ? new OpenAI({
+            apiKey: config.openAI.apiKey,
         }) : null;
         this.scoringWeights = {
             style_match: 0.25,

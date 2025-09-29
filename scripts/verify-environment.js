@@ -7,53 +7,72 @@
 
 require('dotenv').config();
 
+const { refreshConfig } = require('../backend/config/env');
+
 console.log('🔍 SommOS Environment Verification');
 console.log('==================================');
 console.log('');
 
-// Check required environment variables
+let envConfig;
+
+try {
+    envConfig = refreshConfig();
+    console.log('✅ Environment configuration loaded successfully');
+    console.log('');
+} catch (error) {
+    console.error('❌ Failed to validate environment configuration');
+    console.error(error.message);
+    process.exit(1);
+}
+
 const checks = [
     {
         name: 'PORT',
-        value: process.env.PORT,
+        value: envConfig.port,
         required: false,
         default: '3001'
     },
     {
         name: 'NODE_ENV',
-        value: process.env.NODE_ENV,
+        value: envConfig.nodeEnv,
         required: false,
         default: 'development'
     },
     {
+        name: 'OPEN_METEO_BASE',
+        value: envConfig.openMeteo.baseUrl,
+        required: true,
+        default: 'https://archive-api.open-meteo.com/v1/archive'
+    },
+    {
         name: 'JWT_SECRET',
-        value: process.env.JWT_SECRET,
+        value: envConfig.auth.jwtSecret,
         required: true,
         sensitive: true
     },
     {
         name: 'SESSION_SECRET',
-        value: process.env.SESSION_SECRET,
+        value: envConfig.auth.sessionSecret,
         required: true,
         sensitive: true
     },
     {
         name: 'OPENAI_API_KEY',
-        value: process.env.OPENAI_API_KEY,
+        value: envConfig.openAI.apiKey,
         required: false,
         sensitive: true,
         service: 'AI-powered vintage summaries'
     },
     {
         name: 'WEATHER_API_KEY',
-        value: process.env.WEATHER_API_KEY,
+        value: envConfig.services.weather.apiKey,
         required: false,
         sensitive: true,
         service: 'Enhanced weather data'
     },
     {
         name: 'DATABASE_PATH',
-        value: process.env.DATABASE_PATH,
+        value: envConfig.database.path,
         required: false,
         default: './data/sommos.db'
     }
@@ -63,10 +82,12 @@ let allRequired = true;
 let optionalFeatures = [];
 
 checks.forEach(check => {
-    const hasValue = check.value && check.value.length > 0;
-    const displayValue = check.sensitive 
+    const hasValue = typeof check.value === 'number'
+        ? Number.isFinite(check.value)
+        : Boolean(check.value && check.value.length > 0);
+    const displayValue = check.sensitive
         ? (hasValue ? '***SET***' : 'NOT SET')
-        : (check.value || check.default || 'NOT SET');
+        : (hasValue ? String(check.value) : (check.default || 'NOT SET'));
     
     if (check.required) {
         if (hasValue) {

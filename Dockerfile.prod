@@ -4,14 +4,17 @@ FROM node:18-alpine AS builder
 # Set working directory
 WORKDIR /app
 
+# Ensure runtime defaults align with production deployment expectations
+ENV NODE_ENV=production
+
 # Copy package files
 COPY package*.json ./
 
 # Install build dependencies
-RUN apk add --no-cache make gcc g++ python3
+RUN apk add --no-cache make gcc g++ python3 curl
 
 # Install dependencies and rebuild native modules
-RUN npm ci --only=production && \
+RUN npm ci --omit=dev && \
     npm rebuild sqlite3 && \
     npm cache clean --force
 
@@ -26,18 +29,15 @@ RUN addgroup -g 1001 -S sommuser && \
 RUN mkdir -p /app/data /app/logs && \
     chown -R sommuser:sommuser /app
 
-# Install curl for health checks
-RUN apk add --no-cache curl
-
 # Switch to non-root user
 USER sommuser
 
-# Expose port
+# Expose port (actual port is configured via the PORT environment variable at runtime)
 EXPOSE 3000
 
-# Health check
+# Health check relies on runtime PORT value
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/api/system/health || exit 1
+  CMD ["sh", "-c", "curl -f http://localhost:${PORT:-3000}/api/system/health || exit 1"]
 
 # Start application
 CMD ["node", "backend/server.js"]
