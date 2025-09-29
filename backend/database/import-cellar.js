@@ -1,6 +1,6 @@
+const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 const path = require('path');
-const dbPath  = process.env.DATABASE_PATH || path.join(__dirname, '../../data/sommos.db');
-const csvPath = process.env.CELLAR_CSV_PATH || path.join(__dirname, '../../seeds/example_cellar.csv');
 
 // Database path
 const dbPath = path.join(__dirname, '../../data/sommos.db');
