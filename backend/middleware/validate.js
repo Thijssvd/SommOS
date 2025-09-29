@@ -1,40 +1,32 @@
-const { z, ZodError } = require("zod");
-
-const nonEmptyString = z.string().min(1, { message: "Value is required." });
-const generalObject = z.object({}).passthrough();
-const optionalNonEmptyString = nonEmptyString.optional();
-
-const numberLike = z.union([
-  z.number(),
-  z.string().regex(/^-?\d+(\.\d+)?$/, { message: "Must be a number." }),
-]);
-
-const integerLike = z.union([
-  z.number().int(),
-  z.string().regex(/^-?\d+$/, { message: "Must be an integer." }),
-]);
-
-const booleanLike = z.union([z.boolean(), z.enum(["true", "false"])]);
-
-const stringOrStringArray = z.union([nonEmptyString, z.array(nonEmptyString)]);
+const { ZodError } = require("zod");
+const {
+  z,
+  nonEmptyString,
+  optionalNonEmptyString,
+  numberLike,
+  integerLike,
+  booleanLike,
+  generalObject,
+  stringOrStringArray,
+} = require("../schemas/common");
+const {
+  inventoryConsumeSchema,
+  inventoryReceiveSchema,
+  inventoryMoveSchema,
+  inventoryReserveSchema,
+} = require("../schemas/inventory");
+const { wineCreateSchema } = require("../schemas/wine");
+const { pairingRequestSchema, quickPairingSchema } = require("../schemas/pairing");
+const { procurementFiltersSchema } = require("../schemas/procurement");
 
 const passthroughObject = (shape) => generalObject.extend(shape);
 
 const validators = {
   pairingRecommend: {
-    body: passthroughObject({
-      dish: z.union([nonEmptyString, generalObject]),
-      context: generalObject.optional(),
-      guestPreferences: generalObject.optional(),
-      options: generalObject.optional(),
-    }),
+    body: pairingRequestSchema,
   },
   pairingQuick: {
-    body: passthroughObject({
-      dish: z.union([nonEmptyString, generalObject]).optional(),
-      context: generalObject.optional(),
-      ownerLikes: generalObject.optional(),
-    }),
+    body: quickPairingSchema,
   },
   pairingFeedback: {
     body: passthroughObject({
@@ -72,24 +64,10 @@ const validators = {
     }),
   },
   inventoryConsume: {
-    body: passthroughObject({
-      vintage_id: z.union([nonEmptyString, integerLike]),
-      location: nonEmptyString,
-      quantity: numberLike,
-      notes: optionalNonEmptyString,
-      created_by: optionalNonEmptyString,
-    }),
+    body: inventoryConsumeSchema,
   },
   inventoryReceive: {
-    body: passthroughObject({
-      vintage_id: z.union([nonEmptyString, integerLike]),
-      location: nonEmptyString,
-      quantity: numberLike,
-      unit_cost: numberLike.optional(),
-      reference_id: optionalNonEmptyString,
-      notes: optionalNonEmptyString,
-      created_by: optionalNonEmptyString,
-    }),
+    body: inventoryReceiveSchema,
   },
   inventoryIntake: {
     body: generalObject,
@@ -112,23 +90,10 @@ const validators = {
     }),
   },
   inventoryMove: {
-    body: passthroughObject({
-      vintage_id: z.union([nonEmptyString, integerLike]),
-      from_location: nonEmptyString,
-      to_location: nonEmptyString,
-      quantity: numberLike,
-      notes: optionalNonEmptyString,
-      created_by: optionalNonEmptyString,
-    }),
+    body: inventoryMoveSchema,
   },
   inventoryReserve: {
-    body: passthroughObject({
-      vintage_id: z.union([nonEmptyString, integerLike]),
-      location: nonEmptyString,
-      quantity: numberLike,
-      notes: optionalNonEmptyString,
-      created_by: optionalNonEmptyString,
-    }),
+    body: inventoryReserveSchema,
   },
   inventoryLedger: {
     params: z.object({
@@ -142,17 +107,7 @@ const validators = {
       .passthrough(),
   },
   procurementOpportunities: {
-    query: z
-      .object({
-        region: optionalNonEmptyString,
-        regions: stringOrStringArray.optional(),
-        wine_type: optionalNonEmptyString,
-        wine_types: stringOrStringArray.optional(),
-        max_price: numberLike.optional(),
-        min_score: integerLike.optional(),
-        budget: numberLike.optional(),
-      })
-      .passthrough(),
+    query: procurementFiltersSchema,
   },
   procurementAnalyze: {
     body: passthroughObject({
@@ -185,11 +140,7 @@ const validators = {
       .passthrough(),
   },
   winesCreate: {
-    body: passthroughObject({
-      wine: generalObject,
-      vintage: generalObject,
-      stock: generalObject,
-    }),
+    body: wineCreateSchema,
   },
   winesById: {
     params: z.object({
@@ -299,15 +250,15 @@ const validate = (schemaConfig) => {
     } catch (error) {
       if (error instanceof ZodError) {
         const details = error.issues.map((issue) => ({
-          path: issue.path.join(".") || null,
+          path: issue.path.length ? issue.path.join(".") : null,
           message: issue.message,
         }));
 
-        return res.status(400).json({
+        return res.status(422).json({
           success: false,
           error: {
-            code: "INVALID_REQUEST",
-            message: "Invalid request.",
+            code: "UNPROCESSABLE_ENTITY",
+            message: "Request validation failed.",
             details,
           },
         });

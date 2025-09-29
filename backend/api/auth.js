@@ -2,6 +2,7 @@ const express = require('express');
 
 const { validate, validators } = require('../middleware/validate');
 const { authService, requireAuth, requireRole } = require('../middleware/auth');
+const { serializeInvite } = require('../utils/serialize');
 
 const router = express.Router();
 
@@ -168,7 +169,7 @@ router.post(
 
             return res.status(201).json({
                 success: true,
-                data: invite,
+                data: serializeInvite(invite),
             });
         } catch (error) {
             return sendError(
