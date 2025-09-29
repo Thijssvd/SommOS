@@ -58,7 +58,7 @@ Since the repository is private, you can safely include `.env` files:
 ## Current API Keys
 
 ### OpenAI API Key
-- **Key**: `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`
+- **Key**: my_openai_api_key
 - **Usage**: AI-powered wine pairing recommendations
 - **Cost**: ~$0.01-0.03 per pairing request
 - **Monitor**: Check usage at https://platform.openai.com/usage
