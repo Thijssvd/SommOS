@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
+const { randomUUID } = require('crypto');
 
 // Database path
 const dbPath = path.join(__dirname, '../../data/sommos.db');
@@ -276,9 +277,11 @@ async function importData() {
               if (existingStock) {
                 // Update existing stock by adding quantities
                 const newQuantity = existingStock.quantity + wine.quantity;
+                const opId = generateOpId();
+                const updatedAt = Math.floor(Date.now() / 1000);
                 db.run(
-                  'UPDATE Stock SET quantity = ?, current_value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                  [newQuantity, wine.price, existingStock.id],
+                  'UPDATE Stock SET quantity = ?, current_value = ?, updated_at = ?, updated_by = ?, op_id = ?, origin = ? WHERE id = ?',
+                  [newQuantity, wine.price, updatedAt, 'importer', opId, 'import.csv', existingStock.id],
                   (err) => {
                     if (err) {
                       stats.errors.push(`Stock update error: ${err.message}`);
@@ -297,16 +300,22 @@ async function importData() {
               } else {
                 // Insert new stock record
                 const stmt = db.prepare(`
-                  INSERT INTO Stock (vintage_id, location, quantity, cost_per_bottle, current_value)
-                  VALUES (?, ?, ?, ?, ?)
+                  INSERT INTO Stock (vintage_id, location, quantity, cost_per_bottle, current_value, storage_conditions, notes, updated_at, updated_by, op_id, origin)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `);
-                
+
                 stmt.run([
                   vintageId,
                   wine.location,
                   wine.quantity,
                   wine.price,
-                  wine.price
+                  wine.price,
+                  JSON.stringify({}),
+                  null,
+                  Math.floor(Date.now() / 1000),
+                  'importer',
+                  generateOpId(),
+                  'import.csv'
                 ], function(err) {
                   if (err) {
                     stats.errors.push(`Stock insert error: ${err.message}`);
@@ -370,3 +379,10 @@ if (require.main === module) {
 }
 
 module.exports = { importData, parseWineName, parseCSV };
+const generateOpId = () => {
+  if (typeof randomUUID === 'function') {
+    return randomUUID();
+  }
+
+  return `import-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};

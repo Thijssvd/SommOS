@@ -218,6 +218,13 @@ const validators = {
       dish_context: generalObject,
     }),
   },
+  syncChanges: {
+    query: z
+      .object({
+        since: integerLike.optional(),
+      })
+      .passthrough(),
+  },
   systemActivity: {
     query: z
       .object({

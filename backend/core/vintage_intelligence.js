@@ -10,6 +10,7 @@
  * Integrates with WeatherAnalysisService for comprehensive vintage intelligence
  */
 
+const { randomUUID } = require('crypto');
 const WeatherAnalysisService = require('./weather_analysis');
 const Database = require('../database/connection');
 const OpenAI = require('openai');
@@ -323,11 +324,19 @@ Focus on how weather influenced this specific vintage's style and drinking chara
     async updateVintageData(vintageId, enrichedData) {
         try {
             // Update Vintages table with weather-adjusted quality score
+            const opId = typeof randomUUID === 'function'
+                ? randomUUID()
+                : `vintage-intel-${Date.now()}-${vintageId}`;
+
             await this.db.run(`
                 UPDATE Vintages
                 SET weather_score = ?,
                     quality_score = ?,
-                    production_notes = ?
+                    production_notes = ?,
+                    updated_at = ?,
+                    updated_by = ?,
+                    op_id = ?,
+                    origin = ?
                 WHERE id = ?
             `, [
                 enrichedData.weatherAnalysis.overallScore,
@@ -341,6 +350,10 @@ Focus on how weather influenced this specific vintage's style and drinking chara
                     },
                     procurementRec: enrichedData.procurementRec
                 }),
+                Math.floor(Date.now() / 1000),
+                'vintage-intelligence',
+                opId,
+                'ai.enrichment',
                 vintageId
             ]);
 

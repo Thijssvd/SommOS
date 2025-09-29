@@ -18,7 +18,10 @@ CREATE TABLE Wines (
     serving_temp_min INTEGER,
     serving_temp_max INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server'
 );
 
 CREATE TABLE Vintages (
@@ -35,7 +38,10 @@ CREATE TABLE Vintages (
     critic_score INTEGER CHECK (critic_score >= 0 AND critic_score <= 100),
     production_notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server',
     FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE CASCADE,
     UNIQUE(wine_id, year)
 );
@@ -52,7 +58,10 @@ CREATE TABLE Stock (
     last_inventory_date DATE,
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server',
     FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE CASCADE,
     UNIQUE(vintage_id, location)
 );
@@ -128,7 +137,10 @@ CREATE TABLE Suppliers (
     notes TEXT,
     active BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server'
 );
 
 CREATE TABLE PriceBook (
@@ -142,6 +154,10 @@ CREATE TABLE PriceBook (
     valid_until DATE,
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server',
     FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE CASCADE,
     FOREIGN KEY (supplier_id) REFERENCES Suppliers(id) ON DELETE CASCADE,
     UNIQUE(vintage_id, supplier_id)
@@ -159,7 +175,10 @@ CREATE TABLE InventoryIntakeOrders (
     raw_payload TEXT,
     metadata TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server',
     FOREIGN KEY (supplier_id) REFERENCES Suppliers(id) ON DELETE SET NULL,
     UNIQUE(reference, supplier_id)
 );
@@ -187,7 +206,10 @@ CREATE TABLE InventoryIntakeItems (
     wine_id INTEGER,
     vintage_id INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server',
     FOREIGN KEY (intake_id) REFERENCES InventoryIntakeOrders(id) ON DELETE CASCADE,
     FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE SET NULL,
     FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE SET NULL
