@@ -53,10 +53,11 @@ export class SommOSAPI {
 
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
-        const { sync: syncContext, skipQueue = false, allowQueue = true } = options;
+        const { sync: syncContext, skipQueue = false, allowQueue = true, suppressAuthEvent = false } = options;
 
         const config = {
             ...options,
+            credentials: options.credentials || 'include',
             headers: {
                 Accept: options.headers?.Accept || 'application/json',
                 'Content-Type': options.body ? 'application/json' : undefined,
@@ -67,6 +68,7 @@ export class SommOSAPI {
         delete config.sync;
         delete config.skipQueue;
         delete config.allowQueue;
+        delete config.suppressAuthEvent;
 
         if (!config.headers['Content-Type']) {
             delete config.headers['Content-Type'];
@@ -122,6 +124,10 @@ export class SommOSAPI {
             }
 
             if (!response.ok) {
+                if (response.status === 401 && typeof window !== 'undefined' && !suppressAuthEvent) {
+                    window.dispatchEvent(new CustomEvent('sommos:auth-expired'));
+                }
+
                 if (parsedBody && typeof parsedBody === 'object' && parsedBody.error) {
                     const { code, message, details } = parsedBody.error;
                     throw new SommOSAPIError(message || `HTTP ${response.status}`, {
@@ -352,6 +358,28 @@ export class SommOSAPI {
                 notes,
                 selected
             }))
+        });
+    }
+
+    // Authentication endpoints
+    async login(email, password) {
+        return this.request('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+            suppressAuthEvent: true
+        });
+    }
+
+    async refreshSession() {
+        return this.request('/auth/refresh', {
+            method: 'POST'
+        });
+    }
+
+    async logout() {
+        return this.request('/auth/logout', {
+            method: 'POST',
+            suppressAuthEvent: true
         });
     }
 

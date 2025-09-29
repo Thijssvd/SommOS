@@ -336,6 +336,42 @@ CREATE INDEX idx_pricebook_vintage ON PriceBook(vintage_id);
 CREATE INDEX idx_memories_context ON Memories(context_type);
 CREATE INDEX idx_explainability_type ON Explainability(request_type);
 
+-- Authentication & Authorization Tables
+
+CREATE TABLE IF NOT EXISTS Users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'crew', 'guest')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS RefreshTokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS Invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'crew', 'guest')),
+    token_hash TEXT NOT NULL UNIQUE,
+    pin_hash TEXT,
+    expires_at DATETIME NOT NULL,
+    accepted_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_users_email ON Users(email);
+CREATE INDEX idx_users_role ON Users(role);
+CREATE INDEX idx_refresh_tokens_user ON RefreshTokens(user_id);
+CREATE INDEX idx_invites_email ON Invites(email);
+
 -- Views for Common Queries
 
 CREATE VIEW v_current_stock AS

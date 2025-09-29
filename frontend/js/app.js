@@ -14,45 +14,360 @@ export class SommOS {
         this.api.setSyncService(this.syncService);
         this.ui = new SommOSUI();
         this.isOnline = navigator.onLine;
+        this.currentUser = null;
+        this.hasBootstrapped = false;
+        this.authElements = {};
+        this.sessionWarningShown = false;
         this.init();
     }
 
     async init() {
         console.log('🍷 Initializing SommOS...');
-        
+
+        this.cacheRootElements();
+        this.setupAuthHandlers();
+
         // Show loading screen
         this.showLoadingScreen();
-        
-        // Initialize components
-        await this.initializeApp();
-        
-        // Set up event listeners
-        this.setupEventListeners();
-        
-        // Load initial data
-        await this.loadInitialData();
-        
-        // Hide loading screen and show app
-        this.hideLoadingScreen();
-        
+
+        const authenticated = await this.initializeAuth();
+
+        if (authenticated) {
+            await this.bootstrapApplication();
+        } else {
+            this.hideLoadingScreen({ keepAppHidden: true });
+        }
+
         console.log('✅ SommOS initialized successfully');
     }
 
-    showLoadingScreen() {
-        const loadingScreen = document.getElementById('loading-screen');
-        const app = document.getElementById('app');
-        
-        loadingScreen.style.display = 'flex';
-        app.classList.add('hidden');
+    cacheRootElements() {
+        this.loadingScreen = document.getElementById('loading-screen');
+        this.appContainer = document.getElementById('app');
+        this.authScreen = document.getElementById('auth-screen');
     }
 
-    hideLoadingScreen() {
-        const loadingScreen = document.getElementById('loading-screen');
-        const app = document.getElementById('app');
-        
+    setupAuthHandlers() {
+        this.authElements = {
+            loginForm: document.getElementById('login-form'),
+            loginEmail: document.getElementById('login-email'),
+            loginPassword: document.getElementById('login-password'),
+            loginError: document.getElementById('login-error'),
+            loginSubmit: document.getElementById('login-submit'),
+            logoutBtn: document.getElementById('logout-btn'),
+            userRoleBadge: document.getElementById('user-role-badge'),
+            userEmail: document.getElementById('user-email'),
+            guestNotice: document.getElementById('guest-notice'),
+        };
+
+        if (this.authElements.loginForm) {
+            this.authElements.loginForm.addEventListener('submit', (event) => this.handleLoginSubmit(event));
+        }
+
+        if (this.authElements.logoutBtn) {
+            this.authElements.logoutBtn.addEventListener('click', () => this.handleLogout());
+        }
+
+        window.addEventListener('sommos:auth-expired', () => this.handleSessionExpired());
+    }
+
+    getStoredUser() {
+        if (typeof window === 'undefined' || !window.localStorage) {
+            return null;
+        }
+
+        try {
+            const serialized = window.localStorage.getItem('sommos:user');
+            return serialized ? JSON.parse(serialized) : null;
+        } catch (error) {
+            console.warn('Failed to parse stored session', error);
+            return null;
+        }
+    }
+
+    setCurrentUser(user) {
+        this.currentUser = user || null;
+
+        if (typeof window !== 'undefined' && window.localStorage) {
+            if (this.currentUser) {
+                window.localStorage.setItem('sommos:user', JSON.stringify(this.currentUser));
+            } else {
+                window.localStorage.removeItem('sommos:user');
+            }
+        }
+
+        this.sessionWarningShown = false;
+        this.updateUserBadge();
+        this.applyRoleVisibility(this.currentUser);
+    }
+
+    updateUserBadge() {
+        const roleBadge = this.authElements.userRoleBadge;
+        const userEmail = this.authElements.userEmail;
+        const guestNotice = this.authElements.guestNotice;
+
+        if (roleBadge) {
+            roleBadge.textContent = this.currentUser?.role ? this.currentUser.role.toUpperCase() : 'SIGNED OUT';
+            roleBadge.dataset.role = this.currentUser?.role || '';
+        }
+
+        if (userEmail) {
+            userEmail.textContent = this.currentUser?.email || '';
+        }
+
+        if (guestNotice) {
+            if (this.currentUser?.role === 'guest') {
+                guestNotice.classList.remove('hidden-by-role');
+            } else {
+                guestNotice.classList.add('hidden-by-role');
+            }
+        }
+    }
+
+    toggleRoleVisibility(element, shouldShow) {
+        if (!element) {
+            return;
+        }
+
+        if (shouldShow) {
+            element.classList.remove('hidden-by-role');
+            element.removeAttribute('aria-hidden');
+            if (Object.prototype.hasOwnProperty.call(element, 'disabled') && element.dataset.roleDisable !== 'true') {
+                element.disabled = false;
+            }
+        } else {
+            element.classList.add('hidden-by-role');
+            element.setAttribute('aria-hidden', 'true');
+            if (Object.prototype.hasOwnProperty.call(element, 'disabled') && element.dataset.roleDisable !== 'true') {
+                element.disabled = true;
+            }
+        }
+    }
+
+    applyRoleVisibility(user) {
+        const role = user?.role || null;
+
+        const allowElements = document.querySelectorAll('[data-role-allow]');
+        allowElements.forEach((element) => {
+            const allowedRoles = (element.dataset.roleAllow || '')
+                .split(',')
+                .map((value) => value.trim())
+                .filter(Boolean);
+
+            const shouldShow = role ? allowedRoles.includes(role) : false;
+            this.toggleRoleVisibility(element, shouldShow);
+        });
+
+        const denyElements = document.querySelectorAll('[data-role-deny]');
+        denyElements.forEach((element) => {
+            const deniedRoles = (element.dataset.roleDeny || '')
+                .split(',')
+                .map((value) => value.trim())
+                .filter(Boolean);
+
+            const shouldShow = role ? !deniedRoles.includes(role) : true;
+            this.toggleRoleVisibility(element, shouldShow);
+        });
+    }
+
+    isGuestUser() {
+        return this.currentUser?.role === 'guest';
+    }
+
+    canManageInventory() {
+        return this.currentUser && (this.currentUser.role === 'crew' || this.currentUser.role === 'admin');
+    }
+
+    canManageProcurement() {
+        return this.canManageInventory();
+    }
+
+    ensureCrewAccess(message = 'Crew or admin access required for this action.') {
+        if (!this.currentUser) {
+            this.ui.showToast('Please sign in to continue.', 'warning');
+            this.showAuthScreen();
+            return false;
+        }
+
+        if (!this.canManageInventory()) {
+            this.ui.showToast(message, 'warning');
+            return false;
+        }
+
+        return true;
+    }
+
+    showAuthScreen() {
+        if (this.authScreen) {
+            this.authScreen.classList.remove('hidden');
+        }
+
+        if (this.appContainer) {
+            this.appContainer.classList.add('hidden');
+        }
+
+        if (this.authElements.loginEmail) {
+            this.authElements.loginEmail.focus();
+        }
+    }
+
+    hideAuthScreen() {
+        if (this.authScreen) {
+            this.authScreen.classList.add('hidden');
+        }
+
+        if (this.appContainer) {
+            this.appContainer.classList.remove('hidden');
+        }
+    }
+
+    async initializeAuth() {
+        try {
+            const session = await this.api.refreshSession();
+
+            if (session?.success && session.data) {
+                this.setCurrentUser(session.data);
+                this.hideAuthScreen();
+                return true;
+            }
+        } catch (error) {
+            console.info('No active session detected', error?.message || error);
+
+            if (!navigator.onLine) {
+                const storedUser = this.getStoredUser();
+                if (storedUser) {
+                    this.setCurrentUser(storedUser);
+                    this.hideAuthScreen();
+                    return true;
+                }
+            }
+        }
+
+        this.setCurrentUser(null);
+        this.showAuthScreen();
+        return false;
+    }
+
+    async bootstrapApplication() {
+        if (!this.hasBootstrapped) {
+            await this.initializeApp();
+            this.setupEventListeners();
+            this.hasBootstrapped = true;
+        }
+
+        await this.loadInitialData();
+        this.hideLoadingScreen();
+    }
+
+    async handleLoginSubmit(event) {
+        event.preventDefault();
+
+        if (!this.authElements.loginEmail || !this.authElements.loginPassword) {
+            return;
+        }
+
+        const email = this.authElements.loginEmail.value.trim();
+        const password = this.authElements.loginPassword.value;
+
+        if (this.authElements.loginError) {
+            this.authElements.loginError.textContent = '';
+        }
+
+        if (!email || !password) {
+            if (this.authElements.loginError) {
+                this.authElements.loginError.textContent = 'Email and password are required.';
+            }
+            return;
+        }
+
+        this.ui.showLoading('login-submit', 'Signing in...');
+
+        try {
+            const result = await this.api.login(email, password);
+
+            if (result?.success && result.data) {
+                this.setCurrentUser(result.data);
+                this.hideAuthScreen();
+                this.ui.showToast('Welcome aboard!', 'success');
+                this.showLoadingScreen();
+                await this.bootstrapApplication();
+            } else {
+                throw new Error('Unable to sign in. Please verify your credentials.');
+            }
+        } catch (error) {
+            console.error('Login failed', error);
+            if (this.authElements.loginError) {
+                const message = error?.message || 'Failed to sign in. Please try again.';
+                this.authElements.loginError.textContent = message;
+            }
+            this.ui.showToast('Sign-in failed. Please check your credentials.', 'error');
+        } finally {
+            this.ui.hideLoading('login-submit');
+        }
+    }
+
+    async handleLogout() {
+        this.showLoadingScreen();
+
+        try {
+            await this.api.logout();
+        } catch (error) {
+            console.warn('Logout request failed', error);
+        }
+
+        this.clearSessionState();
+        this.showAuthScreen();
+        this.hideLoadingScreen({ keepAppHidden: true });
+        this.ui.showToast('You have been signed out.', 'info');
+    }
+
+    handleSessionExpired() {
+        if (this.sessionWarningShown) {
+            return;
+        }
+
+        this.sessionWarningShown = true;
+        this.ui.showToast('Your session has expired. Please sign in again.', 'warning');
+        this.clearSessionState();
+        this.showAuthScreen();
+        this.hideLoadingScreen({ keepAppHidden: true });
+    }
+
+    clearSessionState() {
+        this.setCurrentUser(null);
+        this.fullInventory = [];
+        if (this.authElements.loginForm) {
+            this.authElements.loginForm.reset();
+        }
+
+        if (this.authElements.loginError) {
+            this.authElements.loginError.textContent = '';
+        }
+    }
+
+    showLoadingScreen() {
+        if (this.loadingScreen) {
+            this.loadingScreen.style.display = 'flex';
+        }
+
+        if (this.appContainer) {
+            this.appContainer.classList.add('hidden');
+        }
+    }
+
+    hideLoadingScreen({ keepAppHidden = false } = {}) {
+        if (!this.loadingScreen || !this.appContainer) {
+            return;
+        }
+
+        if (keepAppHidden) {
+            this.loadingScreen.style.display = 'none';
+            return;
+        }
+
         setTimeout(() => {
-            loadingScreen.style.display = 'none';
-            app.classList.remove('hidden');
+            this.loadingScreen.style.display = 'none';
+            this.appContainer.classList.remove('hidden');
         }, 1500); // Allow loading animation to complete
     }
 
@@ -405,6 +720,11 @@ export class SommOS {
     }
 
     navigateToView(viewName) {
+        if (viewName === 'procurement' && !this.canManageProcurement()) {
+            this.ui.showToast('Crew or admin access required for procurement.', 'warning');
+            return;
+        }
+
         // Update navigation
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
@@ -643,6 +963,7 @@ export class SommOS {
     displayInventory(inventory) {
         console.log('Displaying inventory:', inventory);
         const grid = document.getElementById('inventory-grid');
+        const isGuest = this.isGuestUser();
         
         if (!grid) {
             console.error('Inventory grid element not found!');
@@ -669,23 +990,13 @@ export class SommOS {
                 // Improve region display
                 const displayRegion = this.getDisplayRegion(item);
                 const displayCountry = item.country && item.country !== 'Unknown' ? item.country : '';
-                
-                return `
-                    <div class="wine-card simple-card fade-in" style="animation-delay: ${Math.min(index * 0.02, 2)}s">
-                        <div class="wine-header">
-                            <div class="wine-type-badge ${item.wine_type?.toLowerCase() || 'unknown'}">
-                                ${this.getWineTypeIcon(item.wine_type)} ${item.wine_type || 'Wine'}
-                            </div>
-                            <div class="price">${item.cost_per_bottle ? '$' + parseFloat(item.cost_per_bottle).toFixed(2) : ''}</div>
+                const actionSection = isGuest
+                    ? `
+                        <div class="card-actions-simple guest-readonly" aria-live="polite">
+                            <span class="guest-readonly-message">🔒 Guest access is read-only</span>
                         </div>
-                        <h3>${item.name || 'Unknown Wine'}</h3>
-                        <p><strong>Producer:</strong> ${item.producer || 'Unknown'}</p>
-                        <p><strong>Year:</strong> ${item.year || 'N/A'} ${displayCountry ? '| ' + displayCountry : ''}</p>
-                        <p><strong>Region:</strong> ${displayRegion}</p>
-                        <div class="stock-display">
-                            <span class="quantity">${item.quantity || 0} bottles</span>
-                            <span class="location">📍 ${item.location || 'Unknown'}</span>
-                        </div>
+                    `
+                    : `
                         <div class="card-actions-simple">
                             <button class="btn-small secondary" onclick="app.showWineDetailModal('${item.vintage_id || item.id}')">
                                 📝 Details
@@ -699,6 +1010,25 @@ export class SommOS {
                                 </button>
                             ` : ''}
                         </div>
+                    `;
+
+                return `
+                    <div class="wine-card simple-card fade-in" style="animation-delay: ${Math.min(index * 0.02, 2)}s">
+                        <div class="wine-header">
+                            <div class="wine-type-badge ${item.wine_type?.toLowerCase() || 'unknown'}">
+                                ${this.getWineTypeIcon(item.wine_type)} ${item.wine_type || 'Wine'}
+                            </div>
+                            <div class="price">${item.cost_per_bottle && !isGuest ? '$' + parseFloat(item.cost_per_bottle).toFixed(2) : ''}</div>
+                        </div>
+                        <h3>${item.name || 'Unknown Wine'}</h3>
+                        <p><strong>Producer:</strong> ${item.producer || 'Unknown'}</p>
+                        <p><strong>Year:</strong> ${item.year || 'N/A'} ${displayCountry ? '| ' + displayCountry : ''}</p>
+                        <p><strong>Region:</strong> ${displayRegion}</p>
+                        <div class="stock-display">
+                            <span class="quantity">${item.quantity || 0} bottles</span>
+                            <span class="location">${!isGuest ? `📍 ${item.location || 'Unknown'}` : '🔒 Location hidden'}</span>
+                        </div>
+                        ${actionSection}
                     </div>
                 `;
             }).join('');
@@ -1081,6 +1411,10 @@ export class SommOS {
     
     // Action methods for wine cards
     reserveWineModal(vintageId, wineName) {
+        if (!this.ensureCrewAccess('Crew or admin access required to reserve wines.')) {
+            return;
+        }
+
         this.ui.showModal(`Reserve Wine - ${wineName}`, `
             <form id="reserve-wine-form">
                 <div class="form-group">
@@ -1123,8 +1457,12 @@ export class SommOS {
             }
         });
     }
-    
+
     consumeWineModal(vintageId, wineName) {
+        if (!this.ensureCrewAccess('Crew or admin access required to record service.')) {
+            return;
+        }
+
         this.ui.showModal(`Serve Wine - ${wineName}`, `
             <form id="consume-wine-form">
                 <div class="form-group">
@@ -1386,6 +1724,9 @@ export class SommOS {
                 this.navigateToView('pairing');
                 break;
             case 'record-consumption':
+                if (!this.ensureCrewAccess('Crew or admin access required to record consumption.')) {
+                    return;
+                }
                 this.showConsumptionModal();
                 break;
             case 'check-stock':
@@ -1395,6 +1736,10 @@ export class SommOS {
     }
 
     async showConsumptionModal() {
+        if (!this.ensureCrewAccess('Crew or admin access required to record consumption.')) {
+            return;
+        }
+
         try {
             // Get current inventory to populate wine selection
             const inventory = await this.api.getInventory({ available_only: true });
@@ -2000,9 +2345,13 @@ export class SommOS {
     // ============================================================================
 
     async loadProcurementData() {
+        if (!this.canManageProcurement()) {
+            return;
+        }
+
         try {
             console.log('Loading procurement data...');
-            
+
             // Load procurement stats
             await this.loadProcurementStats();
             
@@ -2036,6 +2385,10 @@ export class SommOS {
     }
 
     async analyzeProcurementOpportunities() {
+        if (!this.ensureCrewAccess('Crew or admin access required to analyze procurement opportunities.')) {
+            return;
+        }
+
         try {
             this.ui.showToast('Analyzing procurement opportunities...', 'info');
             
@@ -2090,6 +2443,10 @@ export class SommOS {
     }
 
     displayProcurementOpportunities(opportunities) {
+        if (!this.canManageProcurement()) {
+            return;
+        }
+
         const grid = document.getElementById('procurement-opportunities');
 
         if (!opportunities || opportunities.length === 0) {
@@ -2133,6 +2490,10 @@ export class SommOS {
     }
 
     async showPurchaseDecisionTool() {
+        if (!this.ensureCrewAccess('Crew or admin access required for procurement tools.')) {
+            return;
+        }
+
         this.ui.showModal('Purchase Decision Analysis', `
             <div class="purchase-decision-form">
                 <div class="form-group">
@@ -2165,6 +2526,10 @@ export class SommOS {
     }
 
     async runPurchaseAnalysis() {
+        if (!this.ensureCrewAccess('Crew or admin access required for procurement tools.')) {
+            return;
+        }
+
         try {
             const wineId = document.getElementById('decision-wine-id').value;
             const supplierId = document.getElementById('decision-supplier').value;
@@ -2233,6 +2598,10 @@ export class SommOS {
     }
 
     async generatePurchaseOrder() {
+        if (!this.ensureCrewAccess('Crew or admin access required to generate purchase orders.')) {
+            return;
+        }
+
         this.ui.showModal('Create Purchase Order', `
             <div class="purchase-order-form">
                 <div class="form-group">
@@ -2278,6 +2647,10 @@ export class SommOS {
     }
 
     addOrderItem() {
+        if (!this.ensureCrewAccess('Crew or admin access required to modify purchase orders.')) {
+            return;
+        }
+
         const itemsList = document.getElementById('order-items-list');
         const newItem = document.createElement('div');
         newItem.className = 'order-item';
@@ -2291,6 +2664,10 @@ export class SommOS {
     }
 
     async submitPurchaseOrder() {
+        if (!this.ensureCrewAccess('Crew or admin access required to generate purchase orders.')) {
+            return;
+        }
+
         try {
             const supplier = document.getElementById('po-supplier').value;
             const deliveryDate = document.getElementById('po-delivery-date').value;

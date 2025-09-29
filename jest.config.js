@@ -41,6 +41,11 @@ module.exports = {
       testEnvironment: 'node'
     },
     {
+      displayName: 'Auth API Tests',
+      testMatch: ['**/tests/auth/**/*.test.js'],
+      testEnvironment: 'node'
+    },
+    {
       displayName: 'API Contract Tests',
       testMatch: ['**/tests/api/**/*.test.js'],
       testEnvironment: 'node'

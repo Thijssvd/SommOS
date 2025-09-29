@@ -48,6 +48,36 @@
         </div>
     </div>
 
+    <!-- Authentication Screen -->
+    <div id="auth-screen" class="auth-screen hidden" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <div class="auth-card">
+            <header>
+                <div class="brand-icon" aria-hidden="true">🍷</div>
+                <h1 id="auth-title">Sign in to SommOS</h1>
+                <p>Access cellar intelligence, procurement workflows, and guest experiences.</p>
+            </header>
+
+            <form id="login-form" novalidate>
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" name="email" autocomplete="username" placeholder="crew@yacht.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn primary full-width" id="login-submit">Sign In</button>
+            </form>
+
+            <p id="login-error" class="form-error" role="alert" aria-live="assertive"></p>
+
+            <footer>
+                <span>Guest access available?</span>
+                <span>Request an event code from the crew.</span>
+            </footer>
+        </div>
+    </div>
+
     <!-- Main App Container -->
     <div id="app" class="app hidden">
         <!-- Navigation -->
@@ -70,7 +100,7 @@
                     <span class="nav-icon" aria-hidden="true">📦</span>
                     <span class="nav-text">Inventory</span>
                 </button>
-                <button class="nav-item" data-view="procurement" role="menuitem" aria-label="Navigate to Procurement">
+                <button class="nav-item" data-view="procurement" role="menuitem" aria-label="Navigate to Procurement" data-role-allow="admin,crew">
                     <span class="nav-icon" aria-hidden="true">🛒</span>
                     <span class="nav-text">Procurement</span>
                 </button>
@@ -81,12 +111,24 @@
             </div>
             
             <div class="nav-actions">
-                <button class="nav-action" id="sync-btn" title="Sync Data">
-                    <span class="sync-icon">🔄</span>
-                </button>
-                <button class="nav-action" id="settings-btn" title="Settings">
-                    <span>⚙️</span>
-                </button>
+                <div class="user-status">
+                    <span id="user-role-badge" class="role-badge" aria-live="polite">SIGNED OUT</span>
+                    <span id="user-email" class="user-email"></span>
+                </div>
+                <div id="guest-notice" class="guest-notice hidden-by-role" data-role-allow="guest">
+                    Guest browsing is read-only. Contact the crew for upgrade.
+                </div>
+                <div class="nav-action-buttons">
+                    <button class="nav-action" id="sync-btn" title="Sync Data" data-role-allow="admin,crew">
+                        <span class="sync-icon">🔄</span>
+                    </button>
+                    <button class="nav-action" id="settings-btn" title="Settings">
+                        <span>⚙️</span>
+                    </button>
+                    <button class="nav-action" id="logout-btn" title="Sign out">
+                        <span>🚪</span>
+                    </button>
+                </div>
             </div>
         </nav>
 
@@ -141,7 +183,7 @@
                             <span class="btn-icon">⚡</span>
                             Quick Pairing
                         </button>
-                        <button class="action-btn" data-action="record-consumption">
+                        <button class="action-btn" data-action="record-consumption" data-role-allow="admin,crew">
                             <span class="btn-icon">📝</span>
                             Record Service
                         </button>
@@ -402,7 +444,7 @@
             </div>
 
             <!-- Other views would continue here... -->
-            <div id="procurement-view" class="view">
+            <div id="procurement-view" class="view" data-role-allow="admin,crew">
                 <div class="view-header">
                     <h1>Procurement Assistant</h1>
                     <p class="view-subtitle">Smart wine purchasing recommendations powered by AI</p>

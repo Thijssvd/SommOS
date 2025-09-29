@@ -150,6 +150,111 @@ select:focus {
     animation: loadingProgress 3s ease-in-out infinite;
 }
 
+/* Authentication Screen */
+.auth-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgba(5, 9, 18, 0.82);
+    backdrop-filter: blur(18px);
+    z-index: 9998;
+}
+
+.auth-card {
+    width: min(420px, 100%);
+    background: rgba(16, 26, 51, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: var(--border-radius-large);
+    box-shadow: 0 24px 60px rgba(8, 15, 31, 0.55);
+    padding: 2.5rem 2.25rem;
+    color: var(--text-primary);
+}
+
+.auth-card header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.auth-card header .brand-icon {
+    font-size: 2.5rem;
+}
+
+.auth-card header h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.auth-card header p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.auth-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.auth-card .form-group label {
+    font-weight: 500;
+    display: block;
+    margin-bottom: 0.35rem;
+}
+
+.auth-card .form-group input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: var(--border-radius-small);
+    border: 1px solid var(--border);
+    background: rgba(19, 30, 53, 0.85);
+    color: var(--text-primary);
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.auth-card .form-group input:focus {
+    border-color: var(--accent-color);
+    background: rgba(19, 30, 53, 1);
+}
+
+.auth-card .form-group input::placeholder {
+    color: var(--text-muted);
+}
+
+.auth-card .form-error {
+    margin-top: 1rem;
+    min-height: 1.25rem;
+    color: var(--error);
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+.auth-card .auth-hint {
+    margin-top: 1.25rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.auth-card .btn.full-width {
+    width: 100%;
+}
+
+.auth-card footer {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
 /* Main App */
 .app {
     display: flex;
@@ -257,9 +362,85 @@ select:focus {
 }
 
 .nav-actions {
-    padding: 0 1.5rem;
+    padding: 0 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: auto;
+}
+
+.nav-action-buttons {
     display: flex;
     gap: 0.5rem;
+}
+
+.user-status {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.75rem 0.9rem;
+    background: rgba(19, 30, 53, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: var(--border-radius-medium);
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(156, 124, 255, 0.18);
+    color: var(--text-primary);
+    border: 1px solid rgba(156, 124, 255, 0.45);
+}
+
+.role-badge[data-role="admin"] {
+    background: rgba(233, 69, 96, 0.22);
+    border-color: rgba(233, 69, 96, 0.45);
+}
+
+.role-badge[data-role="crew"] {
+    background: rgba(56, 211, 159, 0.2);
+    border-color: rgba(56, 211, 159, 0.45);
+}
+
+.role-badge[data-role="guest"] {
+    background: rgba(246, 169, 108, 0.18);
+    border-color: rgba(246, 169, 108, 0.45);
+}
+
+.user-email {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    word-break: break-word;
+}
+
+.guest-notice {
+    padding: 0.75rem 1rem;
+    background: rgba(246, 169, 108, 0.12);
+    border: 1px solid rgba(246, 169, 108, 0.3);
+    border-radius: var(--border-radius-medium);
+    color: var(--warning);
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.guest-readonly {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: var(--border-radius-small);
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px dashed rgba(148, 163, 184, 0.25);
+}
+
+.guest-readonly-message {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    display: block;
 }
 
 .nav-action {
@@ -827,6 +1008,10 @@ select:focus {
 
 /* Utility Classes */
 .hidden {
+    display: none !important;
+}
+
+.hidden-by-role {
     display: none !important;
 }
 
