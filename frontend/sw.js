@@ -1,55 +1,96 @@
-const CACHE_NAME = 'sommos-v3';
-const STATIC_CACHE_URLS = [
-  '/',
-  '/index.html',
-  '/css/styles.css',
-  '/js/app.js',
-  '/js/api.js',
-  '/js/ui.js',
-  '/manifest.json',
-  '/icons/wine-glass.svg',
-  '/icons/favicon-32x32.svg'
-];
+const PRECACHE_VERSION = 'v1';
+const RUNTIME_VERSION = 'v1';
+const PRECACHE_CACHE_NAME = `sommos-precache-${PRECACHE_VERSION}`;
+const RUNTIME_CACHE_NAME = `sommos-runtime-${RUNTIME_VERSION}`;
+const CACHEABLE_API_PATHS = new Set(['/api/system/health']);
+const APP_SHELL_PATHS = ['/index.html', '/test-pairing.html', '/manifest.json'];
 
-// Only allow caching of lightweight API responses to avoid large data prefetches
-const CACHEABLE_API_PATHS = new Set([
-  '/api/system/health'
-]);
+const manifestEntriesRaw = self.__WB_MANIFEST || [];
+const manifestEntries = Array.isArray(manifestEntriesRaw) ? manifestEntriesRaw : [];
 
-// Install event
-self.addEventListener('install', event => {
-  console.log('Service Worker installing...');
+const toAbsoluteUrl = (url) => new URL(url, self.location.origin).toString();
+
+const precacheUrls = new Set(
+  manifestEntries
+    .map((entry) => (entry && entry.url ? toAbsoluteUrl(entry.url) : null))
+    .filter(Boolean)
+);
+
+for (const path of APP_SHELL_PATHS) {
+  const absolute = toAbsoluteUrl(path);
+  if (!precacheUrls.has(absolute)) {
+    precacheUrls.add(absolute);
+  }
+}
+
+const precacheRequests = Array.from(precacheUrls, (url) => new Request(url, { cache: 'reload' }));
+const precachePathSet = new Set(Array.from(precacheUrls, (url) => new URL(url).pathname));
+
+if (typeof self !== 'undefined') {
+  self.__SOMMOS_SW_TEST_HOOKS__ = {
+    precacheRequests,
+    precachePathSet,
+    precacheCacheName: PRECACHE_CACHE_NAME,
+    runtimeCacheName: RUNTIME_CACHE_NAME
+  };
+}
+
+const getPrecacheFallback = async (path) => {
+  const cache = await caches.open(PRECACHE_CACHE_NAME);
+  const absoluteUrl = toAbsoluteUrl(path);
+  const cached = await cache.match(absoluteUrl);
+  if (cached) {
+    return cached;
+  }
+  return cache.match(path);
+};
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Caching static assets');
-        return cache.addAll(STATIC_CACHE_URLS);
-      })
-      .catch(err => {
-        console.log('Cache install failed:', err);
-      })
+    (async () => {
+      const cache = await caches.open(PRECACHE_CACHE_NAME);
+      await cache.addAll(precacheRequests);
+    })()
   );
 });
 
-// Activate event
-self.addEventListener('activate', event => {
-  console.log('Service Worker activating...');
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+    (async () => {
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== PRECACHE_CACHE_NAME && cacheName !== RUNTIME_CACHE_NAME) {
             return caches.delete(cacheName);
           }
+          return Promise.resolve();
         })
       );
-    })
+      await self.clients.claim();
+    })()
   );
 });
 
-// Fetch event - Network first, then cache
-self.addEventListener('fetch', event => {
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+const offlineApiResponse = () =>
+  new Response(
+    JSON.stringify({
+      success: false,
+      error: 'Offline or server unavailable'
+    }),
+    {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
+
+self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') {
     return;
   }
@@ -59,49 +100,73 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  const isApiRequest = requestUrl.pathname.startsWith('/api/');
-  const canCacheResponse = !isApiRequest || CACHEABLE_API_PATHS.has(requestUrl.pathname);
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.ok) {
+            return networkResponse;
+          }
+        } catch (error) {
+          // Ignore network errors and fallback to cache.
+        }
+
+        const fallback = await getPrecacheFallback('/index.html');
+        if (fallback) {
+          return fallback;
+        }
+
+        return Response.error();
+      })()
+    );
+    return;
+  }
 
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        if (response.ok && canCacheResponse) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME)
-            .then(cache => cache.put(event.request, responseClone));
+    (async () => {
+      const precache = await caches.open(PRECACHE_CACHE_NAME);
+      const cachedPrecache = await precache.match(event.request);
+      if (cachedPrecache) {
+        return cachedPrecache;
+      }
+
+      const isApiRequest = requestUrl.pathname.startsWith('/api/');
+      const shouldRuntimeCache =
+        precachePathSet.has(requestUrl.pathname) ||
+        requestUrl.pathname.startsWith('/assets/') ||
+        requestUrl.pathname.startsWith('/icons/') ||
+        (!isApiRequest || CACHEABLE_API_PATHS.has(requestUrl.pathname));
+
+      try {
+        const networkResponse = await fetch(event.request);
+        if (networkResponse && networkResponse.ok && shouldRuntimeCache) {
+          const runtimeCache = await caches.open(RUNTIME_CACHE_NAME);
+          await runtimeCache.put(event.request, networkResponse.clone());
         }
-        return response;
-      })
-      .catch(async () => {
-        if (canCacheResponse) {
-          const cachedResponse = await caches.match(event.request);
-          if (cachedResponse) {
-            return cachedResponse;
+        return networkResponse;
+      } catch (error) {
+        if (shouldRuntimeCache) {
+          const runtimeCache = await caches.open(RUNTIME_CACHE_NAME);
+          const cachedRuntime = await runtimeCache.match(event.request);
+          if (cachedRuntime) {
+            return cachedRuntime;
           }
         }
 
         if (isApiRequest) {
-          return new Response(
-            JSON.stringify({
-              success: false,
-              error: 'Offline or server unavailable'
-            }),
-            {
-              status: 503,
-              headers: { 'Content-Type': 'application/json' }
-            }
-          );
+          return offlineApiResponse();
         }
 
-        const acceptHeader = event.request.headers.get('accept') || '';
-        if (acceptHeader.includes('text/html')) {
-          const fallback = await caches.match('/index.html');
+        if (requestUrl.pathname.endsWith('.html')) {
+          const fallback = await getPrecacheFallback(requestUrl.pathname);
           if (fallback) {
             return fallback;
           }
         }
 
         return Response.error();
-      })
+      }
+    })()
   );
 });

@@ -1,7 +1,11 @@
 // SommOS Main Application JavaScript
 // Handles app initialization, navigation, and core functionality
 
-class SommOS {
+import { SommOSAPI } from './api';
+import { SommOSUI } from './ui';
+import Chart from 'chart.js/auto';
+
+export class SommOS {
     constructor() {
         this.currentView = 'dashboard';
         this.api = new SommOSAPI();
@@ -2840,8 +2844,4 @@ class SommOS {
     }
 }
 
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.app = new SommOS();
-    window.sommOS = window.app; // Keep backward compatibility
-});
+export default SommOS;

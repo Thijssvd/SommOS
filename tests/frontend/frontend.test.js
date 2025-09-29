@@ -121,98 +121,65 @@ global.Chart = jest.fn();
 // Mock window.app global
 global.app = {};
 
-// Load the SommOS classes
-const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
-// Read and evaluate the frontend JavaScript files
-const apiJS = fs.readFileSync(path.join(__dirname, '../../frontend/js/api.js'), 'utf8');
-const uiJS = fs.readFileSync(path.join(__dirname, '../../frontend/js/ui.js'), 'utf8');
-const appJS = fs.readFileSync(path.join(__dirname, '../../frontend/js/app.js'), 'utf8');
+beforeAll(async () => {
+    const frontendDir = path.join(__dirname, '../../frontend/js');
 
-// Evaluate the JS code in the global context with proper scope binding
-// Create a custom context that includes global references
-const vmContext = {
-    window: global.window,
-    document: global.document,
-    navigator: global.navigator,
-    fetch: global.fetch,
-    indexedDB: global.indexedDB,
-    Chart: global.Chart,
-    app: global.app,
-    console,
-    setTimeout,
-    clearTimeout,
-    setInterval,
-    clearInterval,
-    JSON,
-    Date,
-    Math,
-    parseInt,
-    parseFloat,
-    isNaN,
-    Error,
-    Promise
-};
+    try {
+        const apiModule = await import(pathToFileURL(path.join(frontendDir, 'api.js')).href);
+        const uiModule = await import(pathToFileURL(path.join(frontendDir, 'ui.js')).href);
+        const appModule = await import(pathToFileURL(path.join(frontendDir, 'app.js')).href);
 
-// Evaluate each file and capture the classes
-try {
-    // Execute API JS and capture SommOSAPI class
-    const apiCode = `(function() {
-        ${apiJS}
-        return typeof SommOSAPI !== 'undefined' ? SommOSAPI : null;
-    })()`;
-    global.SommOSAPI = eval(apiCode);
-    
-    // Execute UI JS and capture SommOSUI class
-    const uiCode = `(function() {
-        ${uiJS}
-        return typeof SommOSUI !== 'undefined' ? SommOSUI : null;
-    })()`;
-    global.SommOSUI = eval(uiCode);
-    
-    // Execute App JS and capture SommOS class
-    const appCode = `(function() {
-        ${appJS}
-        return typeof SommOS !== 'undefined' ? SommOS : null;
-    })()`;
-    global.SommOS = eval(appCode);
-    
-    console.log('Loaded frontend classes:', {
-        SommOSAPI: !!global.SommOSAPI,
-        SommOSUI: !!global.SommOSUI, 
-        SommOS: !!global.SommOS
-    });
-} catch (error) {
-    console.error('Error loading frontend classes:', error);
-    // Fallback: create mock classes if loading fails
-    global.SommOSAPI = class SommOSAPI {
-        constructor() {
-            this.baseURL = 'http://localhost:3000/api';
-            this.timeout = 10000;
-        }
-        async getInventory() { return { success: true, data: [] }; }
-        async consumeWine() { return { success: true, data: { id: 123 } }; }
-    };
-    
-    global.SommOSUI = class SommOSUI {
-        showToast() {}
-        showModal() {}
-        hideModal() {}
-        setButtonLoading() {}
-    };
-    
-    global.SommOS = class SommOS {
-        constructor() {
-            this.initialized = false;
-            this.currentView = 'dashboard';
-        }
-        init() { this.initialized = true; }
-        navigate() {}
-        displayInventory() {}
-        parseGrapeVarieties() { return []; }
-    };
-}
+        global.SommOSAPI = apiModule.SommOSAPI || apiModule.default;
+        global.SommOSAPIError = apiModule.SommOSAPIError;
+        global.SommOSUI = uiModule.SommOSUI || uiModule.default;
+        global.SommOS = appModule.SommOS || appModule.default;
+
+        console.log('Loaded frontend modules via ESM:', {
+            SommOSAPI: !!global.SommOSAPI,
+            SommOSUI: !!global.SommOSUI,
+            SommOS: !!global.SommOS
+        });
+    } catch (error) {
+        console.error('Error loading frontend modules:', error);
+
+        global.SommOSAPIError = class SommOSAPIError extends Error {
+            constructor(message) {
+                super(message);
+                this.name = 'SommOSAPIError';
+            }
+        };
+
+        global.SommOSAPI = class SommOSAPI {
+            constructor() {
+                this.baseURL = 'http://localhost:3000/api';
+                this.timeout = 10000;
+            }
+            async getInventory() { return { success: true, data: [] }; }
+            async consumeWine() { return { success: true, data: { id: 123 } }; }
+        };
+
+        global.SommOSUI = class SommOSUI {
+            showToast() {}
+            showModal() {}
+            hideModal() {}
+            setButtonLoading() {}
+        };
+
+        global.SommOS = class SommOS {
+            constructor() {
+                this.initialized = false;
+                this.currentView = 'dashboard';
+            }
+            init() { this.initialized = true; }
+            navigate() {}
+            displayInventory() {}
+            parseGrapeVarieties() { return []; }
+        };
+    }
+});
 
 describe('SommOS Frontend', () => {
     describe('SommOSAPI Class', () => {
