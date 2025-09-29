@@ -14,8 +14,9 @@ module.exports = {
   collectCoverageFrom: [
     'backend/api/**/*.js'
   ],
-  
+
   // Test setup
+  setupFiles: ['<rootDir>/tests/setup-env.js'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   
   // Module paths

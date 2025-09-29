@@ -3,7 +3,7 @@
 
 services:
   sommos-app:
-    build: 
+    build:
       context: ..
       dockerfile: Dockerfile.prod
     container_name: sommos-production
@@ -12,15 +12,18 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=${PORT:-3000}
       - DATABASE_PATH=/app/data/sommos.db
+      - OPEN_METEO_BASE=${OPEN_METEO_BASE}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPEN_METEO_API_KEY=${OPEN_METEO_API_KEY}
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
     volumes:
       - sommos-data:/app/data
       - sommos-logs:/app/logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/system/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:${PORT:-3000}/api/system/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -47,7 +50,7 @@ services:
 volumes:
   sommos-data:
     driver: local
-  
+
   sommos-logs:
     driver: local
 

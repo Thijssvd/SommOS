@@ -1,107 +1,57 @@
-# SommOS Security Configuration
+# SommOS Security Guide
 
 ## Overview
-This repository contains sensitive configuration data including API keys and secrets. Since this is a **private repository**, sensitive files can be safely included.
+SommOS handles sensitive data such as authentication secrets and third-party API keys. This guide summarizes how the project protects those values across development, CI, and production deployments.
 
-## Sensitive Files Included
+## Secrets
+Our secrets policy ensures no credentials are committed to the repository and that every runtime loads configuration from the environment.
 
-### ✅ Safe to include (Private Repo):
-- `.env` - Production environment variables with API keys
-- `.env.production` - Production-specific configurations  
-- `.env.template` - Template with example values
-- Database files (when needed for development)
+### Sources of truth
+- **Local development**: Copy `.env.secrets-template` to `.env.local` (or another ignored file) and fill in the required values. Never commit the populated file.
+- **Continuous integration**: Define the same keys as repository or environment secrets in GitHub Actions. Use workflows to export them as environment variables; do not write them to disk inside the runner.
+- **Production deployments**: Provision secrets in the hosting platform (e.g., container orchestrator, PaaS). Runtime configuration is injected via environment variables consumed by `backend/config/env.js`.
 
-## Security Approach Options
+### Required keys
+The backend fails fast at startup if critical secrets are missing in production:
+- `PORT`
+- `NODE_ENV`
+- `OPEN_METEO_BASE`
+- `SESSION_SECRET`
+- `JWT_SECRET`
+- `OPENAI_API_KEY` (when AI features are enabled)
+- `WEATHER_API_KEY` (for external weather integrations)
 
-### Option 1: GitHub Secrets (Production Deployments)
-For automated deployments, use GitHub Secrets:
+The configuration loader validates these values with Zod, providing human-readable errors and preventing the app from running with invalid input.
 
-1. **Repository Settings**:
-   - Go to: `Settings > Secrets and variables > Actions`
-   - Add these secrets:
+### Rotation and incident response
+1. **Plan the change**: Identify impacted environments (local, CI, production) and notify stakeholders.
+2. **Generate the replacement secret** using the provider’s dashboard or CLI.
+3. **Update storage**:
+   - Local: refresh your ignored `.env.*` file.
+   - CI: update the repository or environment secret in GitHub.
+   - Production: update the platform’s environment variable store.
+4. **Deploy and validate**:
+   - Run `node scripts/verify-environment.js` locally or in CI to confirm the new values satisfy schema validation before deployment.
+   - Redeploy the service so the new environment variables take effect.
+5. **Revoke the previous secret** once functionality is verified.
+6. **Document the rotation** in the incident or maintenance log, including date, owner, and follow-up actions.
 
-| Secret Name | Description | Example Value |
-|-------------|-------------|---------------|
-| `OPENAI_API_KEY` | OpenAI API key for AI pairing | `sk-proj-...` |
-| `SESSION_SECRET` | Express session secret | Random 32+ chars |
-| `JWT_SECRET` | JWT token signing secret | Random 32+ chars |
-| `SENTRY_DSN` | Error tracking (optional) | `https://...` |
-| `CORS_ORIGIN` | Production domain | `https://yourdomain.com` |
+### Storage and handling rules
+- Secrets must only live in environment variable stores or encrypted secret managers.
+- `.gitignore` prevents `.env*` files (except templates) from being tracked; verify with `git status` before committing.
+- Avoid echoing secrets to logs or error messages. The backend only logs whether values are present, never the values themselves.
+- Prefer short TTL keys or scoped tokens where supported.
 
-2. **Usage in GitHub Actions**:
-   ```yaml
-   - name: Create environment file
-     run: |
-       cat > .env << EOF
-       OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-       SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-       EOF
-   ```
+### Auditing
+- Review GitHub organization audit logs and cloud platform access logs quarterly.
+- Automate secret scanning in CI to detect accidental disclosure.
+- Rotate credentials immediately if a leak is suspected and follow the rotation process above.
 
-### Option 2: Direct File Inclusion (Development)
-Since the repository is private, you can safely include `.env` files:
+## Additional safeguards
+- Enforce multi-factor authentication for all maintainers.
+- Require code review on protected branches.
+- Keep dependencies patched by monitoring `npm audit` and GitHub Dependabot alerts.
+- Run `npm run lint` and the test suite in CI to catch regressions before release.
 
-1. **Remove .env from .gitignore**:
-   ```bash
-   # Comment out or remove these lines in .gitignore:
-   # .env
-   # .env.local
-   ```
-
-2. **Commit sensitive files**:
-   ```bash
-   git add .env .env.production
-   git commit -m "Add environment configuration (safe in private repo)"
-   git push
-   ```
-
-## Current API Keys
-
-### OpenAI API Key
-- **Key**: my_openai_api_key
-- **Usage**: AI-powered wine pairing recommendations
-- **Cost**: ~$0.01-0.03 per pairing request
-- **Monitor**: Check usage at https://platform.openai.com/usage
-
-### Open-Meteo API
-- **Key**: Not required (free tier)
-- **Limit**: 10,000 requests/day
-- **Usage**: Weather data for vintage intelligence
-
-## Security Best Practices
-
-### ✅ Current Security Measures:
-- Private GitHub repository
-- Environment variable isolation
-- Rate limiting configured
-- Input validation in API endpoints
-- Secure session management
-
-### 🔒 Additional Recommendations:
-- Rotate API keys regularly (quarterly)
-- Monitor API usage for anomalies  
-- Enable GitHub security advisories
-- Use branch protection rules
-- Enable 2FA on GitHub account
-
-## Key Rotation Process
-
-When rotating API keys:
-
-1. **Generate new key** on the service (OpenAI, etc.)
-2. **Update in multiple places**:
-   - Local `.env` file
-   - GitHub Secrets (if using)
-   - Production server environment
-3. **Test thoroughly** before removing old key
-4. **Revoke old key** after confirming new one works
-
-## Monitoring
-
-- **OpenAI Usage**: Monitor at https://platform.openai.com/usage
-- **GitHub Actions**: Check workflow runs for any secret-related failures
-- **Application Logs**: Monitor for authentication errors
-
----
-
-⚠️  **Important**: Even though this is a private repository, follow the principle of least privilege and only include necessary sensitive data.
+## Reporting vulnerabilities
+If you discover a vulnerability, email the maintainers via the contact information in `README.md`. Provide reproduction steps, affected components, and any mitigation ideas. We aim to acknowledge reports within two business days.

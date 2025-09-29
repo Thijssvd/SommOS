@@ -5,6 +5,7 @@ const request = require('supertest');
 const fs = require('fs');
 const path = require('path');
 const TestHelpers = require('../helpers/index');
+const { refreshConfig } = require('../../backend/config/env');
 
 describe('SommOS Performance Tests', () => {
     let app;
@@ -12,13 +13,20 @@ describe('SommOS Performance Tests', () => {
     let testHelpers;
     let factory;
 
-    const DATASET_SIZE = parseInt(process.env.PERFORMANCE_TEST_DATASET_SIZE || '200', 10);
-    const MIN_EXPECTED_INVENTORY = Math.max(100, Math.floor(DATASET_SIZE * 0.6));
+    let datasetSize;
+    let minExpectedInventory;
+    let envConfig;
 
     beforeAll(async () => {
         // Set up test environment with larger dataset
         process.env.NODE_ENV = 'performance';
         process.env.DATABASE_PATH = path.join(__dirname, 'performance_test.db');
+        process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'performance-session-secret';
+        process.env.JWT_SECRET = process.env.JWT_SECRET || 'performance-jwt-secret';
+
+        envConfig = refreshConfig();
+        datasetSize = envConfig.tests.performanceDatasetSize || 200;
+        minExpectedInventory = Math.max(100, Math.floor(datasetSize * 0.6));
         
         // Initialize test helpers
         testHelpers = new TestHelpers();
@@ -68,12 +76,12 @@ describe('SommOS Performance Tests', () => {
         const types = ['Red', 'White', 'Sparkling', 'Rosé', 'Dessert'];
         const locations = ['main-cellar', 'service-bar', 'deck-storage', 'private-reserve', 'temperature-controlled'];
 
-        console.log(`Generating performance test dataset with ${DATASET_SIZE} wines...`);
+        console.log(`Generating performance test dataset with ${datasetSize} wines...`);
 
         await db.exec('BEGIN TRANSACTION;');
 
         try {
-            for (let i = 1; i <= DATASET_SIZE; i++) {
+            for (let i = 1; i <= datasetSize; i++) {
             const region = regions[i % regions.length];
             const producer = `${producers[i % producers.length]} Test ${i}`;
             const wineType = types[i % types.length];
@@ -127,7 +135,7 @@ describe('SommOS Performance Tests', () => {
                 }
             }
 
-                if (i % Math.max(50, Math.floor(DATASET_SIZE / 4)) === 0) {
+                if (i % Math.max(50, Math.floor(datasetSize / 4)) === 0) {
                     console.log(`Generated ${i} wines...`);
                 }
             }
@@ -153,7 +161,7 @@ describe('SommOS Performance Tests', () => {
             const responseTime = Date.now() - startTime;
 
             expect(response.body.success).toBe(true);
-            expect(response.body.data.length).toBeGreaterThanOrEqual(MIN_EXPECTED_INVENTORY);
+            expect(response.body.data.length).toBeGreaterThanOrEqual(minExpectedInventory);
             expect(responseTime).toBeLessThan(4000); // Allow headroom on CI environments
 
             console.log(`Inventory load time: ${responseTime}ms for ${response.body.data.length} items`);

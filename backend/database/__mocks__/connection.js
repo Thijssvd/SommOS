@@ -123,9 +123,12 @@ const SAMPLE_DATA = {
     ]
 };
 
+const { getConfig } = require('../../config/env');
+
 class MockDatabase {
     constructor(customPath = null) {
-        this.dbPath = customPath || process.env.DATABASE_PATH || ':memory:';
+        const env = getConfig();
+        this.dbPath = customPath || env.database.path || ':memory:';
         this.reset();
     }
 

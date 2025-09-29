@@ -4,6 +4,7 @@
 const request = require('supertest');
 const path = require('path');
 const fs = require('fs');
+const { refreshConfig } = require('../../backend/config/env');
 
 // Test database setup
 const Database = require('../../backend/database/connection');
@@ -21,6 +22,10 @@ describe('SommOS Full Stack Integration Tests', () => {
         // Set up test environment
         process.env.NODE_ENV = 'test';
         process.env.DATABASE_PATH = testDbPath;
+        process.env.JWT_SECRET = process.env.JWT_SECRET || 'integration-jwt-secret';
+        process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'integration-session-secret';
+
+        refreshConfig();
         
         // Remove existing test database
         if (fs.existsSync(testDbPath)) {

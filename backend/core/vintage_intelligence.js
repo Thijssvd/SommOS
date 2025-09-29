@@ -13,13 +13,15 @@
 const WeatherAnalysisService = require('./weather_analysis');
 const Database = require('../database/connection');
 const OpenAI = require('openai');
+const { getConfig } = require('../config/env');
 
 class VintageIntelligenceService {
     constructor(database) {
         this.db = database || Database.getInstance();
         this.weatherAnalysis = new WeatherAnalysisService(this.db);
-        this.openai = process.env.OPENAI_API_KEY ? new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
+        const config = getConfig();
+        this.openai = config.openAI.apiKey ? new OpenAI({
+            apiKey: config.openAI.apiKey,
         }) : null;
         
         // Cache for avoiding duplicate processing
