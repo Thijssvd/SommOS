@@ -12,6 +12,8 @@ const VintageIntelligenceService = require('../core/vintage_intelligence');
 const wineGuidanceService = require('../core/wine_guidance_service');
 const Database = require('../database/connection');
 const { validate, validators } = require('../middleware/validate');
+const { authService, requireAuth, requireRole } = require('../middleware/auth');
+const authRouter = require('./auth');
 
 let servicesPromise = null;
 
@@ -101,13 +103,127 @@ const asyncHandler = (fn) => (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
 };
 
+router.use('/auth', authRouter);
+
+const requireAuthAndRole = (...roles) => [requireAuth(), requireRole(...roles)];
+
+router.post(
+    '/guest/session',
+    validate(validators.guestSession),
+    asyncHandler(async (req, res) => {
+        const { event_code: eventCode, invite_token: inviteToken, pin } = req.body;
+        const token = eventCode || inviteToken;
+
+        try {
+            const { user, tokens } = await authService.createGuestSession({ token, pin });
+            authService.attachTokensToResponse(res, tokens);
+
+            return res.status(201).json({
+                success: true,
+                data: user,
+                meta: {
+                    access_token_expires_in: Math.floor(tokens.accessTtlMs / 1000),
+                    refresh_token_expires_in: Math.floor(tokens.refreshTtlMs / 1000),
+                },
+            });
+        } catch (error) {
+            if (['PIN_REQUIRED', 'INVALID_PIN'].includes(error.message)) {
+                const status = error.message === 'PIN_REQUIRED' ? 400 : 401;
+                return sendError(
+                    res,
+                    status,
+                    error.message,
+                    error.message === 'PIN_REQUIRED'
+                        ? 'A PIN is required to start this guest session.'
+                        : 'The supplied PIN is incorrect.'
+                );
+            }
+
+            if (['INVALID_GUEST_CODE', 'INVALID_INVITE'].includes(error.message)) {
+                return sendError(
+                    res,
+                    404,
+                    'INVALID_GUEST_CODE',
+                    'Guest event code is invalid or has expired.'
+                );
+            }
+
+            if (error.message === 'GUEST_CODE_REQUIRED') {
+                return sendError(
+                    res,
+                    400,
+                    'GUEST_CODE_REQUIRED',
+                    'An event code is required to start a guest session.'
+                );
+            }
+
+            if (error.message === 'INVALID_GUEST_PROFILE') {
+                return sendError(
+                    res,
+                    409,
+                    'INVALID_GUEST_PROFILE',
+                    'Guest profile is no longer eligible for read-only access.'
+                );
+            }
+
+            console.error('Guest session error:', error);
+
+            return sendError(
+                res,
+                500,
+                'GUEST_SESSION_FAILED',
+                'Unable to start a guest session at this time.'
+            );
+        }
+    })
+);
+
+const GUEST_VISIBLE_INVENTORY_FIELDS = [
+    'id',
+    'vintage_id',
+    'name',
+    'producer',
+    'region',
+    'country',
+    'wine_type',
+    'grape_varieties',
+    'style',
+    'year',
+    'available_quantity',
+    'location',
+];
+
+function formatInventoryItemByRole(item, role) {
+    const guidance = wineGuidanceService.getGuidance(item);
+
+    if (role === 'guest') {
+        const limited = {};
+
+        for (const field of GUEST_VISIBLE_INVENTORY_FIELDS) {
+            if (typeof item[field] !== 'undefined') {
+                limited[field] = item[field];
+            }
+        }
+
+        return {
+            ...limited,
+            ...guidance,
+        };
+    }
+
+    return {
+        ...item,
+        ...guidance,
+    };
+}
+
 // ============================================================================
 // PAIRING ENDPOINTS
 // ============================================================================
 
 // POST /api/pairing/recommend
 // Generate wine pairing recommendations
-router.post('/pairing/recommend', validate(validators.pairingRecommend), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
+router.post('/pairing/recommend', requireRole('admin', 'crew'), validate(validators.pairingRecommend), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
     const { dish, context, guestPreferences, options } = req.body;
 
     if (!dish) {
@@ -140,7 +256,7 @@ router.post('/pairing/recommend', validate(validators.pairingRecommend), asyncHa
 
 // POST /api/pairing/quick
 // Quick pairing for immediate service
-router.post('/pairing/quick', validate(validators.pairingQuick), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
+router.post('/pairing/quick', requireRole('admin', 'crew'), validate(validators.pairingQuick), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
     const { dish, context, ownerLikes } = req.body;
 
     try {
@@ -157,7 +273,7 @@ router.post('/pairing/quick', validate(validators.pairingQuick), asyncHandler(wi
 
 // POST /api/pairing/feedback
 // Capture owner feedback to improve future pairings
-router.post('/pairing/feedback', validate(validators.pairingFeedback), asyncHandler(withServices(async ({ learningEngine }, req, res) => {
+router.post('/pairing/feedback', requireRole('admin', 'crew'), validate(validators.pairingFeedback), asyncHandler(withServices(async ({ learningEngine }, req, res) => {
     const { recommendation_id, rating, notes, selected = true } = req.body || {};
 
     if (!recommendation_id || !rating) {
@@ -182,43 +298,51 @@ router.post('/pairing/feedback', validate(validators.pairingFeedback), asyncHand
 
 // GET /api/inventory
 // Paginated inventory list
-router.get('/inventory', validate(validators.inventoryList), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const { location, wine_type, region, available_only, limit, offset } = req.query;
+router.get(
+    '/inventory',
+    ...requireAuthAndRole('admin', 'crew', 'guest'),
+    validate(validators.inventoryList),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const { location, wine_type, region, available_only, limit, offset } = req.query;
 
-    const result = await inventoryManager.getInventoryList(
-        {
-            location,
-            wine_type,
-            region,
-            available_only: available_only === 'true'
-        },
-        { limit, offset }
-    );
+        const result = await inventoryManager.getInventoryList(
+            {
+                location,
+                wine_type,
+                region,
+                available_only: available_only === 'true'
+            },
+            { limit, offset }
+        );
 
-    const data = result.items.map(item => ({
-        ...item,
-        ...wineGuidanceService.getGuidance(item)
-    }));
+        const role = req.user?.role || 'guest';
 
-    res.json({
-        success: true,
-        data,
-        meta: {
-            total: result.total,
-            limit: result.limit,
-            offset: result.offset
-        }
-    });
-})));
+        const data = result.items.map((item) => formatInventoryItemByRole(item, role));
+
+        res.json({
+            success: true,
+            data,
+            meta: {
+                total: result.total,
+                limit: result.limit,
+                offset: result.offset
+            }
+        });
+    }))
+);
 
 // GET /api/inventory/stock
 // Get current stock levels
-router.get('/inventory/stock', validate(validators.inventoryStock), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const { location, wine_type, region, available_only } = req.query;
+router.get(
+    '/inventory/stock',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryStock),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const { location, wine_type, region, available_only } = req.query;
 
-    try {
-        const stock = await inventoryManager.getCurrentStock({
-            location,
+        try {
+            const stock = await inventoryManager.getCurrentStock({
+                location,
             wine_type,
             region,
             available_only: available_only === 'true'
@@ -231,27 +355,33 @@ router.get('/inventory/stock', validate(validators.inventoryStock), asyncHandler
     } catch (error) {
         sendError(res, 500, 'INVENTORY_STOCK_ERROR', error.message || 'Failed to retrieve inventory stock.');
     }
-}))); 
+    }))
+);
 
 // GET /api/inventory/:id
 // Retrieve a specific stock item by identifier
-router.get('/inventory/:id', validate(validators.inventoryById), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const { id } = req.params;
+router.get(
+    '/inventory/:id',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryById),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const { id } = req.params;
 
-    const stockItem = await inventoryManager.getStockItemById(id);
+        const stockItem = await inventoryManager.getStockItemById(id);
 
-    if (!stockItem) {
-        return sendError(res, 404, 'INVENTORY_NOT_FOUND', 'Inventory item not found.');
-    }
-
-    res.json({
-        success: true,
-        data: {
-            ...stockItem,
-            ...wineGuidanceService.getGuidance(stockItem)
+        if (!stockItem) {
+            return sendError(res, 404, 'INVENTORY_NOT_FOUND', 'Inventory item not found.');
         }
-    });
-})));
+
+        res.json({
+            success: true,
+            data: {
+                ...stockItem,
+                ...wineGuidanceService.getGuidance(stockItem)
+            }
+        });
+    }))
+);
 
 // GET /api/locations
 // List available storage locations
@@ -266,245 +396,285 @@ router.get('/locations', validate(), asyncHandler(withServices(async ({ inventor
 
 // POST /api/inventory/consume
 // Record wine consumption
-router.post('/inventory/consume', validate(validators.inventoryConsume), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const { vintage_id, location, quantity, notes, created_by } = req.body;
+router.post(
+    '/inventory/consume',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryConsume),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const { vintage_id, location, quantity, notes, created_by } = req.body;
 
-    if (!vintage_id || !location || !quantity) {
-        return sendError(
-            res,
-            400,
-            'INVENTORY_CONSUME_VALIDATION',
-            'vintage_id, location, and quantity are required.'
-        );
-    }
-
-    try {
-        const result = await inventoryManager.consumeWine(
-            vintage_id,
-            location,
-            quantity,
-            notes,
-            created_by,
-            req.body.sync || {}
-        );
-
-        res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        const conflict = typeof InventoryManager.isConflictError === 'function'
-            && InventoryManager.isConflictError(error);
-        if (conflict) {
-            return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+        if (!vintage_id || !location || !quantity) {
+            return sendError(
+                res,
+                400,
+                'INVENTORY_CONSUME_VALIDATION',
+                'vintage_id, location, and quantity are required.'
+            );
         }
-        sendError(res, 500, 'INVENTORY_CONSUME_FAILED', error.message || 'Failed to record consumption.');
-    }
-})));
+
+        try {
+            const result = await inventoryManager.consumeWine(
+                vintage_id,
+                location,
+                quantity,
+                notes,
+                created_by,
+                req.body.sync || {}
+            );
+
+            res.json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            const conflict = typeof InventoryManager.isConflictError === 'function'
+                && InventoryManager.isConflictError(error);
+            if (conflict) {
+                return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+            }
+            sendError(res, 500, 'INVENTORY_CONSUME_FAILED', error.message || 'Failed to record consumption.');
+        }
+    }))
+);
 
 // POST /api/inventory/receive
 // Record wine receipt/delivery
-router.post('/inventory/receive', validate(validators.inventoryReceive), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const { vintage_id, location, quantity, unit_cost, reference_id, notes, created_by } = req.body;
+router.post(
+    '/inventory/receive',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryReceive),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const { vintage_id, location, quantity, unit_cost, reference_id, notes, created_by } = req.body;
 
-    if (!vintage_id || !location || !quantity) {
-        return sendError(
-            res,
-            400,
-            'INVENTORY_RECEIVE_VALIDATION',
-            'vintage_id, location, and quantity are required.'
-        );
-    }
+        if (!vintage_id || !location || !quantity) {
+            return sendError(
+                res,
+                400,
+                'INVENTORY_RECEIVE_VALIDATION',
+                'vintage_id, location, and quantity are required.'
+            );
+        }
 
-    try {
-        const result = await inventoryManager.receiveWine(
-            vintage_id,
-            location,
-            quantity,
-            unit_cost,
-            reference_id,
-            notes,
-            created_by,
-            req.body.sync || {}
-        );
+        try {
+            const result = await inventoryManager.receiveWine(
+                vintage_id,
+                location,
+                quantity,
+                unit_cost,
+                reference_id,
+                notes,
+                created_by,
+                req.body.sync || {}
+            );
 
-        res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        sendError(res, 500, 'INVENTORY_RECEIVE_FAILED', error.message || 'Failed to record receipt.');
-    }
-}))); 
+            res.json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            sendError(res, 500, 'INVENTORY_RECEIVE_FAILED', error.message || 'Failed to record receipt.');
+        }
+    }))
+);
 
 // POST /api/inventory/intake
 // Create a new intake order from external sources
-router.post('/inventory/intake', validate(validators.inventoryIntake), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    try {
-        const result = await inventoryManager.createInventoryIntake(req.body || {});
-        res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        const clientSide = /required|Unable|not found|extract/i.test(error.message || '');
-        const statusCode = clientSide ? 400 : 500;
-        const code = clientSide ? 'INVENTORY_INTAKE_INVALID' : 'INVENTORY_INTAKE_FAILED';
-        sendError(res, statusCode, code, error.message || 'Failed to create inventory intake.');
-    }
-}))); 
+router.post(
+    '/inventory/intake',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryIntake),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        try {
+            const result = await inventoryManager.createInventoryIntake(req.body || {});
+            res.json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            const clientSide = /required|Unable|not found|extract/i.test(error.message || '');
+            const statusCode = clientSide ? 400 : 500;
+            const code = clientSide ? 'INVENTORY_INTAKE_INVALID' : 'INVENTORY_INTAKE_FAILED';
+            sendError(res, statusCode, code, error.message || 'Failed to create inventory intake.');
+        }
+    }))
+);
 
 // POST /api/inventory/intake/:intakeId/receive
 // Mark bottles as received against an intake order
-router.post('/inventory/intake/:intakeId/receive', validate(validators.inventoryIntakeReceive), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const intakeId = parseInt(req.params.intakeId, 10);
-    const { receipts, created_by, notes } = req.body || {};
+router.post(
+    '/inventory/intake/:intakeId/receive',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryIntakeReceive),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const intakeId = parseInt(req.params.intakeId, 10);
+        const { receipts, created_by, notes } = req.body || {};
 
-    if (!Array.isArray(receipts) || receipts.length === 0) {
-        return sendError(
-            res,
-            400,
-            'INVENTORY_INTAKE_RECEIPTS_REQUIRED',
-            'receipts array with at least one entry is required.'
-        );
-    }
+        if (!Array.isArray(receipts) || receipts.length === 0) {
+            return sendError(
+                res,
+                400,
+                'INVENTORY_INTAKE_RECEIPTS_REQUIRED',
+                'receipts array with at least one entry is required.'
+            );
+        }
 
-    try {
-        const result = await inventoryManager.receiveInventoryIntake(
-            intakeId,
-            receipts,
-            { created_by, notes, sync: req.body.sync }
-        );
+        try {
+            const result = await inventoryManager.receiveInventoryIntake(
+                intakeId,
+                receipts,
+                { created_by, notes, sync: req.body.sync }
+            );
 
-        res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        const clientSide = /required|Unable|not found/i.test(error.message || '');
-        const statusCode = clientSide ? 400 : 500;
-        const code = clientSide ? 'INVENTORY_INTAKE_RECEIVE_INVALID' : 'INVENTORY_INTAKE_RECEIVE_FAILED';
-        sendError(res, statusCode, code, error.message || 'Failed to receive inventory intake.');
-    }
-}))); 
+            res.json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            const clientSide = /required|Unable|not found/i.test(error.message || '');
+            const statusCode = clientSide ? 400 : 500;
+            const code = clientSide ? 'INVENTORY_INTAKE_RECEIVE_INVALID' : 'INVENTORY_INTAKE_RECEIVE_FAILED';
+            sendError(res, statusCode, code, error.message || 'Failed to receive inventory intake.');
+        }
+    }))
+);
 
 // GET /api/inventory/intake/:intakeId/status
 // Verify whether all bottles from an intake have been received
-router.get('/inventory/intake/:intakeId/status', validate(validators.inventoryIntakeStatus), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const intakeId = parseInt(req.params.intakeId, 10);
+router.get(
+    '/inventory/intake/:intakeId/status',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryIntakeStatus),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const intakeId = parseInt(req.params.intakeId, 10);
 
-    try {
-        const result = await inventoryManager.getInventoryIntakeStatus(intakeId);
-        res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        const notFound = /required|not found/i.test(error.message || '');
-        const statusCode = notFound ? 404 : 500;
-        const code = notFound ? 'INVENTORY_INTAKE_STATUS_NOT_FOUND' : 'INVENTORY_INTAKE_STATUS_FAILED';
-        sendError(res, statusCode, code, error.message || 'Failed to retrieve inventory intake status.');
-    }
-}))); 
+        try {
+            const result = await inventoryManager.getInventoryIntakeStatus(intakeId);
+            res.json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            const notFound = /required|not found/i.test(error.message || '');
+            const statusCode = notFound ? 404 : 500;
+            const code = notFound ? 'INVENTORY_INTAKE_STATUS_NOT_FOUND' : 'INVENTORY_INTAKE_STATUS_FAILED';
+            sendError(res, statusCode, code, error.message || 'Failed to retrieve inventory intake status.');
+        }
+    }))
+);
 
 // POST /api/inventory/move
 // Move wine between locations
-router.post('/inventory/move', validate(validators.inventoryMove), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const { vintage_id, from_location, to_location, quantity, notes, created_by } = req.body;
+router.post(
+    '/inventory/move',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryMove),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const { vintage_id, from_location, to_location, quantity, notes, created_by } = req.body;
 
-    if (!vintage_id || !from_location || !to_location || !quantity) {
-        return sendError(
-            res,
-            400,
-            'INVENTORY_MOVE_VALIDATION',
-            'vintage_id, from_location, to_location, and quantity are required.'
-        );
-    }
-
-    try {
-        const result = await inventoryManager.moveWine(
-            vintage_id,
-            from_location,
-            to_location,
-            quantity,
-            notes,
-            created_by,
-            req.body.sync || {}
-        );
-
-        res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        const conflict = typeof InventoryManager.isConflictError === 'function'
-            && InventoryManager.isConflictError(error);
-        if (conflict) {
-            return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+        if (!vintage_id || !from_location || !to_location || !quantity) {
+            return sendError(
+                res,
+                400,
+                'INVENTORY_MOVE_VALIDATION',
+                'vintage_id, from_location, to_location, and quantity are required.'
+            );
         }
-        sendError(res, 500, 'INVENTORY_MOVE_FAILED', error.message || 'Failed to move inventory.');
-    }
-})));
+
+        try {
+            const result = await inventoryManager.moveWine(
+                vintage_id,
+                from_location,
+                to_location,
+                quantity,
+                notes,
+                created_by,
+                req.body.sync || {}
+            );
+
+            res.json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            const conflict = typeof InventoryManager.isConflictError === 'function'
+                && InventoryManager.isConflictError(error);
+            if (conflict) {
+                return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+            }
+            sendError(res, 500, 'INVENTORY_MOVE_FAILED', error.message || 'Failed to move inventory.');
+        }
+    }))
+);
 
 // POST /api/inventory/reserve
 // Reserve wine for future service
-router.post('/inventory/reserve', validate(validators.inventoryReserve), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const { vintage_id, location, quantity, notes, created_by } = req.body;
+router.post(
+    '/inventory/reserve',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryReserve),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const { vintage_id, location, quantity, notes, created_by } = req.body;
 
-    if (!vintage_id || !location || !quantity) {
-        return sendError(
-            res,
-            400,
-            'INVENTORY_RESERVE_VALIDATION',
-            'vintage_id, location, and quantity are required.'
-        );
-    }
-
-    try {
-        const result = await inventoryManager.reserveWine(
-            vintage_id,
-            location,
-            quantity,
-            notes,
-            created_by,
-            req.body.sync || {}
-        );
-
-        res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        const conflict = typeof InventoryManager.isConflictError === 'function'
-            && InventoryManager.isConflictError(error);
-        if (conflict) {
-            return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+        if (!vintage_id || !location || !quantity) {
+            return sendError(
+                res,
+                400,
+                'INVENTORY_RESERVE_VALIDATION',
+                'vintage_id, location, and quantity are required.'
+            );
         }
-        sendError(res, 500, 'INVENTORY_RESERVE_FAILED', error.message || 'Failed to reserve inventory.');
-    }
-})));
+
+        try {
+            const result = await inventoryManager.reserveWine(
+                vintage_id,
+                location,
+                quantity,
+                notes,
+                created_by,
+                req.body.sync || {}
+            );
+
+            res.json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            const conflict = typeof InventoryManager.isConflictError === 'function'
+                && InventoryManager.isConflictError(error);
+            if (conflict) {
+                return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+            }
+            sendError(res, 500, 'INVENTORY_RESERVE_FAILED', error.message || 'Failed to reserve inventory.');
+        }
+    }))
+);
 
 // GET /api/inventory/ledger/:vintage_id
 // Get transaction history for a vintage
-router.get('/inventory/ledger/:vintage_id', validate(validators.inventoryLedger), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-    const { vintage_id } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
+router.get(
+    '/inventory/ledger/:vintage_id',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.inventoryLedger),
+    asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+        const { vintage_id } = req.params;
+        const { limit = 50, offset = 0 } = req.query;
 
-    try {
-        const ledger = await inventoryManager.getLedgerHistory(
-            vintage_id,
-            parseInt(limit, 10),
-            parseInt(offset, 10)
-        );
+        try {
+            const ledger = await inventoryManager.getLedgerHistory(
+                vintage_id,
+                parseInt(limit, 10),
+                parseInt(offset, 10)
+            );
 
-        res.json({
-            success: true,
-            data: ledger
-        });
-    } catch (error) {
-        sendError(res, 500, 'INVENTORY_LEDGER_FAILED', error.message || 'Failed to retrieve inventory ledger.');
-    }
-}))); 
+            res.json({
+                success: true,
+                data: ledger
+            });
+        } catch (error) {
+            sendError(res, 500, 'INVENTORY_LEDGER_FAILED', error.message || 'Failed to retrieve inventory ledger.');
+        }
+    }))
+);
 
 // ============================================================================
 // PROCUREMENT ENDPOINTS
@@ -512,84 +682,99 @@ router.get('/inventory/ledger/:vintage_id', validate(validators.inventoryLedger)
 
 // GET /api/procurement/opportunities
 // Get procurement opportunities
-router.get('/procurement/opportunities', validate(validators.procurementOpportunities), asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
-    const { region, regions, wine_type, wine_types, max_price, min_score, budget } = req.query;
+router.get(
+    '/procurement/opportunities',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.procurementOpportunities),
+    asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
+        const { region, regions, wine_type, wine_types, max_price, min_score, budget } = req.query;
 
-    try {
-        const opportunities = await procurementEngine.analyzeProcurementOpportunities({
-            region,
-            regions,
-            wine_type,
-            wine_types,
-            max_price: max_price ? parseFloat(max_price) : undefined,
-            budget: budget ? parseFloat(budget) : undefined,
-            min_score: min_score ? parseInt(min_score, 10) : undefined
-        });
+        try {
+            const opportunities = await procurementEngine.analyzeProcurementOpportunities({
+                region,
+                regions,
+                wine_type,
+                wine_types,
+                max_price: max_price ? parseFloat(max_price) : undefined,
+                budget: budget ? parseFloat(budget) : undefined,
+                min_score: min_score ? parseInt(min_score, 10) : undefined
+            });
 
-        res.json({
-            success: true,
-            data: opportunities
-        });
-    } catch (error) {
-        sendError(res, 500, 'PROCUREMENT_ANALYSIS_FAILED', error.message || 'Failed to analyze procurement decision.');
-    }
-}))); 
+            res.json({
+                success: true,
+                data: opportunities
+            });
+        } catch (error) {
+            sendError(res, 500, 'PROCUREMENT_ANALYSIS_FAILED', error.message || 'Failed to analyze procurement decision.');
+        }
+    }))
+);
 
 // POST /api/procurement/analyze
 // Analyze specific procurement decision
-router.post('/procurement/analyze', validate(validators.procurementAnalyze), asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
-    const { vintage_id, supplier_id, quantity, context } = req.body;
+router.post(
+    '/procurement/analyze',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.procurementAnalyze),
+    asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
+        const { vintage_id, supplier_id, quantity, context } = req.body;
 
-    if (!vintage_id || !supplier_id) {
-        return sendError(res, 400, 'PROCUREMENT_ANALYZE_VALIDATION', 'vintage_id and supplier_id are required.');
-    }
+        if (!vintage_id || !supplier_id) {
+            return sendError(res, 400, 'PROCUREMENT_ANALYZE_VALIDATION', 'vintage_id and supplier_id are required.');
+        }
 
-    try {
-        const analysis = await procurementEngine.analyzePurchaseDecision(
-            vintage_id,
-            supplier_id,
-            quantity || 12,
-            context || {}
-        );
+        try {
+            const analysis = await procurementEngine.analyzePurchaseDecision(
+                vintage_id,
+                supplier_id,
+                quantity || 12,
+                context || {}
+            );
 
-        res.json({
-            success: true,
-            data: analysis
-        });
-    } catch (error) {
-        sendError(res, 500, 'PROCUREMENT_ANALYSIS_FAILED', error.message || 'Failed to analyze procurement decision.');
-    }
-}))); 
+            res.json({
+                success: true,
+                data: analysis
+            });
+        } catch (error) {
+            sendError(res, 500, 'PROCUREMENT_ANALYSIS_FAILED', error.message || 'Failed to analyze procurement decision.');
+        }
+    }))
+);
 
 // POST /api/procurement/order
 // Generate purchase order
-router.post('/procurement/order', validate(validators.procurementOrder), asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
-    const { items, supplier_id, delivery_date, notes } = req.body;
+router.post(
+    '/procurement/order',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.procurementOrder),
+    asyncHandler(withServices(async ({ procurementEngine }, req, res) => {
+        const { items, supplier_id, delivery_date, notes } = req.body;
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-        return sendError(res, 400, 'PROCUREMENT_ORDER_ITEMS_REQUIRED', 'Items array is required.');
-    }
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return sendError(res, 400, 'PROCUREMENT_ORDER_ITEMS_REQUIRED', 'Items array is required.');
+        }
 
-    if (!supplier_id) {
-        return sendError(res, 400, 'PROCUREMENT_ORDER_SUPPLIER_REQUIRED', 'supplier_id is required.');
-    }
+        if (!supplier_id) {
+            return sendError(res, 400, 'PROCUREMENT_ORDER_SUPPLIER_REQUIRED', 'supplier_id is required.');
+        }
 
-    try {
-        const order = await procurementEngine.generatePurchaseOrder(
-            items,
-            supplier_id,
-            delivery_date,
-            notes
-        );
+        try {
+            const order = await procurementEngine.generatePurchaseOrder(
+                items,
+                supplier_id,
+                delivery_date,
+                notes
+            );
 
-        res.json({
-            success: true,
-            data: order
-        });
-    } catch (error) {
-        sendError(res, 500, 'PROCUREMENT_ORDER_FAILED', error.message || 'Failed to generate purchase order.');
-    }
-}))); 
+            res.json({
+                success: true,
+                data: order
+            });
+        } catch (error) {
+            sendError(res, 500, 'PROCUREMENT_ORDER_FAILED', error.message || 'Failed to generate purchase order.');
+        }
+    }))
+);
 
 // ============================================================================
 // WINE CATALOG ENDPOINTS
@@ -655,7 +840,7 @@ router.get('/wines', validate(validators.winesList), asyncHandler(withServices(a
 
 // POST /api/wines
 // Add new wine to inventory with vintage intelligence
-router.post('/wines', validate(validators.winesCreate), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.post('/wines', requireRole('admin', 'crew'), validate(validators.winesCreate), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const { wine, vintage, stock } = req.body;
 
     if (!wine || !vintage || !stock) {
@@ -805,38 +990,43 @@ router.get('/vintage/analysis/:wine_id', validate(validators.vintageAnalysis), a
 
 // POST /api/vintage/enrich
 // Manually trigger vintage enrichment for a specific wine
-router.post('/vintage/enrich', validate(validators.vintageEnrich), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
-    const { wine_id } = req.body;
+router.post(
+    '/vintage/enrich',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.vintageEnrich),
+    asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
+        const { wine_id } = req.body;
 
-    if (!wine_id) {
-        return sendError(res, 400, 'VINTAGE_ENRICH_VALIDATION', 'wine_id is required.');
-    }
-
-    try {
-        // Get wine details
-        const wine = await db.get(`
-            SELECT w.*, v.*
-            FROM Wines w
-            LEFT JOIN Vintages v ON w.id = v.wine_id
-            WHERE w.id = ?
-        `, [wine_id]);
-
-        if (!wine) {
-            return sendError(res, 404, 'WINE_NOT_FOUND', 'Wine not found.');
+        if (!wine_id) {
+            return sendError(res, 400, 'VINTAGE_ENRICH_VALIDATION', 'wine_id is required.');
         }
 
-        // Enrich the wine data
-        const enrichedData = await vintageIntelligenceService.enrichWineData(wine);
+        try {
+            // Get wine details
+            const wine = await db.get(`
+                SELECT w.*, v.*
+                FROM Wines w
+                LEFT JOIN Vintages v ON w.id = v.wine_id
+                WHERE w.id = ?
+            `, [wine_id]);
 
-        res.json({
-            success: true,
-            data: enrichedData,
-            message: 'Wine enriched with vintage intelligence'
-        });
-    } catch (error) {
-        sendError(res, 500, 'VINTAGE_ENRICH_FAILED', error.message || 'Failed to enrich wine data.');
-    }
-}))); 
+            if (!wine) {
+                return sendError(res, 404, 'WINE_NOT_FOUND', 'Wine not found.');
+            }
+
+            // Enrich the wine data
+            const enrichedData = await vintageIntelligenceService.enrichWineData(wine);
+
+            res.json({
+                success: true,
+                data: enrichedData,
+                message: 'Wine enriched with vintage intelligence'
+            });
+        } catch (error) {
+            sendError(res, 500, 'VINTAGE_ENRICH_FAILED', error.message || 'Failed to enrich wine data.');
+        }
+    }))
+);
 
 // GET /api/vintage/procurement-recommendations
 // Get procurement recommendations for current inventory
@@ -855,7 +1045,7 @@ router.get('/vintage/procurement-recommendations', validate(), asyncHandler(with
 
 // POST /api/vintage/batch-enrich
 // Batch enrich multiple wines with vintage intelligence
-router.post('/vintage/batch-enrich', validate(validators.vintageBatchEnrich), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
+router.post('/vintage/batch-enrich', requireRole('admin', 'crew'), validate(validators.vintageBatchEnrich), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { filters = {}, limit = 50 } = req.body;
 
     try {
@@ -917,7 +1107,7 @@ router.post('/vintage/batch-enrich', validate(validators.vintageBatchEnrich), as
 
 // GET /api/vintage/pairing-insight
 // Get weather-based pairing insights for a wine and dish context
-router.post('/vintage/pairing-insight', validate(validators.vintagePairingInsight), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
+router.post('/vintage/pairing-insight', requireRole('admin', 'crew'), validate(validators.vintagePairingInsight), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { wine_id, dish_context } = req.body;
 
     if (!wine_id || !dish_context) {

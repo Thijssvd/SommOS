@@ -47,6 +47,7 @@ const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const morgan = require('morgan');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 const Database = require('./database/connection');
 const routes = require('./api/routes');
@@ -118,6 +119,9 @@ app.use((req, res, next) => {
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Cookie parsing middleware for auth tokens
+app.use(cookieParser(env.auth.sessionSecret || undefined));
 
 // Compression middleware
 app.use(compression());

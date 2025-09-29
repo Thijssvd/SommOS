@@ -117,11 +117,374 @@ components:
         timestamp:
           type: string
           format: date-time
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, crew, guest]
+        created_at:
+          type: string
+          format: date-time
+        last_login:
+          type: string
+          format: date-time
+          nullable: true
+    Invite:
+      type: object
+      properties:
+        token:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, crew, guest]
+        expires_at:
+          type: string
+          format: date-time
+        requires_pin:
+          type: boolean
+  securitySchemes:
+    accessTokenCookie:
+      type: apiKey
+      in: cookie
+      name: sommos_access_token
+      description: >-
+        Short-lived JWT issued after authentication. Required for protected mutations.
+    refreshTokenCookie:
+      type: apiKey
+      in: cookie
+      name: sommos_refresh_token
+      description: >-
+        Long-lived refresh token stored as an HttpOnly cookie. Used only with the refresh endpoint.
 paths:
+  /guest/session:
+    post:
+      tags: [Auth]
+      summary: Issue a temporary guest session using an event code.
+      description: |
+        Establishes a time-limited guest session by validating an admin issued guest invite
+        or event code. On success the response sets httpOnly access and refresh token cookies
+        scoped to read-only permissions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event_code:
+                  type: string
+                  description: Guest invite or event code shared by the crew.
+                invite_token:
+                  type: string
+                  description: Legacy field alias for `event_code`.
+                pin:
+                  type: string
+                  description: Optional PIN required when configured on the invite.
+              anyOf:
+                - required: [event_code]
+                - required: [invite_token]
+      responses:
+        '201':
+          description: Guest session created; authentication cookies issued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/User'
+                  meta:
+                    type: object
+                    properties:
+                      access_token_expires_in:
+                        type: integer
+                        description: Access token expiration window in seconds.
+                      refresh_token_expires_in:
+                        type: integer
+                        description: Refresh token expiration window in seconds.
+        '400':
+          description: Missing required event code or PIN validation failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Provided PIN does not match the invite.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event code not found or expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Guest session could not be created due to a server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Provision the initial administrator account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        '201':
+          description: Administrator account created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/User'
+        '403':
+          description: Registration disabled when an account already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email already registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate a user and issue cookies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login succeeded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: End the active session and clear cookies.
+      security:
+        - accessTokenCookie: []
+      responses:
+        '200':
+          description: Logout successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  message:
+                    type: string
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate session tokens using the refresh cookie.
+      security:
+        - refreshTokenCookie: []
+      responses:
+        '200':
+          description: Session refreshed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Refresh token missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/invite:
+    post:
+      tags: [Auth]
+      summary: Issue a role-based invite link.
+      security:
+        - accessTokenCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum: [admin, crew, guest]
+                expires_in_hours:
+                  type: integer
+                  minimum: 1
+                pin:
+                  type: string
+      responses:
+        '201':
+          description: Invite created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/Invite'
+        '400':
+          description: Invalid invite request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/accept-invite:
+    post:
+      tags: [Auth]
+      summary: Exchange an invite for an authenticated session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                pin:
+                  type: string
+      responses:
+        '200':
+          description: Invite accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid invite payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Retrieve the authenticated user profile.
+      security:
+        - accessTokenCookie: []
+      responses:
+        '200':
+          description: Current session details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /pairing/recommend:
     post:
       tags: [Pairing]
       summary: Generate wine pairing recommendations.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -181,6 +544,8 @@ paths:
     post:
       tags: [Pairing]
       summary: Request expedited pairing suggestions.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -225,6 +590,8 @@ paths:
     post:
       tags: [Pairing]
       summary: Record feedback for a pairing recommendation.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -423,6 +790,8 @@ paths:
     post:
       tags: [Inventory]
       summary: Record wine consumption.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -471,6 +840,8 @@ paths:
     post:
       tags: [Inventory]
       summary: Record incoming wine.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -523,6 +894,8 @@ paths:
     post:
       tags: [Inventory]
       summary: Create an intake order.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -560,6 +933,8 @@ paths:
     post:
       tags: [Inventory]
       summary: Mark items as received for an intake order.
+      security:
+        - accessTokenCookie: []
       parameters:
         - in: path
           name: intakeId
@@ -649,6 +1024,8 @@ paths:
     post:
       tags: [Inventory]
       summary: Move wine between locations.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -699,6 +1076,8 @@ paths:
     post:
       tags: [Inventory]
       summary: Reserve wine for future service.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -842,6 +1221,8 @@ paths:
     post:
       tags: [Procurement]
       summary: Analyze a specific procurement decision.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -889,6 +1270,8 @@ paths:
     post:
       tags: [Procurement]
       summary: Generate a purchase order.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -988,6 +1371,8 @@ paths:
     post:
       tags: [Wines]
       summary: Add a new wine with vintage intelligence.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -1106,6 +1491,8 @@ paths:
     post:
       tags: [Vintage Intelligence]
       summary: Enrich a wine record with the latest intelligence data.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -1183,6 +1570,8 @@ paths:
     post:
       tags: [Vintage Intelligence]
       summary: Batch enrich wines with vintage intelligence.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:
@@ -1221,6 +1610,8 @@ paths:
     post:
       tags: [Vintage Intelligence]
       summary: Generate weather-based pairing insights for a wine and dish context.
+      security:
+        - accessTokenCookie: []
       requestBody:
         required: true
         content:

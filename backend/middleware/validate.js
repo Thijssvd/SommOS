@@ -232,6 +232,50 @@ const validators = {
       })
       .passthrough(),
   },
+  authRegister: {
+    body: z.object({
+      email: z.string().email({ message: "Must be a valid email address." }),
+      password: z
+        .string()
+        .min(8, { message: "Password must be at least 8 characters." }),
+    }),
+  },
+  authLogin: {
+    body: z.object({
+      email: z.string().email({ message: "Must be a valid email address." }),
+      password: z.string().min(1, { message: "Password is required." }),
+    }),
+  },
+  guestSession: {
+    body: z
+      .object({
+        event_code: optionalNonEmptyString,
+        invite_token: optionalNonEmptyString,
+        pin: optionalNonEmptyString,
+      })
+      .refine((payload) => payload.event_code || payload.invite_token, {
+        message: "event_code or invite_token is required.",
+        path: ["event_code"],
+      }),
+  },
+  authInvite: {
+    body: z.object({
+      email: z.string().email({ message: "Must be a valid email address." }),
+      role: z.enum(["admin", "crew", "guest"]),
+      expires_in_hours: integerLike.optional(),
+      pin: optionalNonEmptyString,
+    }),
+  },
+  authAcceptInvite: {
+    body: z.object({
+      token: nonEmptyString,
+      password: z
+        .string()
+        .min(8, { message: "Password must be at least 8 characters." })
+        .optional(),
+      pin: optionalNonEmptyString,
+    }),
+  },
 };
 
 const validate = (schemaConfig) => {

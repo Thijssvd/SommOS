@@ -1,6 +1,8 @@
 // SommOS Backend API Tests
 // Comprehensive test suite for all API endpoints
 
+process.env.SOMMOS_AUTH_TEST_BYPASS = process.env.SOMMOS_AUTH_TEST_BYPASS || 'true';
+
 const request = require('supertest');
 
 // Mock the database and core modules to avoid external dependencies during testing
