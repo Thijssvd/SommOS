@@ -50,6 +50,7 @@ async function getServices() {
 
 const sendError = (res, status, code, message, details) => {
     const payload = {
+        success: false,
         error: {
             code,
             message
