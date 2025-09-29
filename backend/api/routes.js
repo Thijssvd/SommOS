@@ -15,6 +15,16 @@ const { validate, validators } = require('../middleware/validate');
 
 let servicesPromise = null;
 
+const SYNC_CHANGE_TABLES = [
+    { table: 'Wines', key: 'wines' },
+    { table: 'Vintages', key: 'vintages' },
+    { table: 'Stock', key: 'stock' },
+    { table: 'Suppliers', key: 'suppliers' },
+    { table: 'PriceBook', key: 'price_book' },
+    { table: 'InventoryIntakeOrders', key: 'inventory_intake_orders' },
+    { table: 'InventoryIntakeItems', key: 'inventory_intake_items' }
+];
+
 async function createServices() {
     const db = Database.getInstance();
     const learningEngine = new LearningEngine(db);
@@ -274,7 +284,8 @@ router.post('/inventory/consume', validate(validators.inventoryConsume), asyncHa
             location,
             quantity,
             notes,
-            created_by
+            created_by,
+            req.body.sync || {}
         );
 
         res.json({
@@ -282,9 +293,14 @@ router.post('/inventory/consume', validate(validators.inventoryConsume), asyncHa
             data: result
         });
     } catch (error) {
+        const conflict = typeof InventoryManager.isConflictError === 'function'
+            && InventoryManager.isConflictError(error);
+        if (conflict) {
+            return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+        }
         sendError(res, 500, 'INVENTORY_CONSUME_FAILED', error.message || 'Failed to record consumption.');
     }
-}))); 
+})));
 
 // POST /api/inventory/receive
 // Record wine receipt/delivery
@@ -308,7 +324,8 @@ router.post('/inventory/receive', validate(validators.inventoryReceive), asyncHa
             unit_cost,
             reference_id,
             notes,
-            created_by
+            created_by,
+            req.body.sync || {}
         );
 
         res.json({
@@ -356,7 +373,7 @@ router.post('/inventory/intake/:intakeId/receive', validate(validators.inventory
         const result = await inventoryManager.receiveInventoryIntake(
             intakeId,
             receipts,
-            { created_by, notes }
+            { created_by, notes, sync: req.body.sync }
         );
 
         res.json({
@@ -411,7 +428,8 @@ router.post('/inventory/move', validate(validators.inventoryMove), asyncHandler(
             to_location,
             quantity,
             notes,
-            created_by
+            created_by,
+            req.body.sync || {}
         );
 
         res.json({
@@ -419,9 +437,14 @@ router.post('/inventory/move', validate(validators.inventoryMove), asyncHandler(
             data: result
         });
     } catch (error) {
+        const conflict = typeof InventoryManager.isConflictError === 'function'
+            && InventoryManager.isConflictError(error);
+        if (conflict) {
+            return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+        }
         sendError(res, 500, 'INVENTORY_MOVE_FAILED', error.message || 'Failed to move inventory.');
     }
-}))); 
+})));
 
 // POST /api/inventory/reserve
 // Reserve wine for future service
@@ -443,7 +466,8 @@ router.post('/inventory/reserve', validate(validators.inventoryReserve), asyncHa
             location,
             quantity,
             notes,
-            created_by
+            created_by,
+            req.body.sync || {}
         );
 
         res.json({
@@ -451,9 +475,14 @@ router.post('/inventory/reserve', validate(validators.inventoryReserve), asyncHa
             data: result
         });
     } catch (error) {
+        const conflict = typeof InventoryManager.isConflictError === 'function'
+            && InventoryManager.isConflictError(error);
+        if (conflict) {
+            return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+        }
         sendError(res, 500, 'INVENTORY_RESERVE_FAILED', error.message || 'Failed to reserve inventory.');
     }
-}))); 
+})));
 
 // GET /api/inventory/ledger/:vintage_id
 // Get transaction history for a vintage
@@ -634,7 +663,11 @@ router.post('/wines', validate(validators.winesCreate), asyncHandler(withService
     }
 
     try {
-        const result = await inventoryManager.addWineToInventory(wine, vintage, stock);
+        const result = await inventoryManager.addWineToInventory(wine, vintage, stock, {
+            sync: req.body.sync,
+            updated_by: stock?.created_by || req.body?.sync?.updated_by,
+            origin: req.body?.sync?.origin || 'inventory.wine.create'
+        });
 
         res.status(201).json({
             success: true,
@@ -960,6 +993,52 @@ router.get('/system/health', validate(), asyncHandler(async (req, res) => {
         sendError(res, 500, 'SYSTEM_HEALTH_FAILED', error.message || 'Failed to retrieve system health.');
     }
 }));
+
+// ============================================================================
+// SYNC ENDPOINTS
+// ============================================================================
+
+// GET /api/sync/changes
+// Retrieve delta updates for syncable resources since a Unix timestamp
+router.get('/sync/changes', validate(validators.syncChanges), asyncHandler(withServices(async ({ db }, req, res) => {
+    const sinceParam = req.query.since;
+    const parsedSince = typeof sinceParam === 'number'
+        ? sinceParam
+        : Number.parseInt(sinceParam, 10);
+
+    const since = Number.isFinite(parsedSince) && parsedSince > 0 ? parsedSince : 0;
+    const payload = {};
+    let latest = since;
+
+    for (const { table, key } of SYNC_CHANGE_TABLES) {
+        const rows = await db.all(
+            `SELECT * FROM ${table} WHERE updated_at > ? ORDER BY updated_at ASC`,
+            [since]
+        );
+
+        payload[key] = rows;
+
+        for (const row of rows) {
+            const rowTimestamp = typeof row.updated_at === 'number'
+                ? row.updated_at
+                : Number.parseInt(row.updated_at, 10);
+
+            if (Number.isFinite(rowTimestamp) && rowTimestamp > latest) {
+                latest = rowTimestamp;
+            }
+        }
+    }
+
+    res.json({
+        success: true,
+        data: payload,
+        meta: {
+            since,
+            latest,
+            tables: SYNC_CHANGE_TABLES.map(({ key }) => key)
+        }
+    });
+})));
 
 // GET /api/system/activity
 // Recent system activity derived from ledger and intake updates

@@ -3,12 +3,15 @@
 
 import { SommOSAPI } from './api';
 import { SommOSUI } from './ui';
+import { SommOSSyncService } from './sync';
 import Chart from 'chart.js/auto';
 
 export class SommOS {
     constructor() {
         this.currentView = 'dashboard';
         this.api = new SommOSAPI();
+        this.syncService = new SommOSSyncService({ api: this.api });
+        this.api.setSyncService(this.syncService);
         this.ui = new SommOSUI();
         this.isOnline = navigator.onLine;
         this.init();
@@ -57,6 +60,9 @@ export class SommOS {
         // Initialize offline storage
         if ('indexedDB' in window) {
             await this.initializeOfflineStorage();
+            if (navigator.onLine) {
+                await this.syncService?.processQueue();
+            }
         }
         
         // Check API connectivity
@@ -70,31 +76,23 @@ export class SommOS {
     }
 
     async initializeOfflineStorage() {
-        // Initialize IndexedDB for offline storage
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open('SommOSDB', 1);
+        // Initialize IndexedDB (via idb) for offline storage and sync queue persistence
+        try {
+            await this.syncService.initialize({
+                dbName: 'SommOSDB',
+                storeName: 'sync_queue',
+                version: 2,
+                extraStores: [
+                    { name: 'wines', options: { keyPath: 'id' } },
+                    { name: 'inventory', options: { keyPath: 'id' } },
+                    { name: 'pairings', options: { keyPath: 'id' } }
+                ]
+            });
 
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                this.db = request.result;
-                resolve();
-            };
-
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-
-                // Create object stores
-                if (!db.objectStoreNames.contains('wines')) {
-                    db.createObjectStore('wines', { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains('inventory')) {
-                    db.createObjectStore('inventory', { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains('pairings')) {
-                    db.createObjectStore('pairings', { keyPath: 'id' });
-                }
-            };
-        });
+            this.db = this.syncService.getDB();
+        } catch (error) {
+            console.warn('Failed to initialize offline storage', error);
+        }
     }
 
     setupDishBuilder() {
@@ -373,15 +371,34 @@ export class SommOS {
         }
 
         // Online/offline detection
-        window.addEventListener('online', () => {
+        window.addEventListener('online', async () => {
             this.isOnline = true;
             this.ui.showToast('Connection restored', 'success');
+            await this.syncService?.processQueue();
             this.syncData();
         });
 
         window.addEventListener('offline', () => {
             this.isOnline = false;
             this.ui.showToast('Working offline', 'warning');
+        });
+
+        window.addEventListener('sommos:sync-queued', (event) => {
+            const detail = event?.detail;
+            const label = detail?.endpoint ? ` for ${detail.endpoint}` : '';
+            this.ui.showToast(`Action queued${label}`, 'info');
+        });
+
+        window.addEventListener('sommos:sync-processed', (event) => {
+            const detail = event?.detail;
+            const label = detail?.endpoint ? ` from ${detail.endpoint}` : '';
+            this.ui.showToast(`Queued action synced${label}`, 'success');
+        });
+
+        window.addEventListener('sommos:sync-error', (event) => {
+            const detail = event?.detail;
+            const message = detail?.error ? `Sync retry scheduled: ${detail.error}` : 'Sync attempt failed, will retry soon';
+            this.ui.showToast(message, 'warning');
         });
 
         this.setupDishBuilder();
@@ -1947,20 +1964,34 @@ export class SommOS {
             return;
         }
 
+        if (!this.syncService) {
+            this.ui.showToast('Sync service unavailable', 'error');
+            return;
+        }
+
+        const syncBtn = document.getElementById('sync-btn');
+
         try {
-            const syncBtn = document.getElementById('sync-btn');
-            syncBtn.classList.add('syncing');
-            
-            // Sync logic would go here
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate sync
-            
-            this.ui.showToast('Data synchronized', 'success');
+            if (syncBtn) {
+                syncBtn.classList.add('syncing');
+            }
+
+            const result = await this.syncService.processQueue();
+
+            if (result.processed > 0) {
+                this.ui.showToast(`Synced ${result.processed} queued action(s)`, 'success');
+            } else if (result.pending > 0) {
+                this.ui.showToast('Sync in progress, pending actions remain', 'info');
+            } else {
+                this.ui.showToast('No queued actions to sync', 'success');
+            }
         } catch (error) {
             console.error('Sync failed:', error);
             this.ui.showToast('Sync failed', 'error');
         } finally {
-            const syncBtn = document.getElementById('sync-btn');
-            syncBtn.classList.remove('syncing');
+            if (syncBtn) {
+                syncBtn.classList.remove('syncing');
+            }
         }
     }
 

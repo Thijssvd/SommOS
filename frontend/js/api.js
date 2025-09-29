@@ -48,10 +48,13 @@ export class SommOSAPI {
 
         this.baseURL = computedBase.replace(/\/$/, '');
         this.timeout = 10000; // 10 seconds default timeout
+        this.syncService = null;
     }
 
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
+        const { sync: syncContext, skipQueue = false, allowQueue = true } = options;
+
         const config = {
             ...options,
             headers: {
@@ -61,8 +64,28 @@ export class SommOSAPI {
             }
         };
 
+        delete config.sync;
+        delete config.skipQueue;
+        delete config.allowQueue;
+
         if (!config.headers['Content-Type']) {
             delete config.headers['Content-Type'];
+        }
+
+        const method = (config.method || 'GET').toUpperCase();
+        const isMutation = method !== 'GET' && method !== 'HEAD';
+        const shouldQueue = Boolean(this.syncService) && isMutation && allowQueue && !skipQueue;
+
+        if (shouldQueue && typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+            await this.syncService.enqueue({
+                endpoint,
+                method,
+                body: config.body,
+                headers: config.headers,
+                sync: syncContext
+            });
+
+            return { success: true, queued: true, offline: true };
         }
 
         try {
@@ -163,6 +186,21 @@ export class SommOSAPI {
         } catch (error) {
             console.error(`API request failed: ${endpoint}`, error);
 
+            const isNetworkError = error.name === 'AbortError'
+                || /Failed to fetch|NetworkError|load failed/i.test(error.message || '');
+
+            if (shouldQueue && isNetworkError) {
+                await this.syncService.enqueue({
+                    endpoint,
+                    method,
+                    body: config.body,
+                    headers: config.headers,
+                    sync: syncContext
+                });
+
+                return { success: true, queued: true, offline: true };
+            }
+
             // Provide more specific error messages
             if (error.name === 'AbortError') {
                 throw new Error(`Request timeout after ${this.timeout/1000} seconds. Please try again.`);
@@ -231,6 +269,33 @@ export class SommOSAPI {
             acc[key] = value;
             return acc;
         }, {});
+    }
+
+    setSyncService(syncService) {
+        this.syncService = syncService || null;
+        if (this.syncService && typeof this.syncService.setAPI === 'function') {
+            this.syncService.setAPI(this);
+        }
+    }
+
+    static generateOperationId() {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+
+        return `op_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    }
+
+    static createSyncContext(overrides = {}, defaults = {}) {
+        const merged = { ...defaults, ...overrides };
+        const now = Math.floor(Date.now() / 1000);
+
+        return {
+            op_id: merged.op_id || merged.opId || SommOSAPI.generateOperationId(),
+            origin: merged.origin || 'pwa',
+            updated_by: merged.updated_by || merged.updatedBy || 'SommOS PWA',
+            updated_at: merged.updated_at || merged.updatedAt || now
+        };
     }
 
     // System endpoints
@@ -309,7 +374,12 @@ export class SommOSAPI {
         return this.request('/locations');
     }
 
-    async consumeWine(vintageId, location, quantity, notes = '', createdBy = 'SommOS') {
+    async consumeWine(vintageId, location, quantity, notes = '', createdBy = 'SommOS', options = {}) {
+        const sync = SommOSAPI.createSyncContext(options.sync, {
+            updated_by: createdBy,
+            origin: 'inventory.consume'
+        });
+
         return this.request('/inventory/consume', {
             method: 'POST',
             body: JSON.stringify(SommOSAPI.cleanPayload({
@@ -317,12 +387,19 @@ export class SommOSAPI {
                 location,
                 quantity,
                 notes,
-                created_by: createdBy
-            }))
+                created_by: createdBy,
+                sync
+            })),
+            sync
         });
     }
 
-    async receiveWine(vintageId, location, quantity, unitCost, referenceId = '', notes = '', createdBy = 'SommOS') {
+    async receiveWine(vintageId, location, quantity, unitCost, referenceId = '', notes = '', createdBy = 'SommOS', options = {}) {
+        const sync = SommOSAPI.createSyncContext(options.sync, {
+            updated_by: createdBy,
+            origin: 'inventory.receive'
+        });
+
         return this.request('/inventory/receive', {
             method: 'POST',
             body: JSON.stringify(SommOSAPI.cleanPayload({
@@ -332,26 +409,44 @@ export class SommOSAPI {
                 unit_cost: unitCost,
                 reference_id: referenceId,
                 notes,
-                created_by: createdBy
-            }))
+                created_by: createdBy,
+                sync
+            })),
+            sync
         });
     }
 
     async createInventoryIntake(intakePayload) {
+        const sync = SommOSAPI.createSyncContext(intakePayload?.sync, {
+            updated_by: intakePayload?.created_by || 'Inventory Intake',
+            origin: 'inventory.intake.create'
+        });
+
         return this.request('/inventory/intake', {
             method: 'POST',
-            body: JSON.stringify(SommOSAPI.cleanPayload(intakePayload))
+            body: JSON.stringify(SommOSAPI.cleanPayload({
+                ...intakePayload,
+                sync
+            })),
+            sync
         });
     }
 
     async receiveInventoryIntake(intakeId, receipts, options = {}) {
+        const sync = SommOSAPI.createSyncContext(options.sync, {
+            updated_by: options.createdBy || options.created_by || 'Inventory Intake',
+            origin: 'inventory.intake.receive'
+        });
+
         return this.request(`/inventory/intake/${intakeId}/receive`, {
             method: 'POST',
             body: JSON.stringify(SommOSAPI.cleanPayload({
                 receipts,
                 created_by: options.createdBy || options.created_by,
-                notes: options.notes
-            }))
+                notes: options.notes,
+                sync
+            })),
+            sync
         });
     }
 
@@ -359,7 +454,12 @@ export class SommOSAPI {
         return this.request(`/inventory/intake/${intakeId}/status`);
     }
 
-    async moveWine(vintageId, fromLocation, toLocation, quantity, notes = '', createdBy = 'SommOS') {
+    async moveWine(vintageId, fromLocation, toLocation, quantity, notes = '', createdBy = 'SommOS', options = {}) {
+        const sync = SommOSAPI.createSyncContext(options.sync, {
+            updated_by: createdBy,
+            origin: 'inventory.move'
+        });
+
         return this.request('/inventory/move', {
             method: 'POST',
             body: JSON.stringify(SommOSAPI.cleanPayload({
@@ -368,12 +468,19 @@ export class SommOSAPI {
                 to_location: toLocation,
                 quantity,
                 notes,
-                created_by: createdBy
-            }))
+                created_by: createdBy,
+                sync
+            })),
+            sync
         });
     }
 
-    async reserveWine(vintageId, location, quantity, notes = '', createdBy = 'SommOS') {
+    async reserveWine(vintageId, location, quantity, notes = '', createdBy = 'SommOS', options = {}) {
+        const sync = SommOSAPI.createSyncContext(options.sync, {
+            updated_by: createdBy,
+            origin: 'inventory.reserve'
+        });
+
         return this.request('/inventory/reserve', {
             method: 'POST',
             body: JSON.stringify(SommOSAPI.cleanPayload({
@@ -381,8 +488,10 @@ export class SommOSAPI {
                 location,
                 quantity,
                 notes,
-                created_by: createdBy
-            }))
+                created_by: createdBy,
+                sync
+            })),
+            sync
         });
     }
 
@@ -391,10 +500,19 @@ export class SommOSAPI {
         return this.request(`/inventory/ledger/${vintageId}${query}`);
     }
 
-    async recordConsumption(consumptionData) {
+    async recordConsumption(consumptionData = {}) {
+        const sync = SommOSAPI.createSyncContext(consumptionData.sync, {
+            updated_by: consumptionData.created_by || consumptionData.createdBy || 'SommOS',
+            origin: 'inventory.consume'
+        });
+
         return this.request('/inventory/consume', {
             method: 'POST',
-            body: JSON.stringify(consumptionData)
+            body: JSON.stringify(SommOSAPI.cleanPayload({
+                ...consumptionData,
+                sync
+            })),
+            sync
         });
     }
 

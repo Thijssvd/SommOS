@@ -3,9 +3,19 @@
  * Core business logic for wine inventory management
  */
 
+const { randomUUID } = require('crypto');
 const Database = require('../database/connection');
 const VintageIntelligenceService = require('./vintage_intelligence');
 const InventoryIntakeProcessor = require('./inventory_intake_processor');
+
+class InventoryConflictError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'InventoryConflictError';
+        this.statusCode = 409;
+        this.code = 'INVENTORY_CONFLICT';
+    }
+}
 
 class InventoryManager {
     constructor(database, learningEngine = null) {
@@ -15,19 +25,76 @@ class InventoryManager {
         this.intakeProcessor = new InventoryIntakeProcessor();
     }
 
+    generateOperationId() {
+        try {
+            if (typeof randomUUID === 'function') {
+                return randomUUID();
+            }
+        } catch (error) {
+            // Ignore and fall back to manual generation
+        }
+
+        return `op_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    }
+
+    buildSyncContext(context = {}, fallback = {}) {
+        const now = Math.floor(Date.now() / 1000);
+        const normalized = {
+            updated_at: context.updated_at
+                ?? context.timestamp
+                ?? fallback.updated_at
+                ?? now,
+            updated_by: context.updated_by
+                || context.updatedBy
+                || fallback.updated_by
+                || fallback.updatedBy
+                || 'system',
+            origin: context.origin || fallback.origin || 'api',
+            op_id: context.op_id || context.opId || fallback.op_id || fallback.opId || null
+        };
+
+        if (!normalized.op_id) {
+            normalized.op_id = this.generateOperationId();
+        }
+
+        return normalized;
+    }
+
+    getSyncValues(context = {}, fallback = {}) {
+        const sync = this.buildSyncContext(context, fallback);
+        return { sync, params: [sync.updated_at, sync.updated_by, sync.op_id, sync.origin] };
+    }
+
     /**
      * Add new wine to inventory
      */
-    async addWineToInventory(wineData, vintageData, stockData) {
+    async addWineToInventory(wineData, vintageData, stockData, options = {}) {
         try {
+            const baseOrigin = options.origin || (options.sync && options.sync.origin) || 'inventory';
+            const actor = options.updated_by || options.updatedBy || stockData.created_by || 'Inventory Manager';
+            const baseContext = {
+                ...(options.sync || {}),
+                updated_by: actor,
+                origin: baseOrigin
+            };
+
             // Insert or get wine
-            let wine = await this.findOrCreateWine(wineData);
-            
+            let wine = await this.findOrCreateWine(wineData, {
+                ...baseContext,
+                origin: `${baseOrigin}.wine`
+            });
+
             // Insert or get vintage
-            let vintage = await this.findOrCreateVintage(wine.id, vintageData);
-            
+            let vintage = await this.findOrCreateVintage(wine.id, vintageData, {
+                ...baseContext,
+                origin: `${baseOrigin}.vintage`
+            });
+
             // Add to stock
-            await this.addToStock(vintage.id, stockData);
+            await this.addToStock(vintage.id, stockData, {
+                ...baseContext,
+                origin: `${baseOrigin}.stock`
+            });
             
             // Record in ledger
             const unitCost = stockData.cost_per_bottle || stockData.unit_cost || 0;
@@ -85,11 +152,19 @@ class InventoryManager {
 
             const orderDate = normalized.order_date || new Date().toISOString().slice(0, 10);
 
+            const syncContext = intakeRequest.sync || {};
+            const actor = intakeRequest.created_by || syncContext.updated_by || 'Inventory Intake';
+            const orderSync = this.getSyncValues(syncContext, {
+                updated_by: actor,
+                origin: syncContext.origin || 'inventory.intake.order'
+            });
+
             const orderResult = await this.db.run(`
                 INSERT INTO InventoryIntakeOrders (
                     supplier_id, supplier_name, source_type, reference,
-                    order_date, expected_delivery, status, raw_payload, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, 'ORDERED', ?, ?)
+                    order_date, expected_delivery, status, raw_payload, metadata,
+                    updated_at, updated_by, op_id, origin
+                ) VALUES (?, ?, ?, ?, ?, ?, 'ORDERED', ?, ?, ?, ?, ?, ?)
             `, [
                 normalized.supplier?.id || null,
                 normalized.supplier?.name || null,
@@ -98,7 +173,8 @@ class InventoryManager {
                 orderDate,
                 normalized.expected_delivery || null,
                 this.safeStringify(normalized.raw_payload || intakeRequest),
-                this.safeStringify(normalized.metadata || {})
+                this.safeStringify(normalized.metadata || {}),
+                ...orderSync.params
             ]);
 
             const intakeId = orderResult.lastID;
@@ -110,12 +186,18 @@ class InventoryManager {
                 const location = item.stock?.location || 'receiving';
                 const grapeVarieties = this.normalizeGrapeVarieties(item.wine?.grape_varieties);
 
+                const itemSync = this.getSyncValues(syncContext, {
+                    updated_by: actor,
+                    origin: syncContext.origin || 'inventory.intake.item'
+                });
+
                 await this.db.run(`
                     INSERT INTO InventoryIntakeItems (
                         intake_id, external_reference, wine_name, producer, region, country,
                         wine_type, grape_varieties, vintage_year, quantity_ordered,
-                        unit_cost, location, status, notes, wine_payload, vintage_payload, stock_payload
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ORDERED', ?, ?, ?, ?)
+                        unit_cost, location, status, notes, wine_payload, vintage_payload, stock_payload,
+                        updated_at, updated_by, op_id, origin
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ORDERED', ?, ?, ?, ?, ?, ?, ?, ?)
                 `, [
                     intakeId,
                     item.external_reference || null,
@@ -132,7 +214,8 @@ class InventoryManager {
                     item.stock?.notes || null,
                     this.safeStringify(item.wine || {}),
                     this.safeStringify(item.vintage || {}),
-                    this.safeStringify(item.stock || {})
+                    this.safeStringify(item.stock || {}),
+                    ...itemSync.params
                 ]);
 
                 itemsSummary.push({
@@ -284,19 +367,33 @@ class InventoryManager {
                     created_by: receipt.created_by || options.created_by || 'Inventory Intake'
                 };
 
-                const addition = await this.addWineToInventory(wineData, vintageData, stockData);
+                const addition = await this.addWineToInventory(wineData, vintageData, stockData, {
+                    sync: options.sync,
+                    updated_by: receipt.created_by || options.created_by || 'Inventory Intake',
+                    origin: options.sync?.origin || 'inventory.intake'
+                });
 
                 const updatedQuantity = item.quantity_received + quantityToReceive;
                 const newStatus = updatedQuantity >= item.quantity_ordered ? 'RECEIVED' : 'PARTIAL';
 
+                const { params } = this.getSyncValues(options.sync || {}, {
+                    updated_by: receipt.created_by || options.created_by || 'Inventory Intake',
+                    origin: options.sync?.origin || 'inventory.intake.item'
+                });
+
                 await this.db.run(`
                     UPDATE InventoryIntakeItems
-                    SET quantity_received = ?, status = ?, updated_at = CURRENT_TIMESTAMP,
+                    SET quantity_received = ?, status = ?,
+                        updated_at = ?,
+                        updated_by = ?,
+                        op_id = ?,
+                        origin = ?,
                         wine_id = COALESCE(wine_id, ?), vintage_id = COALESCE(vintage_id, ?)
                     WHERE id = ?
                 `, [
                     updatedQuantity,
                     newStatus,
+                    ...params,
                     addition.wine?.id || null,
                     addition.vintage?.id || null,
                     item.id
@@ -333,11 +430,20 @@ class InventoryManager {
 
             const orderStatus = allReceived ? 'RECEIVED' : (anyReceived ? 'PARTIALLY_RECEIVED' : 'ORDERED');
 
+            const { params } = this.getSyncValues(options.sync || {}, {
+                updated_by: options.created_by || 'Inventory Intake',
+                origin: options.sync?.origin || 'inventory.intake.order'
+            });
+
             await this.db.run(`
                 UPDATE InventoryIntakeOrders
-                SET status = ?, updated_at = CURRENT_TIMESTAMP
+                SET status = ?,
+                    updated_at = ?,
+                    updated_by = ?,
+                    op_id = ?,
+                    origin = ?
                 WHERE id = ?
-            `, [orderStatus, intakeId]);
+            `, [orderStatus, ...params, intakeId]);
 
             return {
                 success: true,
@@ -746,107 +852,139 @@ class InventoryManager {
     }
 
     // Helper methods
-    async findOrCreateWine(wineData) {
+    async findOrCreateWine(wineData, syncContext = {}) {
         const existing = await this.db.all(`
-            SELECT * FROM Wines 
+            SELECT * FROM Wines
             WHERE name = ? AND producer = ? AND region = ?
         `, [wineData.name, wineData.producer, wineData.region]);
-        
+
         if (existing.length > 0) {
             return existing[0];
         }
-        
+
+        const { params } = this.getSyncValues(syncContext, {
+            updated_by: wineData.updated_by || wineData.created_by || 'inventory-manager',
+            origin: syncContext.origin || 'inventory.wine'
+        });
+
         const result = await this.db.run(`
-            INSERT INTO Wines (name, producer, region, country, wine_type, grape_varieties, 
-                             alcohol_content, style, tasting_notes, food_pairings, 
-                             serving_temp_min, serving_temp_max)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Wines (name, producer, region, country, wine_type, grape_varieties,
+                             alcohol_content, style, tasting_notes, food_pairings,
+                             serving_temp_min, serving_temp_max, updated_at, updated_by, op_id, origin)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-            wineData.name, 
-            wineData.producer, 
-            wineData.region, 
+            wineData.name,
+            wineData.producer,
+            wineData.region,
             wineData.country || 'Unknown',
             wineData.wine_type,
             JSON.stringify(wineData.grape_varieties || []),
-            wineData.alcohol_content || null, 
-            wineData.style || null, 
+            wineData.alcohol_content || null,
+            wineData.style || null,
             wineData.tasting_notes || null,
-            JSON.stringify(wineData.food_pairings || []), 
+            JSON.stringify(wineData.food_pairings || []),
             wineData.serving_temp_min || null,
-            wineData.serving_temp_max || null
+            wineData.serving_temp_max || null,
+            ...params
         ]);
-        
+
         return { id: result.lastID, ...wineData };
     }
 
-    async findOrCreateVintage(wineId, vintageData) {
+    async findOrCreateVintage(wineId, vintageData, syncContext = {}) {
         const existing = await this.db.all(`
-            SELECT * FROM Vintages 
+            SELECT * FROM Vintages
             WHERE wine_id = ? AND year = ?
         `, [wineId, vintageData.year]);
-        
+
         if (existing.length > 0) {
             return existing[0];
         }
-        
+
+        const { params } = this.getSyncValues(syncContext, {
+            updated_by: vintageData.updated_by || 'inventory-manager',
+            origin: syncContext.origin || 'inventory.vintage'
+        });
+
         const result = await this.db.run(`
             INSERT INTO Vintages (wine_id, year, harvest_date, bottling_date, release_date,
                                 peak_drinking_start, peak_drinking_end, quality_score,
-                                weather_score, critic_score, production_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                weather_score, critic_score, production_notes, updated_at, updated_by, op_id, origin)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             wineId, vintageData.year, vintageData.harvest_date, vintageData.bottling_date,
             vintageData.release_date, vintageData.peak_drinking_start, vintageData.peak_drinking_end,
             vintageData.quality_score, vintageData.weather_score, vintageData.critic_score,
-            vintageData.production_notes
+            vintageData.production_notes,
+            ...params
         ]);
-        
+
         return { id: result.lastID, wine_id: wineId, ...vintageData };
     }
 
-    async addToStock(vintageId, stockData) {
+    async addToStock(vintageId, stockData, syncContext = {}) {
         const existing = await this.db.all(`
-            SELECT * FROM Stock 
+            SELECT * FROM Stock
             WHERE vintage_id = ? AND location = ?
         `, [vintageId, stockData.location]);
-        
+
         // Handle both cost_per_bottle and unit_cost field names
         const costPerBottle = stockData.cost_per_bottle || stockData.unit_cost || 0;
-        
+
+        const fallback = {
+            updated_by: stockData.updated_by || stockData.created_by || 'inventory-manager',
+            origin: syncContext.origin || 'inventory.stock'
+        };
+
         if (existing.length > 0) {
             // Update existing stock
+            const { params } = this.getSyncValues(syncContext, fallback);
             await this.db.run(`
-                UPDATE Stock 
-                SET quantity = quantity + ?, 
-                    cost_per_bottle = ?, 
+                UPDATE Stock
+                SET quantity = quantity + ?,
+                    cost_per_bottle = ?,
                     current_value = current_value + (? * ?),
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = ?,
+                    updated_by = ?,
+                    op_id = ?,
+                    origin = ?
                 WHERE vintage_id = ? AND location = ?
             `, [
                 stockData.quantity, costPerBottle,
                 stockData.quantity, costPerBottle,
+                ...params,
                 vintageId, stockData.location
             ]);
         } else {
             // Create new stock record
+            const { params } = this.getSyncValues(syncContext, fallback);
             await this.db.run(`
-                INSERT INTO Stock (vintage_id, location, quantity, cost_per_bottle, 
-                                 current_value, storage_conditions, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO Stock (vintage_id, location, quantity, cost_per_bottle,
+                                 current_value, storage_conditions, notes, updated_at, updated_by, op_id, origin)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 vintageId, stockData.location, stockData.quantity,
                 costPerBottle, stockData.quantity * costPerBottle,
-                JSON.stringify(stockData.storage_conditions || {}), stockData.notes || ''
+                JSON.stringify(stockData.storage_conditions || {}), stockData.notes || '',
+                ...params
             ]);
         }
     }
 
-    async updateStock(vintageId, location, quantityChange) {
+    async updateStock(vintageId, location, quantityChange, syncContext = {}) {
+        const { params } = this.getSyncValues(syncContext, {
+            updated_by: syncContext.updated_by || 'inventory-manager',
+            origin: syncContext.origin || 'inventory.stock.update'
+        });
         await this.db.run(`
-            UPDATE Stock 
-            SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP
+            UPDATE Stock
+            SET quantity = quantity + ?,
+                updated_at = ?,
+                updated_by = ?,
+                op_id = ?,
+                origin = ?
             WHERE vintage_id = ? AND location = ?
-        `, [quantityChange, vintageId, location]);
+        `, [quantityChange, ...params, vintageId, location]);
     }
 
     async checkAvailability(vintageId, location) {
@@ -978,31 +1116,40 @@ class InventoryManager {
     /**
      * Consume wine with proper validation
      */
-    async consumeWine(vintage_id, location, quantity, notes = null, created_by = null) {
+    async consumeWine(vintage_id, location, quantity, notes = null, created_by = null, syncContext = {}) {
         try {
             // Check current stock
             const currentStock = await this.db.get(`
-                SELECT quantity, reserved_quantity 
-                FROM Stock 
+                SELECT quantity, reserved_quantity
+                FROM Stock
                 WHERE vintage_id = ? AND location = ?
             `, [vintage_id, location]);
-            
+
             if (!currentStock) {
                 throw new Error('Wine not found in specified location');
             }
-            
+
             const availableQuantity = currentStock.quantity - currentStock.reserved_quantity;
             if (quantity > availableQuantity) {
-                throw new Error(`Insufficient stock. Available: ${availableQuantity}, Requested: ${quantity}`);
+                throw new InventoryConflictError(`Insufficient stock. Available: ${availableQuantity}, Requested: ${quantity}`);
             }
-            
+
+            const { params } = this.getSyncValues(syncContext, {
+                updated_by: created_by || 'inventory-consume',
+                origin: syncContext.origin || 'inventory.consume'
+            });
+
             // Update stock
             await this.db.run(`
-                UPDATE Stock 
-                SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP
+                UPDATE Stock
+                SET quantity = quantity - ?,
+                    updated_at = ?,
+                    updated_by = ?,
+                    op_id = ?,
+                    origin = ?
                 WHERE vintage_id = ? AND location = ?
-            `, [quantity, vintage_id, location]);
-            
+            `, [quantity, ...params, vintage_id, location]);
+
             // Record in ledger
             await this.recordTransaction({
                 vintage_id,
@@ -1028,6 +1175,9 @@ class InventoryManager {
             };
             
         } catch (error) {
+            if (error instanceof InventoryConflictError) {
+                throw error;
+            }
             throw new Error(`Failed to consume wine: ${error.message}`);
         }
     }
@@ -1035,44 +1185,40 @@ class InventoryManager {
     /**
      * Receive wine into inventory
      */
-    async receiveWine(vintage_id, location, quantity, unit_cost = null, reference_id = null, notes = null, created_by = null) {
+    async receiveWine(vintage_id, location, quantity, unit_cost = null, reference_id = null, notes = null, created_by = null, syncContext = {}) {
         try {
-            // Check if stock record exists
-            const existingStock = await this.db.get(`
-                SELECT id, quantity 
-                FROM Stock 
+            const baseContext = {
+                ...(syncContext || {}),
+                updated_by: created_by || syncContext.updated_by || 'inventory-receive',
+                origin: syncContext.origin || 'inventory.receive'
+            };
+
+            await this.addToStock(vintage_id, {
+                location,
+                quantity,
+                cost_per_bottle: unit_cost,
+                unit_cost,
+                notes,
+                storage_conditions: {},
+                created_by,
+                updated_by: created_by
+            }, baseContext);
+
+            const updatedStock = await this.db.get(`
+                SELECT quantity, cost_per_bottle
+                FROM Stock
                 WHERE vintage_id = ? AND location = ?
             `, [vintage_id, location]);
-            
-            let newQuantity;
-            
-            if (existingStock) {
-                // Update existing stock
-                newQuantity = existingStock.quantity + quantity;
-                await this.db.run(`
-                    UPDATE Stock 
-                    SET quantity = ?, 
-                        cost_per_bottle = COALESCE(?, cost_per_bottle),
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE vintage_id = ? AND location = ?
-                `, [newQuantity, unit_cost, vintage_id, location]);
-            } else {
-                // Create new stock record
-                newQuantity = quantity;
-                await this.db.run(`
-                    INSERT INTO Stock (vintage_id, location, quantity, cost_per_bottle, current_value)
-                    VALUES (?, ?, ?, ?, ?)
-                `, [vintage_id, location, quantity, unit_cost, unit_cost]);
-            }
-            
-            // Record in ledger
+
+            const effectiveCost = unit_cost ?? (updatedStock ? updatedStock.cost_per_bottle : null);
+
             await this.recordTransaction({
                 vintage_id,
                 location,
                 transaction_type: 'IN',
                 quantity,
-                unit_cost,
-                total_cost: unit_cost * quantity,
+                unit_cost: effectiveCost,
+                total_cost: typeof effectiveCost === 'number' ? effectiveCost * quantity : null,
                 reference_id,
                 notes,
                 created_by
@@ -1089,9 +1235,9 @@ class InventoryManager {
             return {
                 success: true,
                 message: `Received ${quantity} bottle(s)`,
-                total_stock: newQuantity
+                new_quantity: updatedStock ? updatedStock.quantity : quantity
             };
-            
+
         } catch (error) {
             throw new Error(`Failed to receive wine: ${error.message}`);
         }
@@ -1100,32 +1246,39 @@ class InventoryManager {
     /**
      * Reserve wine for service
      */
-    async reserveWine(vintage_id, location, quantity, notes = null, created_by = null) {
+    async reserveWine(vintage_id, location, quantity, notes = null, created_by = null, syncContext = {}) {
         try {
             // Check current stock
             const currentStock = await this.db.get(`
-                SELECT quantity, reserved_quantity 
-                FROM Stock 
+                SELECT quantity, reserved_quantity
+                FROM Stock
                 WHERE vintage_id = ? AND location = ?
             `, [vintage_id, location]);
-            
+
             if (!currentStock) {
                 throw new Error('Wine not found in specified location');
             }
-            
+
             const availableQuantity = currentStock.quantity - currentStock.reserved_quantity;
             if (quantity > availableQuantity) {
-                throw new Error(`Insufficient stock to reserve. Available: ${availableQuantity}`);
+                throw new InventoryConflictError(`Insufficient stock to reserve. Available: ${availableQuantity}`);
             }
-            
-            // Update reserved quantity
+
+            const { params } = this.getSyncValues(syncContext, {
+                updated_by: created_by || 'inventory-reserve',
+                origin: syncContext.origin || 'inventory.reserve'
+            });
+
             await this.db.run(`
-                UPDATE Stock 
-                SET reserved_quantity = reserved_quantity + ?, updated_at = CURRENT_TIMESTAMP
+                UPDATE Stock
+                SET reserved_quantity = reserved_quantity + ?,
+                    updated_at = ?,
+                    updated_by = ?,
+                    op_id = ?,
+                    origin = ?
                 WHERE vintage_id = ? AND location = ?
-            `, [quantity, vintage_id, location]);
-            
-            // Record in ledger
+            `, [quantity, ...params, vintage_id, location]);
+
             await this.recordTransaction({
                 vintage_id,
                 location,
@@ -1134,14 +1287,16 @@ class InventoryManager {
                 notes,
                 created_by
             });
-            
+
             return {
                 success: true,
-                message: `Reserved ${quantity} bottle(s)`,
-                reserved_total: currentStock.reserved_quantity + quantity
+                message: `Reserved ${quantity} bottle(s)`
             };
-            
+
         } catch (error) {
+            if (error instanceof InventoryConflictError) {
+                throw error;
+            }
             throw new Error(`Failed to reserve wine: ${error.message}`);
         }
     }
@@ -1149,84 +1304,89 @@ class InventoryManager {
     /**
      * Move wine between locations
      */
-    async moveWine(vintage_id, from_location, to_location, quantity, notes = null, created_by = null) {
+    async moveWine(vintage_id, from_location, to_location, quantity, notes = null, created_by = null, syncContext = {}) {
         try {
             // Check source stock
             const sourceStock = await this.db.get(`
-                SELECT quantity, reserved_quantity 
-                FROM Stock 
+                SELECT quantity, reserved_quantity, cost_per_bottle, current_value
+                FROM Stock
                 WHERE vintage_id = ? AND location = ?
             `, [vintage_id, from_location]);
-            
+
             if (!sourceStock) {
                 throw new Error('Wine not found in source location');
             }
-            
+
             const availableQuantity = sourceStock.quantity - sourceStock.reserved_quantity;
             if (quantity > availableQuantity) {
-                throw new Error(`Insufficient stock in source location. Available: ${availableQuantity}`);
+                throw new InventoryConflictError(`Insufficient stock in source location. Available: ${availableQuantity}`);
             }
-            
-            // Update source location
-            await this.db.run(`
-                UPDATE Stock 
-                SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP
-                WHERE vintage_id = ? AND location = ?
-            `, [quantity, vintage_id, from_location]);
-            
-            // Check if destination stock exists
+
+            const baseContext = {
+                ...(syncContext || {}),
+                updated_by: created_by || syncContext.updated_by || 'inventory-move',
+                origin: syncContext.origin || 'inventory.move'
+            };
+
+            await this.updateStock(vintage_id, from_location, -quantity, {
+                ...baseContext,
+                origin: `${baseContext.origin}.from`
+            });
+
             const destStock = await this.db.get(`
-                SELECT quantity 
-                FROM Stock 
+                SELECT quantity
+                FROM Stock
                 WHERE vintage_id = ? AND location = ?
             `, [vintage_id, to_location]);
-            
+
             if (destStock) {
-                // Update destination location
-                await this.db.run(`
-                    UPDATE Stock 
-                    SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE vintage_id = ? AND location = ?
-                `, [quantity, vintage_id, to_location]);
+                await this.updateStock(vintage_id, to_location, quantity, {
+                    ...baseContext,
+                    origin: `${baseContext.origin}.to`
+                });
             } else {
-                // Create new stock record at destination
-                const sourceStockFull = await this.db.get(`
-                    SELECT cost_per_bottle, current_value 
-                    FROM Stock 
-                    WHERE vintage_id = ? AND location = ?
-                `, [vintage_id, from_location]);
-                
-                await this.db.run(`
-                    INSERT INTO Stock (vintage_id, location, quantity, cost_per_bottle, current_value)
-                    VALUES (?, ?, ?, ?, ?)
-                `, [vintage_id, to_location, quantity, sourceStockFull.cost_per_bottle, sourceStockFull.current_value]);
+                await this.addToStock(vintage_id, {
+                    location: to_location,
+                    quantity,
+                    cost_per_bottle: sourceStock.cost_per_bottle,
+                    unit_cost: sourceStock.cost_per_bottle,
+                    notes,
+                    storage_conditions: {},
+                    created_by,
+                    updated_by: created_by
+                }, {
+                    ...baseContext,
+                    origin: `${baseContext.origin}.to`
+                });
             }
-            
-            // Record ledger entries
+
             await this.recordTransaction({
                 vintage_id,
                 location: from_location,
                 transaction_type: 'MOVE',
                 quantity: -quantity,
-                notes: `Moved to ${to_location}. ${notes || ''}`.trim(),
+                notes: notes ? `Moved to ${to_location}. ${notes}` : `Moved to ${to_location}`,
                 created_by
             });
-            
+
             await this.recordTransaction({
                 vintage_id,
                 location: to_location,
                 transaction_type: 'MOVE',
                 quantity,
-                notes: `Moved from ${from_location}. ${notes || ''}`.trim(),
+                notes: notes ? `Moved from ${from_location}. ${notes}` : `Moved from ${from_location}`,
                 created_by
             });
-            
+
             return {
                 success: true,
-                message: `Moved ${quantity} bottle(s) from ${from_location} to ${to_location}`
+                message: `Moved ${quantity} bottle(s)`
             };
-            
+
         } catch (error) {
+            if (error instanceof InventoryConflictError) {
+                throw error;
+            }
             throw new Error(`Failed to move wine: ${error.message}`);
         }
     }
@@ -1246,5 +1406,10 @@ class InventoryManager {
         `, [vintage_id, limit, offset]);
     }
 }
+
+InventoryManager.InventoryConflictError = InventoryConflictError;
+InventoryManager.isConflictError = (error) => error instanceof InventoryConflictError
+    || error?.statusCode === 409
+    || error?.code === 'INVENTORY_CONFLICT';
 
 module.exports = InventoryManager;

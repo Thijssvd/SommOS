@@ -65,6 +65,11 @@ module.exports = {
       displayName: 'Browser Compatibility',
       testMatch: ['**/tests/browser/**/*.test.js'],
       testEnvironment: 'jsdom'
+    },
+    {
+      displayName: 'Sync Workflow Tests',
+      testMatch: ['**/tests/sync/**/*.test.js'],
+      testEnvironment: 'node'
     }
   ],
   

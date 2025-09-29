@@ -1065,6 +1065,11 @@ When internet is unavailable:
 - Data syncs automatically when connection returns
 - Offline indicator shows current status
 
+#### Sync Conflict Resolution Rules
+- **Metadata fields follow last-write-wins (LWW):** Each mutation carries `updated_at`, `updated_by`, `op_id`, and `origin`. The server compares timestamps and replaces metadata with the most recent change when concurrent edits occur.
+- **Inventory deltas are additive:** Stock movements append ledger entries and adjust quantities incrementally so parallel receipts and consumptions accumulate rather than overwrite.
+- **Negative stock is rejected with HTTP 409:** If a request would drive available inventory below zero, the API returns a 409 Conflict with an explanatory error so the client can reconcile before retrying.
+
 ### Troubleshooting
 
 #### Common Issues
