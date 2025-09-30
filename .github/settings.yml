@@ -1,0 +1,20 @@
+branches:
+  - name: main
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - lint
+          - test
+          - build
+          - spec-parity
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        require_code_owner_reviews: false
+        dismiss_stale_reviews: false
+        require_last_push_approval: false
+      require_conversation_resolution: true
+      required_linear_history: true
+      allow_force_pushes: false
+      allow_deletions: false
+      enforce_admins: true
