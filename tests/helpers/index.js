@@ -15,41 +15,14 @@ class TestHelpers {
         // Initialize the database (this will load schema)
         await db.initialize();
         
-        // Load schema from schema.sql file with error handling
+        // Load schema from schema.sql file
         const fs = require('fs');
         const path = require('path');
         const schemaPath = path.join(__dirname, '../../backend/database/schema.sql');
         
         if (fs.existsSync(schemaPath)) {
             const schema = fs.readFileSync(schemaPath, 'utf8');
-            
-            // Execute the entire schema at once to maintain proper order
-            try {
-                await db.exec(schema);
-            } catch (error) {
-                // If full schema fails, try individual statements with better error handling
-                if (error.message.includes('already exists')) {
-                    console.log('Schema already loaded, continuing...');
-                } else {
-                    console.warn(`Schema loading failed: ${error.message}`);
-                    // Try to execute individual statements as fallback
-                    const statements = schema
-                        .split(';')
-                        .map(stmt => stmt.trim())
-                        .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
-                    
-                    for (const statement of statements) {
-                        try {
-                            await db.exec(statement + ';');
-                        } catch (stmtError) {
-                            // Ignore "table already exists" and "index already exists" errors
-                            if (!stmtError.message.includes('already exists')) {
-                                console.warn(`Schema statement failed: ${statement.substring(0, 50)}... - ${stmtError.message}`);
-                            }
-                        }
-                    }
-                }
-            }
+            await db.exec(schema);
         }
         
         // Create basic test dataset using factory
