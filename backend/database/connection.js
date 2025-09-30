@@ -14,6 +14,13 @@ class Database {
         return Database.instance;
     }
 
+    static resetInstance() {
+        if (Database.instance) {
+            Database.instance.close();
+            Database.instance = null;
+        }
+    }
+
     async initialize() {
         return new Promise((resolve, reject) => {
             this.db = new sqlite3.Database(this.dbPath, (err) => {

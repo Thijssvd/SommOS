@@ -185,17 +185,7 @@ CREATE TABLE IF NOT EXISTS Explanations (
 
 CREATE INDEX IF NOT EXISTS idx_explanations_entity ON Explanations(entity_type, entity_id);
 
-CREATE TABLE IF NOT EXISTS Memories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    subject_type TEXT NOT NULL,
-    subject_id TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    author_id TEXT,
-    note TEXT NOT NULL,
-    tags TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_memories_subject ON Memories(subject_type, subject_id);
+-- Memories table moved to System Tables section to avoid duplication
 
 CREATE TABLE InventoryIntakeOrders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

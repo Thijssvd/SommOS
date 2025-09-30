@@ -164,7 +164,7 @@ describe('Authentication lifecycle', () => {
     const cookies = response.headers['set-cookie'];
     const clearedRefresh = cookies.find((cookie) => cookie.startsWith('sommos_refresh_token='));
     expect(clearedRefresh).toBeDefined();
-    expect(clearedRefresh).toContain('Max-Age=0');
+    expect(clearedRefresh).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970 00:00:00 GMT/);
   });
 
   test('POST /api/auth/logout revokes refresh tokens and removes cookies', async () => {
@@ -192,9 +192,9 @@ describe('Authentication lifecycle', () => {
     const clearedRefresh = cookies.find((cookie) => cookie.startsWith('sommos_refresh_token='));
 
     expect(clearedAccess).toBeDefined();
-    expect(clearedAccess).toContain('Max-Age=0');
+    expect(clearedAccess).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970 00:00:00 GMT/);
     expect(clearedRefresh).toBeDefined();
-    expect(clearedRefresh).toContain('Max-Age=0');
+    expect(clearedRefresh).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970 00:00:00 GMT/);
 
     tokenRows = await db.all('SELECT token_hash FROM RefreshTokens WHERE user_id = ?', [user.id]);
     expect(tokenRows).toHaveLength(0);

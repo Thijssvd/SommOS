@@ -106,6 +106,12 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
+// Reset database instance between test suites
+afterEach(() => {
+  const Database = require('../backend/database/connection');
+  Database.resetInstance();
+});
+
 // Test utilities
 global.testUtils = {
   // Mock wine data generator

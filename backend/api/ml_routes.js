@@ -311,7 +311,7 @@ router.post('/models/create',
 
 // GET /api/ml/models/:modelId/:version?
 // Load a model by ID and version
-router.get('/models/:modelId/:version?', 
+router.get('/models/:modelId/:version', 
     requireRole('admin', 'crew'), 
     asyncHandler(async ({ modelManager }, req, res) => {
         const { modelId, version = 'latest' } = req.params;
