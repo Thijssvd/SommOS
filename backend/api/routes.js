@@ -8,6 +8,9 @@ const PairingEngine = require('../core/pairing_engine');
 const InventoryManager = require('../core/inventory_manager');
 const ProcurementEngine = require('../core/procurement_engine');
 const LearningEngine = require('../core/learning_engine');
+const EnhancedLearningEngine = require('../core/enhanced_learning_engine');
+const FeatureEngineeringService = require('../core/feature_engineering_service');
+const DataValidationService = require('../core/data_validation_service');
 const VintageIntelligenceService = require('../core/vintage_intelligence');
 const wineGuidanceService = require('../core/wine_guidance_service');
 const ExplainabilityService = require('../core/explainability_service');
@@ -37,6 +40,7 @@ const {
     serializeVintageProcurementRecommendations,
 } = require('../utils/serialize');
 const authRouter = require('./auth');
+const enhancedLearningRouter = require('./enhanced_learning_routes');
 
 let servicesPromise = null;
 
@@ -53,9 +57,13 @@ const SYNC_CHANGE_TABLES = [
 async function createServices() {
     const db = Database.getInstance();
     const learningEngine = new LearningEngine(db);
+    const enhancedLearningEngine = new EnhancedLearningEngine(db);
+    const featureService = new FeatureEngineeringService(db);
+    const validationService = new DataValidationService();
 
     try {
         await learningEngine.initialize();
+        await enhancedLearningEngine.initialize();
     } catch (error) {
         console.warn('Learning engine initialization failed:', error.message);
     }
@@ -65,9 +73,12 @@ async function createServices() {
     return {
         db,
         learningEngine,
-        pairingEngine: new PairingEngine(db, learningEngine, explainabilityService),
-        inventoryManager: new InventoryManager(db, learningEngine),
-        procurementEngine: new ProcurementEngine(db, learningEngine),
+        enhancedLearningEngine,
+        featureService,
+        validationService,
+        pairingEngine: new PairingEngine(db, enhancedLearningEngine, explainabilityService),
+        inventoryManager: new InventoryManager(db, enhancedLearningEngine),
+        procurementEngine: new ProcurementEngine(db, enhancedLearningEngine),
         vintageIntelligenceService: new VintageIntelligenceService(db),
         explainabilityService
     };
@@ -130,6 +141,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 };
 
 router.use('/auth', authRouter);
+router.use('/learning', enhancedLearningRouter);
 
 const requireAuthAndRole = (...roles) => [requireAuth(), requireRole(...roles)];
 
