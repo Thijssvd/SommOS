@@ -97,6 +97,15 @@ CREATE TABLE WeatherVintage (
     UNIQUE(region, year)
 );
 
+CREATE TABLE IF NOT EXISTS WeatherCache (
+    key TEXT PRIMARY KEY,
+    payload TEXT NOT NULL,
+    fetched_at INTEGER NOT NULL,
+    ttl INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_weather_cache_expiry ON WeatherCache(fetched_at);
+
 CREATE TABLE RegionCalendar (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     region TEXT NOT NULL,

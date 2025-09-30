@@ -1177,6 +1177,71 @@ router.post(
     }))
 );
 
+// GET /api/vintage/:id/refresh-weather
+// Refresh cached weather analysis for a specific vintage
+router.get(
+    '/vintage/:id/refresh-weather',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.vintageRefreshWeather),
+    asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
+        const { id } = req.params;
+        const { force: forceParam = false } = req.query;
+        const forceRefresh = Boolean(forceParam);
+
+        try {
+            const vintage = await db.get(`
+                SELECT v.id, v.year, v.wine_id,
+                       w.name AS wine_name,
+                       w.producer AS wine_producer,
+                       w.region AS wine_region,
+                       w.country AS wine_country
+                FROM Vintages v
+                JOIN Wines w ON v.wine_id = w.id
+                WHERE v.id = ?
+            `, [id]);
+
+            if (!vintage) {
+                return sendError(res, 404, 'VINTAGE_NOT_FOUND', 'Vintage not found.');
+            }
+
+            const aliasRow = await db.get(`
+                SELECT alias_name
+                FROM Aliases
+                WHERE wine_id = ?
+                ORDER BY created_at ASC
+                LIMIT 1
+            `, [vintage.wine_id]);
+
+            const aliasName = aliasRow ? aliasRow.alias_name : null;
+
+            const weatherData = await vintageIntelligenceService.refreshVintageWeather(
+                { ...vintage, alias_name: aliasName },
+                {
+                    forceRefresh,
+                    vineyardAlias: aliasName
+                }
+            );
+
+            if (!weatherData) {
+                return sendError(res, 503, 'WEATHER_REFRESH_UNAVAILABLE', 'Unable to refresh weather data at this time.');
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    weatherAnalysis: weatherData,
+                    metadata: {
+                        forceRefresh,
+                        vineyardAlias: aliasName
+                    }
+                }
+            });
+        } catch (error) {
+            sendError(res, 500, 'WEATHER_REFRESH_FAILED', error.message || 'Failed to refresh weather data.');
+        }
+    }))
+);
+
 // GET /api/vintage/procurement-recommendations
 // Get procurement recommendations for current inventory
 router.get('/vintage/procurement-recommendations', validate(), asyncHandler(withServices(async ({ vintageIntelligenceService }, req, res) => {

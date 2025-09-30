@@ -127,6 +127,63 @@ class VintageIntelligenceService {
         }
     }
 
+    async refreshVintageWeather(vintageRecord, options = {}) {
+        if (!vintageRecord) {
+            throw new Error('Vintage record is required for weather refresh.');
+        }
+
+        const { forceRefresh = false, vineyardAlias = null } = options;
+        const regionCandidate = vintageRecord.region
+            || vintageRecord.wine_region
+            || vintageRecord.country
+            || vintageRecord.wine_country;
+        if (!regionCandidate || typeof regionCandidate !== 'string') {
+            throw new Error('Vintage region is required for weather refresh.');
+        }
+
+        const yearValue = Number(vintageRecord.year);
+        if (!Number.isFinite(yearValue)) {
+            throw new Error('Vintage year is required for weather refresh.');
+        }
+
+        const normalizedRegionKey = this.normalizeRegion(regionCandidate);
+
+        this.processedVintages.delete(`${normalizedRegionKey}_${yearValue}`);
+
+        const aliasCandidates = [
+            vineyardAlias,
+            vintageRecord.alias_name,
+            [vintageRecord.wine_producer, vintageRecord.wine_name]
+                .filter((part) => typeof part === 'string' && part.trim().length > 0)
+                .join(' ')
+                .trim(),
+            regionCandidate
+        ];
+
+        const resolvedAlias = aliasCandidates.find(
+            (candidate) => typeof candidate === 'string' && candidate.trim().length > 0
+        );
+
+        const weatherData = await this.weatherAnalysis.openMeteo.getVintageWeatherData(
+            regionCandidate,
+            yearValue,
+            {
+                vineyardAlias: resolvedAlias,
+                forceRefresh
+            }
+        );
+
+        if (weatherData) {
+            if (forceRefresh) {
+                await this.weatherAnalysis.clearCachedWeatherAnalysis(regionCandidate, yearValue);
+            }
+
+            await this.weatherAnalysis.cacheWeatherAnalysis(weatherData);
+        }
+
+        return weatherData;
+    }
+
     /**
      * Generate professional 3-sentence vintage summary
      */
