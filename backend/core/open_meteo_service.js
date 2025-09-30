@@ -12,6 +12,12 @@
 
 const axios = require('axios');
 const { getConfig } = require('../config/env');
+const Database = require('../database/connection');
+const ExplainabilityService = require('./explainability_service');
+
+const DEFAULT_CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30 days
+const MINIMUM_DATASET_DAYS = 90;
+const ENRICHMENT_MAX_CALLS_PER_HOUR = 120;
 
 class OpenMeteoService {
     constructor() {
@@ -22,6 +28,56 @@ class OpenMeteoService {
         // Wine region coordinates cache to minimize geocoding requests
         this.regionCoordinates = new Map();
 
+        // Weather cache infrastructure
+        this.db = Database.getInstance();
+        this.explainabilityService = new ExplainabilityService(this.db);
+        this.cacheTablePromise = null;
+
+        this.memoryCache = new Map();
+        this.memoryCacheMaxEntries = 200;
+        this.defaultCacheTtl = DEFAULT_CACHE_TTL;
+
+        const rateLimitConfig = (config.openMeteo && config.openMeteo.rateLimit) || {};
+        this.rateLimit = {
+            maxRequests: rateLimitConfig.maxRequests || 8,
+            windowMs: rateLimitConfig.windowMs || 60_000
+        };
+        this.requestTimestamps = [];
+
+        this.tokenBucket = {
+            capacity: ENRICHMENT_MAX_CALLS_PER_HOUR,
+            tokens: ENRICHMENT_MAX_CALLS_PER_HOUR,
+            refillRatePerMs: ENRICHMENT_MAX_CALLS_PER_HOUR / (60 * 60 * 1000),
+            lastRefill: Date.now()
+        };
+
+        this.retryConfig = {
+            attempts: 3,
+            baseDelayMs: 1000,
+            maxDelayMs: 8000,
+            jitterRatio: 0.3
+        };
+
+        this.circuitBreakerDefaults = {
+            state: 'CLOSED',
+            failureCount: 0,
+            threshold: 3,
+            cooldownMs: 60_000,
+            nextAttempt: 0
+        };
+        this.circuitBreakers = new Map();
+
+        this.baseHost = this.extractHost(this.baseUrl);
+        this.geocodingHost = this.extractHost(this.geocodingUrl);
+
+        this.qualityThresholds = {
+            minimumDays: MINIMUM_DATASET_DAYS,
+            minimumTemperatureValues: 70,
+            minimumPrecipitationValues: 60
+        };
+
+        this.cacheTablePromise = this.ensureCacheTable();
+
         // Initialize with major wine regions
         this.initializeWineRegions();
     }
@@ -30,6 +86,383 @@ class OpenMeteoService {
         const config = getConfig();
         return ['test', 'performance'].includes(config.nodeEnv) ||
             config.features.disableExternalCalls;
+    }
+
+    ensureCacheTable() {
+        if (!this.cacheTablePromise) {
+            this.cacheTablePromise = (async () => {
+                try {
+                    await this.db.exec(`
+                        CREATE TABLE IF NOT EXISTS WeatherCache (
+                            key TEXT PRIMARY KEY,
+                            payload TEXT NOT NULL,
+                            fetched_at INTEGER NOT NULL,
+                            ttl INTEGER NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_weather_cache_expiry
+                            ON WeatherCache(fetched_at);
+                    `);
+                } catch (error) {
+                    console.warn('Failed to initialize weather cache table:', error.message);
+                }
+            })();
+        }
+        return this.cacheTablePromise;
+    }
+
+    normalizeRegionInput(regionName) {
+        if (!regionName || typeof regionName !== 'string') {
+            return '';
+        }
+        return regionName.trim();
+    }
+
+    normalizeAlias(alias) {
+        if (!alias || typeof alias !== 'string') {
+            return 'default';
+        }
+        return alias.toLowerCase().trim().replace(/\s+/g, '_');
+    }
+
+    buildCacheKey(coordinates, year, alias) {
+        const safeLat = Number(coordinates.latitude || 0).toFixed(4);
+        const safeLon = Number(coordinates.longitude || 0).toFixed(4);
+        const safeYear = Number(year) || 0;
+        const normalizedAlias = this.normalizeAlias(alias);
+        return `lat:${safeLat}|lon:${safeLon}|year:${safeYear}|alias:${normalizedAlias}`;
+    }
+
+    getFromMemoryCache(key) {
+        const now = Date.now();
+        if (!this.memoryCache.has(key)) {
+            return null;
+        }
+
+        const entry = this.memoryCache.get(key);
+        if (!entry || entry.expiresAt <= now) {
+            this.memoryCache.delete(key);
+            return null;
+        }
+
+        // Refresh LRU ordering
+        this.memoryCache.delete(key);
+        this.memoryCache.set(key, entry);
+
+        return entry.payload;
+    }
+
+    setMemoryCache(key, payload, ttlMs) {
+        const expiresAt = Date.now() + ttlMs;
+        if (this.memoryCache.has(key)) {
+            this.memoryCache.delete(key);
+        }
+
+        this.memoryCache.set(key, {
+            payload,
+            expiresAt
+        });
+
+        if (this.memoryCache.size > this.memoryCacheMaxEntries) {
+            const oldestKey = this.memoryCache.keys().next().value;
+            if (oldestKey) {
+                this.memoryCache.delete(oldestKey);
+            }
+        }
+    }
+
+    async getCachedWeatherData(key) {
+        const memoryHit = this.getFromMemoryCache(key);
+        if (memoryHit) {
+            return memoryHit;
+        }
+
+        try {
+            await this.ensureCacheTable();
+            const row = await this.db.get(
+                'SELECT payload, fetched_at, ttl FROM WeatherCache WHERE key = ?',
+                [key]
+            );
+
+            if (!row) {
+                return null;
+            }
+
+            const expiresAt = Number(row.fetched_at) + Number(row.ttl);
+            if (Number.isFinite(expiresAt) && expiresAt > Date.now()) {
+                const payload = JSON.parse(row.payload);
+                this.setMemoryCache(key, payload, expiresAt - Date.now());
+                return payload;
+            }
+
+            await this.db.run('DELETE FROM WeatherCache WHERE key = ?', [key]);
+        } catch (error) {
+            console.warn('Weather cache read failed:', error.message);
+        }
+
+        return null;
+    }
+
+    async setCachedWeatherData(key, payload, ttlMs = this.defaultCacheTtl) {
+        const ttl = Math.max(ttlMs, 60_000);
+        const fetchedAt = Date.now();
+
+        this.setMemoryCache(key, payload, ttl);
+
+        try {
+            await this.ensureCacheTable();
+            await this.db.run(
+                'INSERT OR REPLACE INTO WeatherCache(key, payload, fetched_at, ttl) VALUES (?, ?, ?, ?)',
+                [
+                    key,
+                    JSON.stringify(payload),
+                    fetchedAt,
+                    ttl
+                ]
+            );
+        } catch (error) {
+            console.warn('Weather cache write failed:', error.message);
+        }
+    }
+
+    buildWeatherEntityId(region, year, alias) {
+        const normalizedRegion = this.normalizeAlias(region) || 'unknown_region';
+        const normalizedAlias = this.normalizeAlias(alias) || normalizedRegion;
+        const normalizedYear = Number(year);
+        const yearSegment = Number.isFinite(normalizedYear) ? String(normalizedYear) : 'unknown_year';
+        return `${normalizedRegion}:${yearSegment}:${normalizedAlias}`;
+    }
+
+    async recordWeatherExplanation({ region, year, alias, summary, factors = null }) {
+        if (!this.explainabilityService || !summary) {
+            return;
+        }
+
+        try {
+            await this.explainabilityService.createExplanation({
+                entityType: 'weather_enrichment',
+                entityId: this.buildWeatherEntityId(region, year, alias),
+                summary,
+                factors
+            });
+        } catch (error) {
+            console.warn('Failed to persist weather enrichment explanation:', error.message);
+        }
+    }
+
+    async delay(ms) {
+        if (!ms || ms <= 0) {
+            return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async throttleRequests() {
+        await this.consumeToken();
+
+        if (!this.rateLimit || !this.rateLimit.maxRequests) {
+            return;
+        }
+
+        const now = Date.now();
+        const windowStart = now - this.rateLimit.windowMs;
+        this.requestTimestamps = this.requestTimestamps.filter((timestamp) => timestamp >= windowStart);
+
+        if (this.requestTimestamps.length >= this.rateLimit.maxRequests) {
+            const earliest = this.requestTimestamps[0];
+            const waitTime = Math.max(0, this.rateLimit.windowMs - (now - earliest));
+            await this.delay(waitTime);
+        }
+
+        this.requestTimestamps.push(Date.now());
+    }
+
+    refillTokens() {
+        if (!this.tokenBucket) {
+            return;
+        }
+
+        const now = Date.now();
+        const elapsed = now - this.tokenBucket.lastRefill;
+        if (elapsed <= 0) {
+            return;
+        }
+
+        const replenished = elapsed * this.tokenBucket.refillRatePerMs;
+        this.tokenBucket.tokens = Math.min(
+            this.tokenBucket.capacity,
+            this.tokenBucket.tokens + replenished
+        );
+        this.tokenBucket.lastRefill = now;
+    }
+
+    async consumeToken() {
+        if (!this.tokenBucket) {
+            return;
+        }
+
+        while (true) {
+            this.refillTokens();
+
+            if (this.tokenBucket.tokens >= 1) {
+                this.tokenBucket.tokens -= 1;
+                return;
+            }
+
+            const deficit = 1 - this.tokenBucket.tokens;
+            const waitMs = Math.max(50, deficit / this.tokenBucket.refillRatePerMs);
+            await this.delay(waitMs);
+        }
+    }
+
+    extractHost(url) {
+        try {
+            return new URL(url).host;
+        } catch (error) {
+            return 'default';
+        }
+    }
+
+    getCircuitBreaker(host = 'default') {
+        if (!this.circuitBreakers.has(host)) {
+            this.circuitBreakers.set(host, { ...this.circuitBreakerDefaults });
+        }
+        return this.circuitBreakers.get(host);
+    }
+
+    assertCircuitBreaker(host = 'default') {
+        const breaker = this.getCircuitBreaker(host);
+        if (breaker.state !== 'OPEN') {
+            return;
+        }
+
+        if (Date.now() >= breaker.nextAttempt) {
+            breaker.state = 'HALF_OPEN';
+            return;
+        }
+
+        throw new Error('Open-Meteo service temporarily unavailable (circuit open)');
+    }
+
+    recordSuccess(host = 'default') {
+        const breaker = this.getCircuitBreaker(host);
+        breaker.failureCount = 0;
+        breaker.state = 'CLOSED';
+    }
+
+    recordFailure(host = 'default', error) {
+        const breaker = this.getCircuitBreaker(host);
+        breaker.failureCount += 1;
+        if (breaker.failureCount >= breaker.threshold) {
+            breaker.state = 'OPEN';
+            breaker.nextAttempt = Date.now() + breaker.cooldownMs;
+            console.warn(`Open-Meteo circuit breaker opened for ${host}:`, error.message);
+        }
+    }
+
+    isRetryableError(error) {
+        if (!error) {
+            return false;
+        }
+
+        if (error.code === 'ECONNABORTED' || error.code === 'ENOTFOUND') {
+            return true;
+        }
+
+        if (error.response) {
+            const status = error.response.status;
+            if (status === 429 || status >= 500) {
+                return true;
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    computeBackoffDelay(attempt) {
+        const exponentialDelay = Math.min(
+            this.retryConfig.baseDelayMs * 2 ** (attempt - 1),
+            this.retryConfig.maxDelayMs
+        );
+        const jitter = exponentialDelay * this.retryConfig.jitterRatio * Math.random();
+        return exponentialDelay + jitter;
+    }
+
+    async executeWithRetry(requestFn, host = 'default') {
+        let attempt = 0;
+        let lastError = null;
+
+        while (attempt < this.retryConfig.attempts) {
+            attempt += 1;
+
+            try {
+                this.assertCircuitBreaker(host);
+                await this.throttleRequests();
+                const result = await requestFn();
+                this.recordSuccess(host);
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.recordFailure(host, error);
+
+                if (!this.isRetryableError(error) || attempt >= this.retryConfig.attempts) {
+                    break;
+                }
+
+                const delayMs = this.computeBackoffDelay(attempt);
+                await this.delay(delayMs);
+            }
+        }
+
+        const breaker = this.getCircuitBreaker(host);
+        if (breaker.state === 'OPEN') {
+            throw new Error('Open-Meteo service unavailable (circuit open)');
+        }
+
+        throw lastError || new Error('Unknown Open-Meteo error');
+    }
+
+    shouldSkipEnrichment(rawData) {
+        if (!rawData || !rawData.daily) {
+            return true;
+        }
+
+        const daysAvailable = Array.isArray(rawData.daily.time) ? rawData.daily.time.length : 0;
+        if (daysAvailable < this.qualityThresholds.minimumDays) {
+            return true;
+        }
+
+        const hasTemps = this.countValidValues(rawData.daily.temperature_2m_max) >=
+            this.qualityThresholds.minimumTemperatureValues;
+        const hasPrecip = this.countValidValues(rawData.daily.precipitation_sum) >=
+            this.qualityThresholds.minimumPrecipitationValues;
+
+        return !(hasTemps && hasPrecip);
+    }
+
+    countValidValues(values = []) {
+        if (!Array.isArray(values)) {
+            return 0;
+        }
+        return values.filter((value) => value !== null && value !== undefined).length;
+    }
+
+    isDataQualityAcceptable(processedData) {
+        if (!processedData) {
+            return false;
+        }
+
+        const requiredFields = ['gdd', 'totalRainfall', 'phenology'];
+        const missingField = requiredFields.find((field) => processedData[field] === null || processedData[field] === undefined);
+        if (missingField) {
+            return false;
+        }
+
+        if (processedData.overallScore && processedData.overallScore < 50) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -113,15 +546,19 @@ class OpenMeteoService {
 
         // Geocode using Open-Meteo's geocoding API
         try {
-            const response = await axios.get(this.geocodingUrl, {
-                params: {
-                    name: regionName,
-                    count: 1,
-                    language: 'en',
-                    format: 'json'
-                },
-                timeout: 5000
-            });
+            const requestHost = this.geocodingHost;
+            const response = await this.executeWithRetry(
+                () => axios.get(this.geocodingUrl, {
+                    params: {
+                        name: regionName,
+                        count: 1,
+                        language: 'en',
+                        format: 'json'
+                    },
+                    timeout: 5000
+                }),
+                requestHost
+            );
 
             if (response.data.results && response.data.results.length > 0) {
                 const result = response.data.results[0];
@@ -129,7 +566,7 @@ class OpenMeteoService {
                     latitude: result.latitude,
                     longitude: result.longitude
                 };
-                
+
                 // Cache for future use
                 this.regionCoordinates.set(normalizedRegion, coordinates);
                 
@@ -175,15 +612,70 @@ class OpenMeteoService {
      * https://github.com/open-meteo/open-meteo/blob/main/openapi_historical_weather_api.yml
      */
     async getVintageWeatherData(region, year, options = {}) {
-        if (this.shouldBypassNetwork()) {
-            return null;
-        }
+        const normalizedRegion = this.normalizeRegionInput(region) || region;
+        const aliasInput = options.vineyardAlias || normalizedRegion;
+        const aliasNormalized = this.normalizeAlias(aliasInput);
+        const regionAliasNormalized = this.normalizeAlias(normalizedRegion || aliasInput);
+        const displayRegion = normalizedRegion || region || 'Unknown region';
+        const displayAlias = aliasInput || displayRegion;
 
-        console.log(`Fetching Open-Meteo data for ${region} ${year}`);
+        const forceRefresh = Boolean(options.forceRefresh);
 
         try {
-            // Get coordinates for the region
-            const coordinates = await this.getRegionCoordinates(region);
+            const coordinates = await this.getRegionCoordinates(normalizedRegion || region);
+            const cacheKey = this.buildCacheKey(coordinates, year, aliasNormalized);
+            const regionCacheKey = this.buildCacheKey(coordinates, year, regionAliasNormalized);
+            if (!forceRefresh) {
+                const cached = await this.getCachedWeatherData(cacheKey);
+                if (cached) {
+                    return cached;
+                }
+
+                if (aliasNormalized !== regionAliasNormalized) {
+                    const regionalCached = await this.getCachedWeatherData(regionCacheKey);
+                    if (regionalCached) {
+                        await this.recordWeatherExplanation({
+                            region: displayRegion,
+                            year,
+                            alias: displayAlias,
+                            summary: `Using regional weather cache for ${displayAlias} (${displayRegion}) ${year}.`,
+                            factors: ['regional_cache_fallback']
+                        });
+                        return regionalCached;
+                    }
+                }
+            } else {
+                this.memoryCache.delete(cacheKey);
+                if (aliasNormalized !== regionAliasNormalized) {
+                    this.memoryCache.delete(regionCacheKey);
+                }
+            }
+
+            if (this.shouldBypassNetwork()) {
+                console.warn('Open-Meteo network calls disabled; cache miss prevents enrichment.');
+                await this.recordWeatherExplanation({
+                    region: displayRegion,
+                    year,
+                    alias: displayAlias,
+                    summary: `Skipped weather enrichment for ${displayAlias} (${displayRegion}) ${year}: external calls disabled.`,
+                    factors: ['network_disabled']
+                });
+                return null;
+            }
+
+            if (!year || Number(year) > new Date().getFullYear()) {
+                console.warn(`Skipping Open-Meteo fetch for future year ${year}.`);
+                await this.recordWeatherExplanation({
+                    region: displayRegion,
+                    year,
+                    alias: displayAlias,
+                    summary: `Skipped weather enrichment for ${displayAlias} (${displayRegion}) ${year}: unsupported target year.`,
+                    factors: ['invalid_year']
+                });
+                return null;
+            }
+
+            console.log(`Fetching Open-Meteo data for ${normalizedRegion} ${year}`);
 
             // Define growing season (customizable via options)
             const startDate = options.startDate || `${year}-04-01`;
@@ -193,7 +685,7 @@ class OpenMeteoService {
             const dailyParams = [
                 // Temperature variables
                 'temperature_2m_max',
-                'temperature_2m_min', 
+                'temperature_2m_min',
                 'temperature_2m_mean',
                 'apparent_temperature_max',
                 'apparent_temperature_min',
@@ -270,25 +762,68 @@ class OpenMeteoService {
                 params.cell_selection = options.cell_selection;
             }
 
-            // Request comprehensive weather data
-            const response = await axios.get(this.baseUrl, {
-                params,
-                timeout: options.timeout || 15000,
-                headers: {
-                    'User-Agent': 'SommOS Wine Management System/1.0'
-                }
-            });
+            const requestHost = this.baseHost;
+            const requestFn = async () => {
+                const response = await axios.get(this.baseUrl, {
+                    params,
+                    timeout: Math.min(options.timeout ?? 5000, 5000),
+                    headers: {
+                        'User-Agent': 'SommOS Wine Management System/1.0'
+                    }
+                });
 
-            if (!response.data || !response.data.daily) {
-                throw new Error('Invalid response from Open-Meteo API');
+                if (!response.data || !response.data.daily) {
+                    throw new Error('Invalid response from Open-Meteo API');
+                }
+
+                return response.data;
+            };
+
+            const rawData = await this.executeWithRetry(requestFn, requestHost);
+
+            if (this.shouldSkipEnrichment(rawData)) {
+                console.warn('Open-Meteo dataset below quality thresholds; skipping enrichment.');
+                await this.recordWeatherExplanation({
+                    region: displayRegion,
+                    year,
+                    alias: displayAlias,
+                    summary: `Skipped weather enrichment for ${displayAlias} (${displayRegion}) ${year}: dataset below quality thresholds.`,
+                    factors: ['dataset_quality']
+                });
+                return null;
             }
 
-            // Process the weather data for wine analysis
-            return this.processVintageWeatherData(response.data, region, year);
+            const processed = this.processVintageWeatherData(rawData, normalizedRegion, year);
 
+            if (!this.isDataQualityAcceptable(processed)) {
+                console.warn('Processed Open-Meteo data below quality thresholds; skipping cache.');
+                await this.recordWeatherExplanation({
+                    region: displayRegion,
+                    year,
+                    alias: displayAlias,
+                    summary: `Skipped weather enrichment for ${displayAlias} (${displayRegion}) ${year}: processed metrics below quality thresholds.`,
+                    factors: ['processed_quality']
+                });
+                return null;
+            }
+
+            const ttl = options.cacheTtlMs || this.defaultCacheTtl;
+            await this.setCachedWeatherData(cacheKey, processed, ttl);
+            if (aliasNormalized !== regionAliasNormalized) {
+                await this.setCachedWeatherData(regionCacheKey, processed, ttl);
+            }
+
+            return processed;
         } catch (error) {
             console.error(`Open-Meteo API error for ${region} ${year}:`, error.message);
-            throw new Error(`Failed to fetch weather data: ${error.message}`);
+            await this.recordWeatherExplanation({
+                region: displayRegion,
+                year,
+                alias: displayAlias,
+                summary: `Skipped weather enrichment for ${displayAlias} (${displayRegion}) ${year}: ${error.message}.`,
+                factors: ['api_error']
+            });
+            return null;
         }
     }
 

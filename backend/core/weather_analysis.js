@@ -591,6 +591,22 @@ class WeatherAnalysisService {
         }
     }
 
+    async clearCachedWeatherAnalysis(region, year) {
+        if (!region || !year) {
+            return;
+        }
+
+        try {
+            await this.db.run(
+                `DELETE FROM WeatherVintage WHERE LOWER(region) = LOWER(?) AND year = ?`,
+                [region, year]
+            );
+            console.log(`Cleared cached weather analysis for ${region} ${year}`);
+        } catch (error) {
+            console.error('Error clearing cached weather analysis:', error.message);
+        }
+    }
+
     sanitizeForJson(data) {
         return Object.fromEntries(
             Object.entries(data)

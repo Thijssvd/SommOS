@@ -1540,6 +1540,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /vintage/{id}/refresh-weather:
+    get:
+      tags: [Vintage Intelligence]
+      summary: Refresh cached weather analysis for a vintage.
+      security:
+        - accessTokenCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Identifier of the vintage to refresh.
+          schema:
+            type: integer
+        - in: query
+          name: force
+          required: false
+          description: Force bypass of caches to retrieve fresh weather data.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Weather data refreshed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: object
+                    properties:
+                      weatherAnalysis:
+                        description: Processed weather metrics for the requested vintage.
+                        type: object
+                        additionalProperties: true
+                      metadata:
+                        type: object
+                        properties:
+                          forceRefresh:
+                            type: boolean
+                          vineyardAlias:
+                            type: string
+                            nullable: true
+        '404':
+          description: Vintage not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Weather refresh could not be completed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected failure refreshing weather data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /vintage/procurement-recommendations:
     get:
       tags: [Vintage Intelligence]

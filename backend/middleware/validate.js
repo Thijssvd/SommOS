@@ -195,6 +195,16 @@ const validators = {
       wine_id: z.union([nonEmptyString, integerLike]),
     }),
   },
+  vintageRefreshWeather: {
+    params: z.object({
+      id: integerLike,
+    }),
+    query: z
+      .object({
+        force: booleanLike.optional(),
+      })
+      .passthrough(),
+  },
   vintageBatchEnrich: {
     body: passthroughObject({
       filters: generalObject.optional(),

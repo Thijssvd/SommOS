@@ -150,7 +150,8 @@ const SAMPLE_DATA = {
             password_hash: null,
             created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
         }
-    ]
+    ],
+    weather_cache: []
 };
 
 const { getConfig } = require('../../config/env');
@@ -210,6 +211,12 @@ class MockDatabase {
 
         if (sql.includes('select 1')) {
             return { 1: 1 };
+        }
+
+        if (sql.includes('from weathercache') && sql.includes('where key = ?')) {
+            const key = params[0];
+            const entry = this.data.weather_cache.find((row) => row.key === key);
+            return entry ? { ...entry } : undefined;
         }
 
         if (sql.includes('from wines') && sql.includes('where id = ?')) {
@@ -385,6 +392,24 @@ class MockDatabase {
 
     async run(query, params = []) {
         const sql = query.toLowerCase();
+
+        if (sql.startsWith('delete from weathercache')) {
+            const [key] = params;
+            this.data.weather_cache = this.data.weather_cache.filter((entry) => entry.key !== key);
+            return { lastID: key, changes: 1 };
+        }
+
+        if (sql.startsWith('insert or replace into weathercache')) {
+            const [key, payload, fetchedAt, ttl] = params;
+            const existingIndex = this.data.weather_cache.findIndex((entry) => entry.key === key);
+            const row = { key, payload, fetched_at: fetchedAt, ttl };
+            if (existingIndex >= 0) {
+                this.data.weather_cache[existingIndex] = row;
+            } else {
+                this.data.weather_cache.push(row);
+            }
+            return { lastID: key, changes: 1 };
+        }
 
         if (sql.startsWith('insert into wines')) {
             const [name, producer, region, country, wineType, grapeVarieties] = params;
