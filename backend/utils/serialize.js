@@ -201,6 +201,20 @@ const PURCHASE_ORDER_FIELDS = [
 
 const PURCHASE_ORDER_VALIDATION_FIELDS = ["has_delivery_date", "notes_included"];
 
+const EXPLANATION_FIELDS_BY_ROLE = {
+  guest: ["id", "generated_at", "summary", "factors"],
+  crew: ["id", "entity_type", "entity_id", "generated_at", "summary", "factors"],
+};
+
+EXPLANATION_FIELDS_BY_ROLE.admin = EXPLANATION_FIELDS_BY_ROLE.crew;
+
+const MEMORY_FIELDS_BY_ROLE = {
+  guest: ["id", "created_at", "note", "tags"],
+  crew: ["id", "subject_type", "subject_id", "created_at", "author_id", "note", "tags"],
+};
+
+MEMORY_FIELDS_BY_ROLE.admin = MEMORY_FIELDS_BY_ROLE.crew;
+
 const GUIDANCE_FIELDS = [
   "storage_temp_min",
   "storage_temp_max",
@@ -447,6 +461,169 @@ function parseJSON(value, fallback = null) {
   }
 }
 
+function normalizeArrayOrObject(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "object") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const parsed = parseJSON(trimmed, null);
+    if (parsed) {
+      return parsed;
+    }
+
+    if (trimmed.includes("\n")) {
+      return trimmed
+        .split("\n")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+    }
+
+    if (trimmed.includes(",")) {
+      return trimmed
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+    }
+
+    return trimmed;
+  }
+
+  return null;
+}
+
+const SENSITIVE_TAG_PATTERNS = [
+  /^internal(?::|\b)/i,
+  /^crew[-_\s]?only/i,
+  /^private(?::|\b)/i,
+  /^sensitive(?::|\b)/i,
+];
+
+const SENSITIVE_TAG_VISIBILITY = new Set([
+  "internal",
+  "crew",
+  "crew_only",
+  "private",
+  "restricted",
+  "confidential",
+]);
+
+function normalizeMemoryTagValue(tag) {
+  if (tag === null || tag === undefined) {
+    return null;
+  }
+
+  if (typeof tag === "string") {
+    const trimmed = tag.trim();
+    return trimmed ? trimmed : null;
+  }
+
+  if (typeof tag === "object") {
+    return { ...tag };
+  }
+
+  return null;
+}
+
+function isSensitiveTagForGuest(tag) {
+  if (tag === null || tag === undefined) {
+    return false;
+  }
+
+  if (typeof tag === "string") {
+    return SENSITIVE_TAG_PATTERNS.some((pattern) => pattern.test(tag));
+  }
+
+  if (typeof tag === "object") {
+    if (tag.is_sensitive === true || tag.private === true || tag.restricted === true) {
+      return true;
+    }
+
+    const sensitivityKeys = ["visibility", "audience", "sensitivity", "access_level"];
+    return sensitivityKeys.some((key) => {
+      const value = typeof tag[key] === "string" ? tag[key].toLowerCase() : null;
+      return value ? SENSITIVE_TAG_VISIBILITY.has(value) : false;
+    });
+  }
+
+  return false;
+}
+
+function sanitizeTagForGuest(tag) {
+  if (typeof tag !== "object" || tag === null) {
+    return tag;
+  }
+
+  const sanitized = { ...tag };
+  ["visibility", "audience", "sensitivity", "access_level", "private", "is_sensitive", "restricted"].forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(sanitized, key)) {
+      delete sanitized[key];
+    }
+  });
+  return sanitized;
+}
+
+function normalizeMemoryTagsForRole(tags, role) {
+  const normalizedArray = Array.isArray(tags)
+    ? tags
+    : tags !== null && tags !== undefined
+    ? [tags]
+    : [];
+
+  const cleaned = normalizedArray
+    .map((tag) => normalizeMemoryTagValue(tag))
+    .filter((tag) => tag !== null);
+
+  if (role !== "guest") {
+    return cleaned;
+  }
+
+  return cleaned
+    .filter((tag) => !isSensitiveTagForGuest(tag))
+    .map((tag) => sanitizeTagForGuest(tag));
+}
+
+function serializeExplanation(record, role = "guest") {
+  if (!record || typeof record !== "object") {
+    return {};
+  }
+
+  const fields = EXPLANATION_FIELDS_BY_ROLE[role] || EXPLANATION_FIELDS_BY_ROLE.guest;
+  const payload = pick(record, fields);
+  if (Object.prototype.hasOwnProperty.call(payload, "factors")) {
+    payload.factors = normalizeArrayOrObject(payload.factors);
+  }
+  return payload;
+}
+
+function serializeMemory(record, role = "guest") {
+  if (!record || typeof record !== "object") {
+    return {};
+  }
+
+  const fields = MEMORY_FIELDS_BY_ROLE[role] || MEMORY_FIELDS_BY_ROLE.guest;
+  const payload = pick(record, fields);
+  if (Object.prototype.hasOwnProperty.call(payload, "tags")) {
+    const normalized = normalizeArrayOrObject(payload.tags);
+    const sanitized = normalizeMemoryTagsForRole(normalized, role);
+    payload.tags = sanitized;
+  }
+  return payload;
+}
+
 function serializeUser(user) {
   if (!user) {
     return null;
@@ -578,6 +755,76 @@ function serializePairingRecommendation(recommendation) {
 
 function serializePairings(list) {
   return mapArray(list, serializePairingRecommendation);
+}
+
+function serializePairingExplanation(explanation) {
+  if (!explanation || typeof explanation !== "object") {
+    return null;
+  }
+
+  const payload = {};
+
+  if (explanation.summary) {
+    payload.summary = String(explanation.summary);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(explanation, "factors")) {
+    const normalized = normalizeArrayOrObject(explanation.factors);
+
+    if (Array.isArray(normalized)) {
+      const cleaned = normalized
+        .map((item) => (typeof item === "string" ? item.trim() : item))
+        .filter((item) => {
+          if (typeof item === "string") {
+            return item.length > 0;
+          }
+          if (item && typeof item === "object") {
+            return Object.keys(item).length > 0;
+          }
+          return false;
+        });
+
+      if (cleaned.length) {
+        payload.factors = cleaned;
+      }
+    } else if (normalized && typeof normalized === "object") {
+      const cleanedObject = Object.entries(normalized).reduce((acc, [key, value]) => {
+        if (value === null || value === undefined) {
+          return acc;
+        }
+        const stringValue = typeof value === "string" ? value.trim() : value;
+        if (stringValue !== "" && stringValue !== null) {
+          acc[key] = stringValue;
+        }
+        return acc;
+      }, {});
+
+      if (Object.keys(cleanedObject).length) {
+        payload.factors = cleanedObject;
+      }
+    } else if (typeof normalized === "string" && normalized.trim()) {
+      payload.factors = normalized.trim();
+    }
+  }
+
+  return Object.keys(payload).length ? payload : null;
+}
+
+function serializePairingResult(result) {
+  if (Array.isArray(result)) {
+    return { recommendations: serializePairings(result) };
+  }
+
+  const recommendations = serializePairings(result?.recommendations);
+  const explanation = serializePairingExplanation(result?.explanation);
+
+  const payload = { recommendations };
+
+  if (explanation) {
+    payload.explanation = explanation;
+  }
+
+  return payload;
 }
 
 function serializeWine(wine, { guidance, extraFields = [] } = {}) {
@@ -754,6 +1001,7 @@ module.exports = {
   serializeIntakeStatus,
   serializePairingRecommendation,
   serializePairings,
+  serializePairingResult,
   serializeWine,
   serializeWineList,
   serializeWineDetail,
@@ -766,4 +1014,6 @@ module.exports = {
   serializeInventoryIntakeItem,
   serializeVintageEnrichmentList,
   serializeVintageProcurementRecommendations,
+  serializeExplanation,
+  serializeMemory,
 };

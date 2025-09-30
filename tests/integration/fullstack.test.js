@@ -244,6 +244,10 @@ describe('SommOS Full Stack Integration Tests', () => {
 
             expect(pairingResponse.body.success).toBe(true);
             expect(pairingResponse.body.data).toBeDefined();
+            expect(Array.isArray(pairingResponse.body.data.recommendations)).toBe(true);
+            if (pairingResponse.body.data.explanation) {
+                expect(pairingResponse.body.data.explanation).toHaveProperty('summary');
+            }
 
             // 2. Test quick pairing
             const quickPairingResponse = await request(app)

@@ -11,8 +11,22 @@ jest.mock('../../backend/core/pairing_engine');
 jest.mock('../../backend/core/inventory_manager');
 jest.mock('../../backend/core/procurement_engine');
 jest.mock('../../backend/core/vintage_intelligence');
+jest.mock(
+    'cookie-parser',
+    () => jest.fn(() => (req, res, next) => next()),
+    { virtual: true }
+);
+jest.mock(
+    'bcrypt',
+    () => ({
+        hash: jest.fn(async (value) => `hashed:${value}`),
+        compare: jest.fn(async () => true),
+    }),
+    { virtual: true }
+);
 
 // Import after mocking
+const { authService } = require('../../backend/middleware/auth');
 const app = require('../../backend/server');
 
 describe('SommOS API Endpoints', () => {
@@ -244,13 +258,19 @@ describe('SommOS API Endpoints', () => {
                 options: {}
             };
 
-            const response = await request(app)
-                .post('/api/pairing/recommend')
-                .send(pairingRequest)
-                .expect(200);
+        const response = await request(app)
+            .post('/api/pairing/recommend')
+            .send(pairingRequest)
+            .expect(200);
 
-            expect(response.body.success).toBe(true);
-            expect(response.body.data).toBeDefined();
+        expect(response.body.success).toBe(true);
+        expect(response.body.data).toBeDefined();
+        expect(Array.isArray(response.body.data.recommendations)).toBe(true);
+        if (response.body.data.explanation) {
+            expect(response.body.data.explanation).toEqual(expect.objectContaining({
+                summary: expect.any(String),
+            }));
+        }
         });
 
         test('POST /api/pairing/recommend should require dish parameter', async () => {
@@ -265,7 +285,7 @@ describe('SommOS API Endpoints', () => {
                 .expect(400);
 
             expect(response.body.success).toBe(false);
-            expect(response.body.error).toContain('Dish information is required');
+            expect(response.body.error?.message || response.body.error).toContain('Dish information is required');
         });
 
         test('POST /api/pairing/quick should provide quick pairing suggestions', async () => {
@@ -626,6 +646,118 @@ describe('SommOS API Endpoints', () => {
             // Check for Helmet security headers
             expect(response.headers['x-content-type-options']).toBe('nosniff');
             expect(response.headers['x-frame-options']).toBeDefined();
+        });
+    });
+
+    describe('Explainability and Memories Endpoints', () => {
+        test('GET /api/explanations/:entity_type/:entity_id should return explanations', async () => {
+            const response = await request(app)
+                .get('/api/explanations/pairing/rec-1')
+                .expect(200);
+
+            expect(response.body.success).toBe(true);
+            expect(Array.isArray(response.body.data)).toBe(true);
+        });
+
+        test('GET /api/memories should retain sensitive tags for crew members', async () => {
+            const response = await request(app)
+                .get('/api/memories?subject_type=wine&subject_id=test-wine-1')
+                .expect(200);
+
+            expect(response.body.success).toBe(true);
+            const [firstMemory] = response.body.data;
+            if (firstMemory) {
+                expect(firstMemory.tags).toContain('internal:crew-note');
+            }
+        });
+
+        test('GET /api/memories should filter sensitive tags for guest role', async () => {
+            const verifySpy = jest
+                .spyOn(authService, 'verifyAccessToken')
+                .mockReturnValue({ sub: 'guest-user', role: 'guest', type: 'access' });
+            const getUserSpy = jest
+                .spyOn(authService, 'getUserById')
+                .mockResolvedValue({ id: 'guest-user', role: 'guest', email: 'guest@example.com' });
+
+            const response = await request(app)
+                .get('/api/memories?subject_type=wine&subject_id=test-wine-1')
+                .set('Authorization', 'Bearer guest-token')
+                .expect(200);
+
+            verifySpy.mockRestore();
+            getUserSpy.mockRestore();
+
+            expect(response.body.success).toBe(true);
+            expect(Array.isArray(response.body.data)).toBe(true);
+            if (response.body.data.length > 0) {
+                const tags = response.body.data[0].tags || [];
+                expect(tags).not.toContain('internal:crew-note');
+            }
+        });
+
+        test('POST /api/memories should reject guest submissions', async () => {
+            const verifySpy = jest
+                .spyOn(authService, 'verifyAccessToken')
+                .mockReturnValue({ sub: 'guest-user', role: 'guest', type: 'access' });
+            const getUserSpy = jest
+                .spyOn(authService, 'getUserById')
+                .mockResolvedValue({ id: 'guest-user', role: 'guest', email: 'guest@example.com' });
+
+            const response = await request(app)
+                .post('/api/memories')
+                .set('Authorization', 'Bearer guest-token')
+                .send({
+                    subject_type: 'wine',
+                    subject_id: 'test-wine-2',
+                    note: 'Guests should not be able to add this.',
+                    tags: ['service'],
+                })
+                .expect(403);
+
+            verifySpy.mockRestore();
+            getUserSpy.mockRestore();
+
+            expect(response.body.success).toBe(false);
+            expect(response.body.error?.code || response.body.error).toBe('FORBIDDEN');
+        });
+
+        test('POST /api/memories should create a memory note for crew members', async () => {
+            const verifySpy = jest
+                .spyOn(authService, 'verifyAccessToken')
+                .mockReturnValue({ sub: 'crew-user', role: 'crew', type: 'access' });
+            const getUserSpy = jest
+                .spyOn(authService, 'getUserById')
+                .mockResolvedValue({ id: 'crew-user', role: 'crew', email: 'crew@example.com' });
+
+            const payload = {
+                subject_type: 'wine',
+                subject_id: 'test-wine-2',
+                note: 'Pairs well with caviar service.',
+                tags: ['service', 'internal:crew-note'],
+            };
+
+            const response = await request(app)
+                .post('/api/memories')
+                .set('Authorization', 'Bearer crew-token')
+                .send(payload)
+                .expect(201);
+
+            verifySpy.mockRestore();
+            getUserSpy.mockRestore();
+
+            expect(response.body.success).toBe(true);
+            expect(response.body.data).toHaveProperty('note', payload.note);
+            expect(response.body.data).toHaveProperty('author_id', 'crew-user');
+            expect(response.body.data.tags).toContain('internal:crew-note');
+
+            const crewListResponse = await request(app)
+                .get('/api/memories?subject_type=wine&subject_id=test-wine-2')
+                .expect(200);
+
+            expect(crewListResponse.body.success).toBe(true);
+            const createdMemory = crewListResponse.body.data.find((memory) => memory.note === payload.note);
+            expect(createdMemory).toBeDefined();
+            expect(createdMemory.tags).toContain('internal:crew-note');
         });
     });
 

@@ -8,9 +8,10 @@ const Database = require('../database/connection');
 const { getConfig } = require('../config/env');
 
 class PairingEngine {
-    constructor(database, learningEngine = null) {
+    constructor(database, learningEngine = null, explainabilityService = null) {
         this.db = database || Database.getInstance();
         this.learningEngine = learningEngine;
+        this.explainabilityService = explainabilityService;
         const config = getConfig();
         this.openai = config.openAI.apiKey ? new OpenAI({
             apiKey: config.openAI.apiKey,
@@ -54,12 +55,26 @@ class PairingEngine {
             recommendations = await this.generateTraditionalPairings(dishContext, preferences);
         }
 
-        return await this.attachLearningMetadata(recommendations, {
+        const withMetadata = await this.attachLearningMetadata(recommendations, {
             dishDescription: typeof dish === 'string' ? dish : (dishContext?.name || ''),
             dishContext,
             preferences,
             generatedByAI
         });
+
+        const explanation = this.buildPairingExplanation(withMetadata, dishContext, {
+            context,
+            preferences,
+            generatedByAI,
+            dishDescription: typeof dish === 'string' ? dish : (dishContext?.name || dishContext?.description || '')
+        });
+
+        await this.persistPairingExplanation(withMetadata, explanation);
+
+        return {
+            recommendations: withMetadata,
+            explanation
+        };
     }
     
     /**
@@ -716,6 +731,219 @@ Focus on wines that create harmony or interesting contrasts with the dish. Consi
         } catch (error) {
             console.warn('Unable to attach learning metadata to pairing results:', error.message);
             return recommendations;
+        }
+    }
+
+    buildPairingExplanation(recommendations, dishContext = {}, {
+        context = {},
+        preferences = {},
+        generatedByAI = false,
+        dishDescription = ''
+    } = {}) {
+        if (!Array.isArray(recommendations) || recommendations.length === 0) {
+            return null;
+        }
+
+        const primary = recommendations[0] || {};
+        const wine = primary.wine || {};
+        const normalizedDish = dishContext?.name
+            || dishContext?.title
+            || dishContext?.description
+            || dishDescription
+            || 'this dish';
+
+        const summaryParts = [];
+        if (primary.reasoning) {
+            summaryParts.push(primary.reasoning);
+        } else {
+            const wineLabel = [wine.name, wine.year].filter(Boolean).join(' ') || 'Selected wine';
+            summaryParts.push(`${wineLabel} balances ${normalizedDish}.`);
+        }
+
+        const contextDetails = [];
+        if (context && typeof context === 'object') {
+            const occasion = context.occasion || context.event;
+            if (occasion) {
+                contextDetails.push(`occasion: ${occasion}`);
+            }
+            if (context.season) {
+                contextDetails.push(`season: ${context.season}`);
+            }
+            if (context.weather) {
+                contextDetails.push(`weather: ${context.weather}`);
+            }
+            if (context.guestCount || context.guest_count) {
+                const guests = context.guestCount || context.guest_count;
+                contextDetails.push(`${guests} guest${guests === 1 ? '' : 's'}`);
+            }
+        }
+
+        if (contextDetails.length) {
+            summaryParts.push(`Context: ${contextDetails.join(', ')}.`);
+        }
+
+        const summary = summaryParts.join(' ').trim();
+
+        const factors = [];
+        const addFactor = (label, value) => {
+            if (!value) {
+                return;
+            }
+            const trimmed = typeof value === 'string' ? value.trim() : value;
+            if (trimmed && !factors.includes(`${label}: ${trimmed}`)) {
+                factors.push(`${label}: ${trimmed}`);
+            }
+        };
+
+        const dishFlavors = Array.isArray(dishContext?.dominant_flavors)
+            ? dishContext.dominant_flavors
+            : typeof dishContext?.dominant_flavors === 'string'
+                ? dishContext.dominant_flavors.split(',')
+                    .map((entry) => entry.trim())
+                    .filter(Boolean)
+                : [];
+
+        if (dishFlavors.length) {
+            addFactor('Dish highlights', dishFlavors.join(', '));
+        }
+
+        if (dishContext?.preparation) {
+            addFactor('Preparation', dishContext.preparation);
+        }
+
+        if (dishContext?.cuisine) {
+            addFactor('Cuisine', dishContext.cuisine);
+        }
+
+        const score = primary.score || {};
+        const numericScoreFactor = (label, value, descriptor) => {
+            if (typeof value !== 'number') {
+                return;
+            }
+            const percentage = Math.round(value * 100);
+            addFactor(label, `${percentage}% ${descriptor}`);
+        };
+
+        numericScoreFactor('Style balance', score.style_match, 'body alignment');
+        numericScoreFactor('Flavor harmony', score.flavor_harmony, 'flavor synergy');
+        numericScoreFactor('Texture balance', score.texture_balance, 'texture alignment');
+        numericScoreFactor('Regional tradition', score.regional_tradition, 'classic pairing heritage');
+        numericScoreFactor('Seasonal fit', score.seasonal_appropriateness, 'seasonal suitability');
+
+        if (typeof score.total === 'number') {
+            numericScoreFactor('Overall match', score.total, 'overall pairing confidence');
+        } else if (typeof primary.confidence === 'number') {
+            numericScoreFactor('Overall match', primary.confidence, 'overall pairing confidence');
+        }
+
+        if (generatedByAI) {
+            addFactor('AI assistance', 'Recommendations enhanced with AI pairing analysis');
+        }
+
+        if (preferences) {
+            if (typeof preferences === 'string' && preferences.trim()) {
+                addFactor('Guest notes', preferences.trim());
+            } else if (typeof preferences === 'object') {
+                if (Array.isArray(preferences.dietary_restrictions) && preferences.dietary_restrictions.length) {
+                    addFactor('Dietary considerations', preferences.dietary_restrictions.join(', '));
+                }
+                if (preferences.guest_preferences) {
+                    addFactor('Guest preferences', Array.isArray(preferences.guest_preferences)
+                        ? preferences.guest_preferences.join(', ')
+                        : String(preferences.guest_preferences));
+                }
+                if (preferences.budget_range) {
+                    addFactor('Budget range', preferences.budget_range);
+                }
+            }
+        }
+
+        const alternates = recommendations.slice(1, 3)
+            .map((entry) => entry?.wine?.name)
+            .filter(Boolean);
+        if (alternates.length) {
+            addFactor('Alternate pours', alternates.join(', '));
+        }
+
+        return {
+            summary: summary || `${normalizedDish} pairing recommendations ready.`,
+            factors
+        };
+    }
+
+    buildRecommendationFactors(recommendation, explanation) {
+        const factors = [];
+
+        if (explanation?.factors) {
+            if (Array.isArray(explanation.factors)) {
+                factors.push(...explanation.factors);
+            } else if (typeof explanation.factors === 'object') {
+                Object.entries(explanation.factors)
+                    .forEach(([key, value]) => {
+                        if (value !== null && value !== undefined && value !== '') {
+                            factors.push(`${key}: ${value}`);
+                        }
+                    });
+            } else if (typeof explanation.factors === 'string') {
+                factors.push(explanation.factors);
+            }
+        }
+
+        const score = recommendation?.score || {};
+        const appendScore = (label, value, descriptor) => {
+            if (typeof value !== 'number') {
+                return;
+            }
+            const percentage = Math.round(value * 100);
+            const factorText = `${label}: ${percentage}% ${descriptor}`;
+            if (!factors.includes(factorText)) {
+                factors.push(factorText);
+            }
+        };
+
+        appendScore('Overall match', score.total, 'overall pairing confidence');
+        appendScore('Style balance', score.style_match, 'body alignment');
+        appendScore('Flavor harmony', score.flavor_harmony, 'flavor synergy');
+        appendScore('Texture balance', score.texture_balance, 'texture alignment');
+
+        if (recommendation?.reasoning && !factors.includes(recommendation.reasoning)) {
+            factors.push(recommendation.reasoning);
+        }
+
+        return factors;
+    }
+
+    async persistPairingExplanation(recommendations, explanation) {
+        if (!this.explainabilityService || !explanation || !explanation.summary) {
+            return;
+        }
+
+        if (!Array.isArray(recommendations) || recommendations.length === 0) {
+            return;
+        }
+
+        const timestamp = new Date().toISOString();
+
+        const tasks = recommendations
+            .filter((recommendation) => recommendation?.learning_recommendation_id)
+            .map((recommendation) => {
+                const entityId = recommendation.learning_recommendation_id;
+                const summary = recommendation.reasoning || explanation.summary;
+                const factors = this.buildRecommendationFactors(recommendation, explanation);
+
+                return this.explainabilityService.createExplanation({
+                    entityType: 'pairing_recommendation',
+                    entityId,
+                    summary,
+                    factors,
+                    generatedAt: timestamp
+                }).catch((error) => {
+                    console.warn('Failed to persist pairing explanation:', error.message);
+                });
+            });
+
+        if (tasks.length > 0) {
+            await Promise.all(tasks);
         }
     }
 }

@@ -8,6 +8,7 @@ const {
   booleanLike,
   generalObject,
   stringOrStringArray,
+  optionalStringOrArray,
 } = require("../schemas/common");
 const {
   inventoryConsumeSchema,
@@ -150,6 +151,43 @@ const validators = {
   vintageAnalysis: {
     params: z.object({
       wine_id: nonEmptyString,
+    }),
+  },
+  explanationsByEntity: {
+    params: z.object({
+      entity_type: nonEmptyString,
+      entity_id: nonEmptyString,
+    }),
+    query: z
+      .object({
+        limit: integerLike.optional(),
+      })
+      .passthrough(),
+  },
+  explainabilityCreate: {
+    body: passthroughObject({
+      entity_type: nonEmptyString,
+      entity_id: nonEmptyString,
+      summary: nonEmptyString,
+      factors: z.union([generalObject, stringOrStringArray]).optional(),
+      generated_at: optionalNonEmptyString,
+    }),
+  },
+  memoriesList: {
+    query: z
+      .object({
+        subject_type: nonEmptyString,
+        subject_id: nonEmptyString,
+        limit: integerLike.optional(),
+      })
+      .passthrough(),
+  },
+  memoriesCreate: {
+    body: passthroughObject({
+      subject_type: nonEmptyString,
+      subject_id: nonEmptyString,
+      note: nonEmptyString,
+      tags: optionalStringOrArray.or(generalObject).optional(),
     }),
   },
   vintageEnrich: {

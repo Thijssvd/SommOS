@@ -1,6 +1,6 @@
 class PairingEngine {
     async generatePairings(dish, context = {}) {
-        return [
+        const recommendations = [
             {
                 wine: {
                     id: 'test-wine-1',
@@ -17,12 +17,28 @@ class PairingEngine {
                     total: 0.92,
                     style_match: 0.9,
                     flavor_harmony: 0.95,
+                    texture_balance: 0.88,
+                    regional_tradition: 0.9,
+                    seasonal_appropriateness: 0.85,
                     confidence: 0.9
                 },
                 reasoning: `Balanced structure complements ${dish}.`,
-                ai_enhanced: true
+                ai_enhanced: true,
+                learning_session_id: 'session-test-1',
+                learning_recommendation_id: 'rec-test-1'
             }
         ];
+
+        return {
+            recommendations,
+            explanation: {
+                summary: `Automated test rationale for ${dish || 'the dish'}.`,
+                factors: [
+                    'Style balance: 90% body alignment',
+                    'Flavor harmony: 95% flavor synergy'
+                ]
+            }
+        };
     }
 
     async quickPairing(dish) {
