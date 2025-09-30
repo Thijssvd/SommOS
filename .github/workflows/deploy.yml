@@ -21,20 +21,17 @@ jobs:
     - name: Install dependencies
       run: npm install
       
-    - name: Create environment file
-      run: |
-        cat > .env << EOF
-        NODE_ENV=production
-        PORT=3000
-        DATABASE_PATH=./data/sommos.db
-        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-        SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-        JWT_SECRET=${{ secrets.JWT_SECRET }}
-        SENTRY_DSN=${{ secrets.SENTRY_DSN }}
-        CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
-        EOF
-        
     - name: Run tests
+      env:
+        NODE_ENV: production
+        PORT: 3000
+        DATABASE_PATH: ./data/sommos.db
+        OPEN_METEO_BASE: ${{ vars.OPEN_METEO_BASE || 'https://archive-api.open-meteo.com/v1/archive' }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        CORS_ORIGIN: ${{ vars.CORS_ORIGIN || 'https://sommos.yacht' }}
       run: npm test
       
     - name: Build application
