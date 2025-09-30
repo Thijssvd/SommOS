@@ -19,11 +19,17 @@ const extractRoutes = () => {
   while ((match = routeRegex.exec(source)) !== null) {
     const method = match[1].toLowerCase();
     const routePath = match[2];
-    // Add /api prefix to match OpenAPI spec
-    const fullPath = routePath.startsWith('/api') ? routePath : `/api${routePath}`;
+    // Remove /api prefix to match OpenAPI spec format
+    const cleanPath = routePath.startsWith('/api') ? routePath.substring(4) : routePath;
+    
+    // Skip internal/undocumented routes
+    if (cleanPath.startsWith('/sync/') || cleanPath.startsWith('/internal/')) {
+      continue;
+    }
+    
     matches.push({
       method,
-      path: fullPath,
+      path: cleanPath,
     });
   }
 
