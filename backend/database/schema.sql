@@ -163,6 +163,31 @@ CREATE TABLE PriceBook (
     UNIQUE(vintage_id, supplier_id)
 );
 
+-- Explainability Tables
+
+CREATE TABLE IF NOT EXISTS Explanations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    factors TEXT,
+    summary TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_explanations_entity ON Explanations(entity_type, entity_id);
+
+CREATE TABLE IF NOT EXISTS Memories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_type TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    author_id TEXT,
+    note TEXT NOT NULL,
+    tags TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_memories_subject ON Memories(subject_type, subject_id);
+
 CREATE TABLE InventoryIntakeOrders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     supplier_id INTEGER,

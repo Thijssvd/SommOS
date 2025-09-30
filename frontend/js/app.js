@@ -18,6 +18,8 @@ export class SommOS {
         this.hasBootstrapped = false;
         this.authElements = {};
         this.sessionWarningShown = false;
+        this.explanationsCache = new Map();
+        this.memoriesCache = new Map();
         this.init();
     }
 
@@ -97,6 +99,8 @@ export class SommOS {
         }
 
         this.sessionWarningShown = false;
+        this.explanationsCache.clear();
+        this.memoriesCache.clear();
         this.updateUserBadge();
         this.applyRoleVisibility(this.currentUser);
     }
@@ -1615,19 +1619,27 @@ export class SommOS {
             this.ui.showToast('Analyzing wine pairings with AI...', 'info');
             
             const response = await this.api.getPairings(dish, context, guestPreferences);
-            
+
             console.log('🍷 Pairing response received:', response);
-            
+
             if (response && response.success && response.data) {
-                if (response.data.length > 0) {
-                    this.ui.showToast(`Found ${response.data.length} wine recommendations!`, 'success');
-                    this.displayPairings(response.data);
+                const result = response.data;
+                const recommendations = Array.isArray(result?.recommendations)
+                    ? result.recommendations
+                    : Array.isArray(result)
+                        ? result
+                        : [];
+
+                if (recommendations.length > 0) {
+                    this.ui.showToast(`Found ${recommendations.length} wine recommendations!`, 'success');
                 } else {
                     this.ui.showToast('No wine pairings found. Try a different dish description.', 'warning');
-                    this.displayPairings([]);
                 }
+
+                this.displayPairings(result);
             } else {
-                throw new Error(response?.error || 'Invalid response from server');
+                const errorMessage = response?.error?.message || response?.error || 'Invalid response from server';
+                throw new Error(errorMessage);
             }
         } catch (error) {
             console.error('Pairing request failed:', error);
@@ -1651,12 +1663,22 @@ export class SommOS {
         }
     }
 
-    displayPairings(pairings) {
-        console.log('Displaying pairings:', pairings);
+    displayPairings(pairingsResult) {
+        console.log('Displaying pairings:', pairingsResult);
         const resultsDiv = document.getElementById('pairing-results');
         const listDiv = document.getElementById('pairing-list');
 
-        if (!pairings || pairings.length === 0) {
+        const recommendations = Array.isArray(pairingsResult)
+            ? pairingsResult
+            : Array.isArray(pairingsResult?.recommendations)
+                ? pairingsResult.recommendations
+                : [];
+
+        const overviewExplanation = pairingsResult && !Array.isArray(pairingsResult)
+            ? pairingsResult.explanation
+            : null;
+
+        if (!recommendations || recommendations.length === 0) {
             listDiv.innerHTML = `
                 <div class="no-pairings">
                     <h4>🍷 No pairings found</h4>
@@ -1667,11 +1689,28 @@ export class SommOS {
             return;
         }
 
-        listDiv.innerHTML = pairings.map((pairing, index) => {
+        const overviewHtml = overviewExplanation?.summary
+            ? `
+                <div class="pairing-explanation-overview fade-in">
+                    <h4>🧠 Service rationale</h4>
+                    <p>${overviewExplanation.summary}</p>
+                    ${this.formatExplanationFactors(overviewExplanation.factors) || ''}
+                </div>
+            `
+            : '';
+
+        const encodedFactors = overviewExplanation?.factors
+            ? encodeURIComponent(JSON.stringify(overviewExplanation.factors))
+            : '';
+
+        const cardsHtml = recommendations.map((pairing, index) => {
             const wine = pairing.wine || pairing;
             const score = pairing.score || {};
             const reasoning = pairing.reasoning || 'Great wine pairing recommendation!';
-            
+            const defaultSummary = pairing.reasoning || overviewExplanation?.summary || 'Service rationale pending.';
+            const encodedSummary = encodeURIComponent(defaultSummary);
+            const factorAttribute = encodedFactors ? ` data-default-factors="${encodedFactors}"` : '';
+
             return `
                 <div class="pairing-card fade-in" style="animation-delay: ${index * 0.1}s">
                     <div class="wine-header-pairing">
@@ -1688,14 +1727,47 @@ export class SommOS {
                         <p class="vintage">${wine.producer || 'Producer'} • ${wine.year || 'Vintage'}</p>
                         <p class="region">${this.getDisplayRegion(wine)}</p>
                     </div>
-                    
+
                     <div class="pairing-reasoning">
-                        <h5>🎯 Why this pairing works:</h5>
-                        <p>${reasoning}</p>
+                        <button type="button" class="reasoning-toggle" aria-expanded="false">
+                            <span class="toggle-label">🎯 Why this pairing</span>
+                            <span class="toggle-icon" aria-hidden="true">+</span>
+                        </button>
+                        <div class="reasoning-panel hidden" aria-hidden="true">
+                            <p>${reasoning}</p>
+                        </div>
                     </div>
-                    
+
+                    <div class="explainability-section">
+                        <button
+                            type="button"
+                            class="explainability-toggle"
+                            data-entity-type="pairing_recommendation"
+                            data-entity-id="${pairing.learning_recommendation_id || ''}"
+                            data-default-summary="${encodedSummary}"
+                            ${factorAttribute}
+                            aria-expanded="false"
+                        >
+                            🧠 Somm explanation
+                        </button>
+                        <div class="explainability-panel hidden" aria-hidden="true">
+                            <div class="explanation-content">
+                                <p class="muted">Select to load saved rationale.</p>
+                            </div>
+                            ${this.canManageInventory() && pairing.learning_recommendation_id ? `
+                                <form class="explanation-form" data-entity-type="pairing_recommendation" data-entity-id="${pairing.learning_recommendation_id}">
+                                    <textarea name="summary" rows="2" placeholder="Add a short rationale for service" aria-label="Explanation summary" required></textarea>
+                                    <textarea name="factors" rows="2" placeholder="Key factors (one per line)" aria-label="Key factors"></textarea>
+                                    <div class="form-actions inline">
+                                        <button type="submit" class="btn-small secondary">Save rationale</button>
+                                    </div>
+                                </form>
+                            ` : (!pairing.learning_recommendation_id && this.canManageInventory() ? '<p class="muted crew-note">Rationale capture unavailable for this pairing session.</p>' : '')}
+                        </div>
+                    </div>
+
                     <div class="stock-status">
-                        ${wine.quantity > 0 ? 
+                        ${wine.quantity > 0 ?
                             `<span class="in-stock">✅ ${wine.quantity} bottles available at ${wine.location || 'cellar'}</span>` :
                             '<span class="out-of-stock">❌ Currently not in stock</span>'
                         }
@@ -1710,11 +1782,589 @@ export class SommOS {
             `;
         }).join('');
 
+        listDiv.innerHTML = `${overviewHtml}${cardsHtml}`;
+
         resultsDiv.classList.remove('hidden');
+
+        this.initializePairingExplainability(listDiv);
 
         // Scroll to results when supported
         if (typeof resultsDiv.scrollIntoView === 'function') {
             resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    initializePairingExplainability(container) {
+        if (!container) {
+            return;
+        }
+
+        this.setupPairingReasoning(container);
+
+        const toggles = container.querySelectorAll('.explainability-toggle');
+        toggles.forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.toggleExplanation(button);
+            });
+        });
+
+        const forms = container.querySelectorAll('.explanation-form');
+        forms.forEach((form) => {
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                this.submitExplanationForm(form);
+            });
+        });
+    }
+
+    setupPairingReasoning(container) {
+        const toggles = container.querySelectorAll('.reasoning-toggle');
+        if (!toggles.length) {
+            return;
+        }
+
+        toggles.forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.togglePairingReasoning(button);
+            });
+        });
+    }
+
+    togglePairingReasoning(button) {
+        if (!button) {
+            return;
+        }
+
+        const panel = button.nextElementSibling;
+        if (!panel) {
+            return;
+        }
+
+        const icon = button.querySelector('.toggle-icon');
+        const isHidden = panel.classList.contains('hidden');
+
+        if (isHidden) {
+            panel.classList.remove('hidden');
+            panel.setAttribute('aria-hidden', 'false');
+            button.setAttribute('aria-expanded', 'true');
+            if (icon) {
+                icon.textContent = '−';
+            }
+        } else {
+            panel.classList.add('hidden');
+            panel.setAttribute('aria-hidden', 'true');
+            button.setAttribute('aria-expanded', 'false');
+            if (icon) {
+                icon.textContent = '+';
+            }
+        }
+    }
+
+    parseDatasetJson(value) {
+        if (!value) {
+            return undefined;
+        }
+
+        try {
+            const decoded = decodeURIComponent(value);
+            return JSON.parse(decoded);
+        } catch (error) {
+            return undefined;
+        }
+    }
+
+    formatTimestamp(value) {
+        if (!value) {
+            return '';
+        }
+
+        try {
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return '';
+            }
+
+            return date.toLocaleString(undefined, {
+                dateStyle: 'medium',
+                timeStyle: 'short'
+            });
+        } catch (error) {
+            return '';
+        }
+    }
+
+    formatExplanationFactors(factors) {
+        if (!factors) {
+            return '';
+        }
+
+        if (Array.isArray(factors)) {
+            if (factors.length === 0) {
+                return '';
+            }
+            return `<ul class="factor-list">${factors.map((item) => `<li>${item}</li>`).join('')}</ul>`;
+        }
+
+        if (typeof factors === 'object') {
+            const entries = Object.entries(factors).filter(([, value]) => value !== null && value !== undefined && value !== '');
+            if (!entries.length) {
+                return '';
+            }
+            return `<ul class="factor-list">${entries.map(([key, value]) => `<li><strong>${key}:</strong> ${value}</li>`).join('')}</ul>`;
+        }
+
+        return `<p>${factors}</p>`;
+    }
+
+    renderExplanationContent(container, explanations, defaultSummary = '', defaultFactors = undefined) {
+        if (!container) {
+            return;
+        }
+
+        const entries = Array.isArray(explanations) ? explanations : [];
+        const fragments = [];
+        const defaultNote = defaultSummary ? defaultSummary.trim() : '';
+        const defaultFactorsHtml = this.formatExplanationFactors(defaultFactors);
+        const hasDefaultFactors = Boolean(defaultFactorsHtml && defaultFactorsHtml.trim && defaultFactorsHtml.trim().length);
+        const showCrewMessage = this.canManageInventory();
+
+        if (entries.length === 0) {
+            if (defaultNote || hasDefaultFactors) {
+                fragments.push(`
+                    <div class="explanation-entry">
+                        ${defaultNote ? `<p>${defaultNote}</p>` : ''}
+                        ${defaultNote ? '<p class="explanation-meta">Generated for this session.</p>' : ''}
+                        ${defaultFactorsHtml || ''}
+                    </div>
+                `);
+            } else {
+                fragments.push(`
+                    <p class="muted">No saved rationale yet.${showCrewMessage ? ' Add one below to capture service context.' : ''}</p>
+                `);
+            }
+        } else {
+            entries.forEach((entry) => {
+                const summary = entry.summary || defaultNote || 'Service rationale';
+                const timestamp = this.formatTimestamp(entry.generated_at);
+                const factorsHtml = this.formatExplanationFactors(entry.factors);
+                fragments.push(`
+                    <div class="explanation-entry">
+                        <p>${summary}</p>
+                        ${timestamp ? `<p class="explanation-meta">Recorded ${timestamp}</p>` : ''}
+                        ${factorsHtml || ''}
+                    </div>
+                `);
+            });
+        }
+
+        container.innerHTML = fragments.join('');
+    }
+
+    async toggleExplanation(button) {
+        if (!button) {
+            return;
+        }
+
+        const panel = button.nextElementSibling;
+        if (!panel) {
+            return;
+        }
+
+        const isHidden = panel.classList.contains('hidden');
+
+        if (!isHidden) {
+            panel.classList.add('hidden');
+            panel.setAttribute('aria-hidden', 'true');
+            button.setAttribute('aria-expanded', 'false');
+            return;
+        }
+
+        const content = panel.querySelector('.explanation-content');
+        if (!content) {
+            return;
+        }
+
+        button.setAttribute('aria-expanded', 'true');
+        panel.classList.remove('hidden');
+        panel.setAttribute('aria-hidden', 'false');
+
+        const entityType = button.dataset.entityType;
+        const entityId = button.dataset.entityId;
+        const defaultSummary = button.dataset.defaultSummary ? decodeURIComponent(button.dataset.defaultSummary) : '';
+        const defaultFactors = this.parseDatasetJson(button.dataset.defaultFactors);
+
+        if (!entityType || !entityId) {
+            this.renderExplanationContent(content, [], defaultSummary, defaultFactors);
+            return;
+        }
+
+        const cacheKey = `${entityType}:${entityId}`;
+
+        if (!this.explanationsCache.has(cacheKey)) {
+            content.innerHTML = '<div class="loading-inline"><span class="loading-spinner small"></span> Loading explanation...</div>';
+
+            try {
+                const response = await this.api.getExplanations(entityType, entityId);
+                const explanations = response?.success ? response.data || [] : [];
+                this.explanationsCache.set(cacheKey, explanations);
+            } catch (error) {
+                console.error('Failed to load explanations', error);
+                content.innerHTML = `<p class="error-text">Unable to load rationale: ${error.message || 'Unexpected error'}</p>`;
+                return;
+            }
+        }
+
+        const explanations = this.explanationsCache.get(cacheKey) || [];
+        this.renderExplanationContent(content, explanations, defaultSummary, defaultFactors);
+    }
+
+    async submitExplanationForm(form) {
+        if (!form) {
+            return;
+        }
+
+        const entityType = form.dataset.entityType;
+        const entityId = form.dataset.entityId;
+
+        if (!entityType || !entityId) {
+            this.ui.showToast('Unable to determine recommendation reference.', 'error');
+            return;
+        }
+
+        const summaryField = form.querySelector('textarea[name="summary"]');
+        const factorsField = form.querySelector('textarea[name="factors"]');
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        const summary = summaryField?.value.trim();
+        if (!summary) {
+            this.ui.showToast('Please add a short summary before saving.', 'warning');
+            return;
+        }
+
+        const factors = (factorsField?.value || '')
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+        }
+
+        try {
+            const response = await this.api.createExplanation({
+                entityType,
+                entityId,
+                summary,
+                factors: factors.length ? factors : undefined,
+                generatedAt: new Date().toISOString()
+            });
+
+            if (!response?.success) {
+                throw new Error('Failed to save explanation');
+            }
+
+            const cacheKey = `${entityType}:${entityId}`;
+            const existing = this.explanationsCache.get(cacheKey) || [];
+            this.explanationsCache.set(cacheKey, [response.data, ...existing]);
+
+            const panel = form.closest('.explainability-panel');
+            const content = panel?.querySelector('.explanation-content');
+            const toggle = form.closest('.explainability-section')?.querySelector('.explainability-toggle');
+            const defaultSummary = toggle?.dataset?.defaultSummary ? decodeURIComponent(toggle.dataset.defaultSummary) : '';
+            const defaultFactors = toggle?.dataset?.defaultFactors ? this.parseDatasetJson(toggle.dataset.defaultFactors) : undefined;
+
+            if (content) {
+                this.renderExplanationContent(content, this.explanationsCache.get(cacheKey), defaultSummary, defaultFactors);
+            }
+
+            if (summaryField) {
+                summaryField.value = '';
+            }
+
+            if (factorsField) {
+                factorsField.value = '';
+            }
+
+            this.ui.showToast('Saved rationale for this recommendation.', 'success');
+        } catch (error) {
+            console.error('Failed to save explanation', error);
+            this.ui.showToast(error.message || 'Unable to save rationale', 'error');
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.classList.remove('loading');
+            }
+        }
+    }
+
+    renderServiceNotesSection({
+        subjectType,
+        subjectId,
+        subjectLabel = '',
+        heading = '📝 Service notes',
+        buttonLabel = 'View service notes',
+        introText = 'Select to load service notes for this record.'
+    } = {}) {
+        const idValue = subjectId !== undefined && subjectId !== null ? String(subjectId) : '';
+
+        if (!subjectType || !idValue) {
+            return `
+                <div class="wine-detail-section service-notes-section memories-section">
+                    <h4>${heading}</h4>
+                    <p class="muted">Service notes become available once this record is saved.</p>
+                </div>
+            `;
+        }
+
+        const encodedLabel = subjectLabel ? encodeURIComponent(subjectLabel) : '';
+        const canCaptureNotes = this.canManageInventory();
+
+        return `
+            <div class="wine-detail-section service-notes-section memories-section">
+                <h4>${heading}</h4>
+                <div class="memories-accordion">
+                    <button
+                        type="button"
+                        class="memories-toggle"
+                        data-subject-type="${subjectType}"
+                        data-subject-id="${idValue}"
+                        data-subject-label="${encodedLabel}"
+                        aria-expanded="false"
+                    >
+                        ${buttonLabel}
+                    </button>
+                    <div class="memories-panel hidden" aria-hidden="true">
+                        <div class="memory-list" data-subject-label="${encodedLabel}" data-empty-copy="notes">
+                            <p class="muted">${introText}</p>
+                        </div>
+                        ${canCaptureNotes ? `
+                            <form class="memory-form" data-subject-type="${subjectType}" data-subject-id="${idValue}">
+                                <textarea name="note" rows="2" placeholder="Add a service note or guest memory" aria-label="Service note" required></textarea>
+                                <input type="text" name="tags" placeholder="Tags (comma separated)" aria-label="Service note tags">
+                                <div class="form-actions inline">
+                                    <button type="submit" class="btn-small secondary">Save note</button>
+                                </div>
+                            </form>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    initializeMemorySection({ subjectType, subjectId, subjectLabel }) {
+        const modalBody = document.getElementById('modal-body');
+        if (!modalBody) {
+            return;
+        }
+
+        const encodedLabel = subjectLabel ? encodeURIComponent(subjectLabel) : '';
+        const toggles = modalBody.querySelectorAll('.memories-toggle');
+        toggles.forEach((toggle) => {
+            if (subjectType && !toggle.dataset.subjectType) {
+                toggle.dataset.subjectType = subjectType;
+            }
+            if (subjectId && !toggle.dataset.subjectId) {
+                toggle.dataset.subjectId = subjectId;
+            }
+            if (encodedLabel && !toggle.dataset.subjectLabel) {
+                toggle.dataset.subjectLabel = encodedLabel;
+            }
+
+            toggle.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.toggleMemories(toggle);
+            });
+        });
+
+        const forms = modalBody.querySelectorAll('.memory-form');
+        forms.forEach((form) => {
+            if (subjectType && !form.dataset.subjectType) {
+                form.dataset.subjectType = subjectType;
+            }
+            if (subjectId && !form.dataset.subjectId) {
+                form.dataset.subjectId = subjectId;
+            }
+
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                this.submitMemoryForm(form);
+            });
+        });
+    }
+
+    renderMemories(container, memories, subjectLabel = '') {
+        if (!container) {
+            return;
+        }
+
+        const entries = Array.isArray(memories) ? memories : [];
+        const labelText = subjectLabel ? decodeURIComponent(subjectLabel) : '';
+        const crewMessage = this.canManageInventory();
+        const noun = container.dataset?.emptyCopy || 'notes';
+
+        if (entries.length === 0) {
+            container.innerHTML = `<p class="muted">No ${noun} recorded${labelText ? ` for ${labelText}` : ''}.${crewMessage ? ' Add one to capture service context.' : ''}</p>`;
+            return;
+        }
+
+        const listMarkup = entries.map((entry) => {
+            const timestamp = this.formatTimestamp(entry.created_at);
+            const tags = Array.isArray(entry.tags)
+                ? entry.tags
+                : entry.tags
+                ? [entry.tags]
+                : [];
+            const tagsMarkup = tags.length
+                ? `<ul class="tag-list">${tags.map((tag) => `<li>${tag}</li>`).join('')}</ul>`
+                : '';
+            const author = entry.author_id ? ` • ${entry.author_id}` : '';
+
+            return `
+                <div class="memory-entry">
+                    <p>${entry.note}</p>
+                    ${tagsMarkup}
+                    ${timestamp || author ? `<p class="memory-meta">${timestamp ? `Logged ${timestamp}` : 'Crew note'}${author}</p>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = listMarkup;
+    }
+
+    async toggleMemories(button) {
+        if (!button) {
+            return;
+        }
+
+        const panel = button.nextElementSibling;
+        if (!panel) {
+            return;
+        }
+
+        const isHidden = panel.classList.contains('hidden');
+
+        if (!isHidden) {
+            panel.classList.add('hidden');
+            panel.setAttribute('aria-hidden', 'true');
+            button.setAttribute('aria-expanded', 'false');
+            return;
+        }
+
+        const list = panel.querySelector('.memory-list');
+        if (!list) {
+            return;
+        }
+
+        button.setAttribute('aria-expanded', 'true');
+        panel.classList.remove('hidden');
+        panel.setAttribute('aria-hidden', 'false');
+
+        const subjectType = button.dataset.subjectType;
+        const subjectId = button.dataset.subjectId;
+        const subjectLabel = button.dataset.subjectLabel || list.dataset.subjectLabel || '';
+
+        if (!subjectType || !subjectId) {
+            list.innerHTML = '<p class="muted">Service notes are unavailable for this selection.</p>';
+            return;
+        }
+
+        const cacheKey = `${subjectType}:${subjectId}`;
+
+        if (!this.memoriesCache.has(cacheKey)) {
+            list.innerHTML = '<div class="loading-inline"><span class="loading-spinner small"></span> Loading notes...</div>';
+
+            try {
+                const response = await this.api.getMemories(subjectType, subjectId);
+                const memories = response?.success ? response.data || [] : [];
+                this.memoriesCache.set(cacheKey, memories);
+            } catch (error) {
+                console.error('Failed to load memories', error);
+                list.innerHTML = `<p class="error-text">Unable to load notes: ${error.message || 'Unexpected error'}</p>`;
+                return;
+            }
+        }
+
+        this.renderMemories(list, this.memoriesCache.get(cacheKey), subjectLabel);
+    }
+
+    async submitMemoryForm(form) {
+        if (!form) {
+            return;
+        }
+
+        const subjectType = form.dataset.subjectType;
+        const subjectId = form.dataset.subjectId;
+
+        if (!subjectType || !subjectId) {
+            this.ui.showToast('Unable to determine memory subject.', 'error');
+            return;
+        }
+
+        const noteField = form.querySelector('textarea[name="note"]');
+        const tagsField = form.querySelector('input[name="tags"]');
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        const note = noteField?.value.trim();
+        if (!note) {
+            this.ui.showToast('Please add a note before saving.', 'warning');
+            return;
+        }
+
+        const tags = (tagsField?.value || '')
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean);
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+        }
+
+        try {
+            const response = await this.api.createMemory({
+                subjectType,
+                subjectId,
+                note,
+                tags: tags.length ? tags : undefined
+            });
+
+            if (!response?.success) {
+                throw new Error('Failed to save memory');
+            }
+
+            const cacheKey = `${subjectType}:${subjectId}`;
+            const existing = this.memoriesCache.get(cacheKey) || [];
+            this.memoriesCache.set(cacheKey, [response.data, ...existing]);
+
+            const panel = form.closest('.memories-panel');
+            const list = panel?.querySelector('.memory-list');
+            const subjectLabel = panel?.previousElementSibling?.dataset?.subjectLabel || list?.dataset?.subjectLabel || '';
+
+            if (list) {
+                this.renderMemories(list, this.memoriesCache.get(cacheKey), subjectLabel);
+            }
+
+            if (noteField) {
+                noteField.value = '';
+            }
+
+            if (tagsField) {
+                tagsField.value = '';
+            }
+
+            this.ui.showToast('Saved memory note.', 'success');
+        } catch (error) {
+            console.error('Failed to save memory', error);
+            this.ui.showToast(error.message || 'Unable to save memory', 'error');
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.classList.remove('loading');
+            }
         }
     }
 
@@ -1893,15 +2543,18 @@ export class SommOS {
         const grapeVarieties = this.parseGrapeVarieties(wine.grape_varieties);
         const foodPairings = this.parseFoodPairings(wine.food_pairings);
         const tastingNotes = wine.tasting_notes ? wine.tasting_notes.split(',').map(note => note.trim()) : [];
-        
+
         // Calculate wine age and drinking window
         const currentYear = new Date().getFullYear();
         const wineAge = wine.year ? currentYear - wine.year : null;
         const isVintage = wine.year && wine.year > 1900;
-        
+
         // Generate vintage intelligence
         const vintageIntelligence = this.generateVintageIntelligence(wine, wineAge);
-        
+        const memorySubjectType = wine.vintage_id ? 'vintage' : 'wine';
+        const memorySubjectId = wine.vintage_id || wine.id || wine.wine_id || '';
+        const encodedSubjectLabel = encodeURIComponent(wine.name || 'Wine');
+
         const modalContent = `
             <div class="wine-detail-modal">
                 <div class="wine-detail-header">
@@ -1986,7 +2639,16 @@ export class SommOS {
                             <p class="wine-description">${wine.description}</p>
                         </div>
                     ` : ''}
-                    
+
+                    ${this.renderServiceNotesSection({
+                        subjectType: memorySubjectType,
+                        subjectId: memorySubjectId,
+                        subjectLabel: wine.name || 'Wine',
+                        heading: '📝 Service notes',
+                        buttonLabel: 'View service notes',
+                        introText: 'Select to load service notes and guest insights for this wine.'
+                    })}
+
                     <div class="wine-detail-section">
                         <h4>📈 Wine History</h4>
                         <div id="wine-history-${wine.vintage_id || wine.id}" class="wine-history">
@@ -2005,11 +2667,136 @@ export class SommOS {
                 </div>
             </div>
         `;
-        
+
         this.ui.showModal('Wine Details', modalContent);
-        
+
         // Load wine history asynchronously
         this.loadWineHistory(wine.vintage_id || wine.id);
+        this.initializeMemorySection({
+            subjectType: memorySubjectType,
+            subjectId: memorySubjectId,
+            subjectLabel: wine.name || 'Wine'
+        });
+    }
+
+    showEventDetails(eventData = {}) {
+        if (!eventData) {
+            this.ui.showToast('Event details unavailable.', 'error');
+            return;
+        }
+
+        const rawEventId = eventData.id || eventData.event_id || eventData.slug || '';
+        const hasEventId = rawEventId !== undefined && rawEventId !== null && String(rawEventId).trim() !== '';
+        const eventId = hasEventId ? String(rawEventId) : '';
+        const name = eventData.name || eventData.title || 'Guest experience';
+        const location = eventData.location || eventData.venue || eventData.place || '';
+        const host = eventData.host || eventData.organizer || eventData.owner || '';
+        const guestCount = eventData.guest_count || eventData.expected_guests || (Array.isArray(eventData.guests) ? eventData.guests.length : null);
+        const startTime = eventData.start_time || eventData.start || eventData.scheduled_for || eventData.date || '';
+        const endTime = eventData.end_time || eventData.end || eventData.ends_at || '';
+        const overview = eventData.summary || eventData.description || eventData.notes || '';
+
+        const startDisplay = startTime ? this.formatTimestamp(startTime) : '';
+        const endDisplay = endTime ? this.formatTimestamp(endTime) : '';
+
+        const scheduleParts = [];
+        if (startDisplay) {
+            scheduleParts.push(startDisplay);
+        }
+        if (endDisplay) {
+            scheduleParts.push(endDisplay);
+        }
+
+        const scheduleMarkup = scheduleParts.length
+            ? `<p><strong>When:</strong> ${scheduleParts.join(' – ')}</p>`
+            : '';
+
+        const locationMarkup = location
+            ? `<p><strong>Where:</strong> ${location}</p>`
+            : '';
+
+        const guestMarkup = guestCount
+            ? `<p><strong>Guests:</strong> ${guestCount}</p>`
+            : '';
+
+        const hostMarkup = host
+            ? `<p><strong>Host:</strong> ${host}</p>`
+            : '';
+
+        const wines = Array.isArray(eventData.wines)
+            ? eventData.wines
+            : (Array.isArray(eventData.pairings) ? eventData.pairings : []);
+
+        const wineListMarkup = wines.length
+            ? `
+                <div class="event-section">
+                    <h4>Featured wines</h4>
+                    <ul class="event-wine-list">
+                        ${wines.map((wine) => {
+                            if (!wine) {
+                                return '';
+                            }
+
+                            if (typeof wine === 'string') {
+                                return `<li>${wine}</li>`;
+                            }
+
+                            const wineName = wine.name || wine.label || 'Wine';
+                            const wineYear = wine.year || wine.vintage || '';
+                            const role = wine.role || wine.assignment || wine.course || '';
+                            const descriptor = [wineName, wineYear].filter(Boolean).join(' • ') || wineName;
+                            const roleMarkup = role ? `<span class="event-wine-role">${role}</span>` : '';
+
+                            return `<li>${descriptor}${roleMarkup}</li>`;
+                        }).join('')}
+                    </ul>
+                </div>
+            `
+            : '';
+
+        const serviceNotesSection = this.renderServiceNotesSection({
+            subjectType: hasEventId ? 'event' : null,
+            subjectId: eventId,
+            subjectLabel: name,
+            heading: '📝 Service notes',
+            buttonLabel: 'View service notes',
+            introText: 'Select to load service notes captured for this event.'
+        });
+
+        const modalContent = `
+            <div class="event-detail-modal">
+                <div class="event-header">
+                    <div class="event-title-block">
+                        <h2>${name}</h2>
+                        ${scheduleMarkup}
+                        ${locationMarkup}
+                        ${guestMarkup}
+                        ${hostMarkup}
+                    </div>
+                </div>
+                ${overview ? `
+                    <div class="event-section">
+                        <h4>Overview</h4>
+                        <p>${overview}</p>
+                    </div>
+                ` : ''}
+                ${wineListMarkup}
+                ${serviceNotesSection}
+                <div class="event-detail-actions">
+                    <button class="btn secondary" onclick="app.ui.hideModal()">Close</button>
+                </div>
+            </div>
+        `;
+
+        this.ui.showModal('Event details', modalContent);
+
+        if (hasEventId) {
+            this.initializeMemorySection({
+                subjectType: 'event',
+                subjectId: eventId,
+                subjectLabel: name
+            });
+        }
     }
 
     generateVintageIntelligence(wine, wineAge) {

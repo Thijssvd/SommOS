@@ -10,6 +10,7 @@ const ProcurementEngine = require('../core/procurement_engine');
 const LearningEngine = require('../core/learning_engine');
 const VintageIntelligenceService = require('../core/vintage_intelligence');
 const wineGuidanceService = require('../core/wine_guidance_service');
+const ExplainabilityService = require('../core/explainability_service');
 const Database = require('../database/connection');
 const { validate, validators } = require('../middleware/validate');
 const { authService, requireAuth, requireRole } = require('../middleware/auth');
@@ -23,6 +24,7 @@ const {
     serializeIntakeReceive,
     serializeIntakeStatus,
     serializePairings,
+    serializePairingResult,
     serializeProcurementRecommendations,
     serializeProcurementAnalysis,
     serializePurchaseOrder,
@@ -58,13 +60,16 @@ async function createServices() {
         console.warn('Learning engine initialization failed:', error.message);
     }
 
+    const explainabilityService = new ExplainabilityService(db);
+
     return {
         db,
         learningEngine,
-        pairingEngine: new PairingEngine(db, learningEngine),
+        pairingEngine: new PairingEngine(db, learningEngine, explainabilityService),
         inventoryManager: new InventoryManager(db, learningEngine),
         procurementEngine: new ProcurementEngine(db, learningEngine),
-        vintageIntelligenceService: new VintageIntelligenceService(db)
+        vintageIntelligenceService: new VintageIntelligenceService(db),
+        explainabilityService
     };
 }
 
@@ -220,21 +225,21 @@ router.post('/pairing/recommend', requireRole('admin', 'crew'), validate(validat
         return sendError(res, 400, 'MISSING_DISH', 'Dish information is required.');
     }
 
-        try {
-            const recommendations = await pairingEngine.generatePairings(
-                dish,
-                context || {},
-                guestPreferences || {},
-                options || {}
-            );
+    try {
+        const pairingResult = await pairingEngine.generatePairings(
+            dish,
+            context || {},
+            guestPreferences || {},
+            options || {}
+        );
 
-            const sanitized = serializePairings(recommendations);
-            const responsePayload = {
-                success: true,
-                data: sanitized
-            };
+        const sanitized = serializePairingResult(pairingResult);
+        const responsePayload = {
+            success: true,
+            data: sanitized
+        };
 
-            const sessionId = Array.isArray(sanitized) && sanitized[0]?.learning_session_id;
+        const sessionId = sanitized?.recommendations?.[0]?.learning_session_id;
         if (sessionId) {
             responsePayload.meta = { learning_session_id: sessionId };
         }
@@ -281,7 +286,122 @@ router.post('/pairing/feedback', requireRole('admin', 'crew'), validate(validato
     } catch (error) {
         sendError(res, 500, 'PAIRING_FEEDBACK_FAILED', error.message || 'Failed to record feedback.');
     }
-}))); 
+})));
+
+// GET /api/explanations/:entity_type/:entity_id
+// Retrieve explainability records linked to recommendations in a guest-safe format
+router.get(
+    '/explanations/:entity_type/:entity_id',
+    requireRole('admin', 'crew', 'guest'),
+    validate(validators.explanationsByEntity),
+    asyncHandler(withServices(async ({ explainabilityService }, req, res) => {
+        const { entity_type: entityType, entity_id: entityId } = req.params;
+        const { limit } = req.query;
+
+        try {
+            const explanations = await explainabilityService.listExplanations({
+                entityType,
+                entityId,
+                limit,
+                role: req.user?.role || 'guest'
+            });
+
+            res.json({
+                success: true,
+                data: explanations
+            });
+        } catch (error) {
+            console.error('Failed to fetch explanations:', error);
+            sendError(res, 500, 'EXPLANATIONS_FETCH_FAILED', 'Unable to load explanations at this time.');
+        }
+    }))
+);
+
+// POST /api/explanations
+// Create a new explanation entry for a recommendation (crew only)
+router.post(
+    '/explanations',
+    requireRole('admin', 'crew'),
+    validate(validators.explainabilityCreate),
+    asyncHandler(withServices(async ({ explainabilityService }, req, res) => {
+        const { entity_type: entityType, entity_id: entityId, summary, factors, generated_at: generatedAt } = req.body;
+
+        try {
+            const explanation = await explainabilityService.createExplanation({
+                entityType,
+                entityId,
+                summary,
+                factors,
+                generatedAt
+            });
+
+            res.status(201).json({
+                success: true,
+                data: explanation
+            });
+        } catch (error) {
+            console.error('Failed to create explanation:', error);
+            sendError(res, 500, 'EXPLANATION_CREATE_FAILED', 'Unable to save explanation at this time.');
+        }
+    }))
+);
+
+// GET /api/memories
+// Retrieve operational memories for wines, vintages, guests, or events
+router.get(
+    '/memories',
+    requireRole('admin', 'crew', 'guest'),
+    validate(validators.memoriesList),
+    asyncHandler(withServices(async ({ explainabilityService }, req, res) => {
+        const { subject_type: subjectType, subject_id: subjectId, limit } = req.query;
+
+        try {
+            const memories = await explainabilityService.listMemories({
+                subjectType,
+                subjectId,
+                limit,
+                role: req.user?.role || 'guest'
+            });
+
+            res.json({
+                success: true,
+                data: memories
+            });
+        } catch (error) {
+            console.error('Failed to fetch memories:', error);
+            sendError(res, 500, 'MEMORIES_FETCH_FAILED', 'Unable to load memories at this time.');
+        }
+    }))
+);
+
+// POST /api/memories
+// Record a new operational memory note (crew only)
+router.post(
+    '/memories',
+    requireRole('admin', 'crew'),
+    validate(validators.memoriesCreate),
+    asyncHandler(withServices(async ({ explainabilityService }, req, res) => {
+        const { subject_type: subjectType, subject_id: subjectId, note, tags } = req.body;
+
+        try {
+            const memory = await explainabilityService.createMemory({
+                subjectType,
+                subjectId,
+                authorId: req.user?.id || null,
+                note,
+                tags
+            });
+
+            res.status(201).json({
+                success: true,
+                data: memory
+            });
+        } catch (error) {
+            console.error('Failed to create memory:', error);
+            sendError(res, 500, 'MEMORY_CREATE_FAILED', 'Unable to save memory at this time.');
+        }
+    }))
+);
 
 // ============================================================================
 // INVENTORY ENDPOINTS

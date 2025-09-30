@@ -361,6 +361,54 @@ export class SommOSAPI {
         });
     }
 
+    // Explainability endpoints
+    async getExplanations(entityType, entityId, options = {}) {
+        const query = SommOSAPI.buildQuery({
+            limit: options.limit
+        });
+        const path = [
+            '/explanations',
+            encodeURIComponent(entityType),
+            encodeURIComponent(entityId)
+        ].join('/');
+        return this.request(`${path}${query}`);
+    }
+
+    async createExplanation({ entityType, entityId, summary, factors, generatedAt } = {}) {
+        return this.request('/explanations', {
+            method: 'POST',
+            body: JSON.stringify(SommOSAPI.cleanPayload({
+                entity_type: entityType,
+                entity_id: entityId,
+                summary,
+                factors,
+                generated_at: generatedAt
+            }))
+        });
+    }
+
+    // Memory endpoints
+    async getMemories(subjectType, subjectId, options = {}) {
+        const query = SommOSAPI.buildQuery({
+            subject_type: subjectType,
+            subject_id: subjectId,
+            limit: options.limit
+        });
+        return this.request(`/memories${query}`);
+    }
+
+    async createMemory({ subjectType, subjectId, note, tags } = {}) {
+        return this.request('/memories', {
+            method: 'POST',
+            body: JSON.stringify(SommOSAPI.cleanPayload({
+                subject_type: subjectType,
+                subject_id: subjectId,
+                note,
+                tags
+            }))
+        });
+    }
+
     // Authentication endpoints
     async login(email, password) {
         return this.request('/auth/login', {

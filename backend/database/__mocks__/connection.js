@@ -120,6 +120,36 @@ const SAMPLE_DATA = {
     ],
     suppliers: [
         { id: 'supplier-123', name: 'Fine Wine Imports', active: 1 }
+    ],
+    explanations: [
+        {
+            id: 'exp-1',
+            entity_type: 'pairing',
+            entity_id: 'rec-1',
+            generated_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+            factors: JSON.stringify(['Owner preference', 'Seasonal menu match']),
+            summary: 'Tailored for the charter guest preferences.'
+        }
+    ],
+    memories: [
+        {
+            id: 'memo-1',
+            subject_type: 'wine',
+            subject_id: 'test-wine-1',
+            created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+            author_id: 'crew-1',
+            note: 'Serve slightly chilled for deck sunsets.',
+            tags: JSON.stringify(['service', 'internal:crew-note'])
+        }
+    ],
+    users: [
+        {
+            id: 'user-1',
+            email: 'test-admin@sommos.local',
+            role: 'admin',
+            password_hash: null,
+            created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        }
     ]
 };
 
@@ -185,6 +215,30 @@ class MockDatabase {
         if (sql.includes('from wines') && sql.includes('where id = ?')) {
             const id = params[0];
             return this.cloneWine(this.data.wines.find(w => w.id === id));
+        }
+
+        if (sql.includes('from users') && sql.includes('where email = ?')) {
+            const email = params[0];
+            const user = this.data.users.find((entry) => entry.email === email);
+            return user ? { ...user } : undefined;
+        }
+
+        if (sql.includes('from users') && sql.includes('where id = ?')) {
+            const id = params[0];
+            const user = this.data.users.find((entry) => String(entry.id) === String(id));
+            return user ? { ...user } : undefined;
+        }
+
+        if (sql.includes('from explanations') && sql.includes('where id = ?')) {
+            const id = params[0];
+            const explanation = this.data.explanations.find((entry) => String(entry.id) === String(id));
+            return explanation ? { ...explanation } : undefined;
+        }
+
+        if (sql.includes('from memories') && sql.includes('where id = ?')) {
+            const id = params[0];
+            const memory = this.data.memories.find((entry) => String(entry.id) === String(id));
+            return memory ? { ...memory } : undefined;
         }
 
         if (sql.includes('from wines w') && sql.includes('join vintages v') && sql.includes('where w.id = ?')) {
@@ -285,6 +339,38 @@ class MockDatabase {
             return this.data.ledger.filter(entry => entry.vintage_id === vintageId);
         }
 
+        if (sql.includes('from explanations')) {
+            const [entityType, entityId, limit = this.data.explanations.length] = params;
+            return this.data.explanations
+                .filter((entry) => entry.entity_type === entityType && entry.entity_id === String(entityId))
+                .slice()
+                .sort((a, b) => {
+                    const left = new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime();
+                    if (left !== 0) {
+                        return left;
+                    }
+                    return String(b.id).localeCompare(String(a.id));
+                })
+                .slice(0, typeof limit === 'number' ? limit : this.data.explanations.length)
+                .map((entry) => ({ ...entry }));
+        }
+
+        if (sql.includes('from memories')) {
+            const [subjectType, subjectId, limit = this.data.memories.length] = params;
+            return this.data.memories
+                .filter((entry) => entry.subject_type === subjectType && entry.subject_id === String(subjectId))
+                .slice()
+                .sort((a, b) => {
+                    const left = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                    if (left !== 0) {
+                        return left;
+                    }
+                    return String(b.id).localeCompare(String(a.id));
+                })
+                .slice(0, typeof limit === 'number' ? limit : this.data.memories.length)
+                .map((entry) => ({ ...entry }));
+        }
+
         return [];
     }
 
@@ -354,6 +440,76 @@ class MockDatabase {
                 notes,
                 created_by: createdBy,
                 created_at: new Date().toISOString()
+            });
+            return { lastID: id, changes: 1 };
+        }
+
+        if (sql.startsWith('insert into users')) {
+            const [email, passwordHash, role] = params;
+            const id = this.generateId('user');
+            const user = {
+                id,
+                email,
+                password_hash: passwordHash,
+                role,
+                created_at: new Date().toISOString(),
+            };
+            this.data.users.push(user);
+            return { lastID: id, changes: 1 };
+        }
+
+        if (sql.startsWith('update users set role')) {
+            const [role, id] = params;
+            const user = this.data.users.find((entry) => String(entry.id) === String(id));
+            if (user) {
+                user.role = role;
+            }
+            return { lastID: id, changes: user ? 1 : 0 };
+        }
+
+        if (sql.startsWith('update users set password_hash')) {
+            const [passwordHash, id] = params;
+            const user = this.data.users.find((entry) => String(entry.id) === String(id));
+            if (user) {
+                user.password_hash = passwordHash;
+            }
+            return { lastID: id, changes: user ? 1 : 0 };
+        }
+
+        if (sql.startsWith('update users set last_login')) {
+            const [timestamp, id] = params;
+            const user = this.data.users.find((entry) => String(entry.id) === String(id));
+            if (user) {
+                user.last_login = timestamp;
+            }
+            return { lastID: id, changes: user ? 1 : 0 };
+        }
+
+        if (sql.startsWith('insert into explanations')) {
+            const [entityType, entityId, generatedAt, factors, summary] = params;
+            const id = this.generateId('explanation');
+            this.data.explanations.push({
+                id,
+                entity_type: entityType,
+                entity_id: String(entityId),
+                generated_at: generatedAt,
+                factors,
+                summary,
+            });
+            return { lastID: id, changes: 1 };
+        }
+
+        if (sql.startsWith('insert into memories')) {
+            const [subjectType, subjectId, authorId, note, tags] = params;
+            const id = this.generateId('memory');
+            this.data.memories.push({
+                id,
+                subject_type: subjectType,
+                subject_id: String(subjectId),
+                author_id: authorId,
+                note,
+                tags,
+                created_at: new Date().toISOString(),
             });
             return { lastID: id, changes: 1 };
         }

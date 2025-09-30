@@ -1484,6 +1484,293 @@ select:focus {
     margin: 0;
 }
 
+.explainability-section {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.pairing-explanation-overview {
+    margin-bottom: 1.5rem;
+    padding: 1.25rem;
+    border-radius: var(--border-radius-medium);
+    background: rgba(8, 10, 24, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 32px rgba(3, 6, 24, 0.45);
+    line-height: 1.6;
+}
+
+.pairing-explanation-overview h4 {
+    margin: 0 0 0.6rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.pairing-explanation-overview p {
+    margin: 0.4rem 0;
+    color: var(--text-secondary);
+}
+
+.explainability-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.06);
+    color: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.explainability-toggle:hover,
+.explainability-toggle[aria-expanded="true"] {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.explainability-panel {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: rgba(10, 12, 28, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.explanation-entry {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.65rem;
+    padding: 0.75rem;
+    line-height: 1.5;
+}
+
+.explanation-entry + .explanation-entry {
+    margin-top: 0.75rem;
+}
+
+.explanation-meta {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 0.5rem;
+}
+
+.factor-list,
+.tag-list {
+    margin: 0.5rem 0 0;
+    padding-left: 1.2rem;
+}
+
+.factor-list li,
+.tag-list li {
+    line-height: 1.4;
+    list-style: disc;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+    padding-left: 0;
+    list-style: none;
+}
+
+.tag-list li {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.01em;
+}
+
+.explanation-form textarea,
+.memory-form textarea,
+.memory-form input[type="text"] {
+    width: 100%;
+    border-radius: 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(5, 7, 18, 0.6);
+    color: inherit;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.95rem;
+    resize: vertical;
+    margin-top: 0.5rem;
+}
+
+.explanation-form textarea:first-of-type,
+.memory-form textarea:first-of-type {
+    margin-top: 0;
+}
+
+.explanation-form textarea:focus,
+.memory-form textarea:focus,
+.memory-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(100, 149, 237, 0.25);
+}
+
+.explanation-form .form-actions,
+.memory-form .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+.explanation-form .form-actions.inline,
+.memory-form .form-actions.inline {
+    justify-content: flex-start;
+    gap: 0.5rem;
+}
+
+.loading-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.loading-spinner.small {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-width: 2px;
+}
+
+.crew-note {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+}
+
+.memories-section {
+    margin-top: 1.5rem;
+}
+
+.memories-accordion {
+    margin-top: 0.5rem;
+}
+
+.memories-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.memories-toggle:hover,
+.memories-toggle[aria-expanded="true"] {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.memories-panel {
+    margin-top: 0.75rem;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(8, 10, 24, 0.6);
+    padding: 0.85rem;
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.memory-entry {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.7rem;
+    padding: 0.75rem;
+    line-height: 1.6;
+}
+
+.memory-entry + .memory-entry {
+    margin-top: 0.65rem;
+}
+
+.memory-meta {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 0.5rem;
+}
+
+.service-notes-section h4 {
+    margin-bottom: 0.5rem;
+}
+
+.event-detail-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.event-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.event-title-block h2 {
+    margin: 0;
+    font-size: 1.6rem;
+}
+
+.event-title-block p {
+    margin: 0.15rem 0;
+    color: var(--text-secondary);
+}
+
+.event-section {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.85rem;
+    padding: 1rem;
+}
+
+.event-section h4 {
+    margin-top: 0;
+    margin-bottom: 0.65rem;
+}
+
+.event-wine-list {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.event-wine-role {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--accent-color);
+    font-size: 0.75rem;
+}
+
+.event-detail-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
 .pairing-actions {
     margin-top: 1rem;
     padding-top: 1rem;
@@ -2155,9 +2442,54 @@ select:focus {
 }
 
 .pairing-reasoning {
+    margin: 1rem 0;
+}
+
+.reasoning-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.65rem 0.9rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.reasoning-toggle:hover,
+.reasoning-toggle[aria-expanded="true"] {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.reasoning-toggle .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.reasoning-toggle .toggle-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.reasoning-panel {
+    margin-top: 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(10, 12, 28, 0.6);
+    padding: 0.75rem 0.9rem;
     color: var(--text-secondary);
-    line-height: 1.5;
-    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+.reasoning-panel p {
+    margin: 0;
 }
 
 .stock-status .in-stock {
