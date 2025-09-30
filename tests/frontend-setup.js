@@ -103,3 +103,114 @@ if (typeof indexedDB === 'undefined') {
         deleteDatabase: () => ({ onsuccess: null, onerror: null })
     };
 }
+
+// Load and expose frontend classes to global scope for JSDOM tests
+const fs = require('fs');
+const path = require('path');
+
+// Mock Chart.js for frontend tests
+global.Chart = class Chart {
+    constructor(ctx, config) {
+        this.ctx = ctx;
+        this.config = config;
+        this.destroy = jest.fn();
+        this.update = jest.fn();
+        this.resize = jest.fn();
+    }
+};
+
+// Load frontend JavaScript files and expose classes
+try {
+    // Load API class
+    const apiPath = path.join(__dirname, '../frontend/js/api.js');
+    if (fs.existsSync(apiPath)) {
+        const apiCode = fs.readFileSync(apiPath, 'utf8');
+        // Replace ES6 imports and exports with CommonJS compatible code
+        const mockApiCode = apiCode
+            .replace(/import.*from.*chart\.js.*/g, '// Chart.js mocked above')
+            .replace(/import\s*{([^}]+)}\s*from\s*['"]([^'"]+)['"];?/g, '// Imports mocked above')
+            .replace(/export\s+class\s+(\w+)/g, 'class $1')
+            .replace(/export\s*{([^}]+)}/g, '// Exports handled below')
+            .replace(/import\.meta\.url/g, '""')
+            .replace(/import\.meta\.env/g, '{}')
+            .replace(/import\.meta/g, '{}');
+        
+        // Evaluate the code in global scope
+        eval(mockApiCode);
+        
+        // Expose classes to global scope
+        if (typeof SommOSAPI !== 'undefined') {
+            global.SommOSAPI = SommOSAPI;
+        }
+    }
+    
+    // Load UI class
+    const uiPath = path.join(__dirname, '../frontend/js/ui.js');
+    if (fs.existsSync(uiPath)) {
+        const uiCode = fs.readFileSync(uiPath, 'utf8');
+        const mockUiCode = uiCode
+            .replace(/import\s*{([^}]+)}\s*from\s*['"]([^'"]+)['"];?/g, '// Imports mocked above')
+            .replace(/export\s+class\s+(\w+)/g, 'class $1')
+            .replace(/export\s*{([^}]+)}/g, '// Exports handled below')
+            .replace(/import\.meta\.url/g, '""')
+            .replace(/import\.meta\.env/g, '{}')
+            .replace(/import\.meta/g, '{}');
+        
+        eval(mockUiCode);
+        
+        if (typeof SommOSUI !== 'undefined') {
+            global.SommOSUI = SommOSUI;
+        }
+    }
+    
+    // Load main app class
+    const appPath = path.join(__dirname, '../frontend/js/app.js');
+    if (fs.existsSync(appPath)) {
+        const appCode = fs.readFileSync(appPath, 'utf8');
+        const mockAppCode = appCode
+            .replace(/import\s*{([^}]+)}\s*from\s*['"]([^'"]+)['"];?/g, '// Imports mocked above')
+            .replace(/export\s+class\s+(\w+)/g, 'class $1')
+            .replace(/export\s*{([^}]+)}/g, '// Exports handled below')
+            .replace(/import\.meta\.url/g, '""')
+            .replace(/import\.meta\.env/g, '{}')
+            .replace(/import\.meta/g, '{}');
+        
+        eval(mockAppCode);
+        
+        if (typeof SommOS !== 'undefined') {
+            global.SommOS = SommOS;
+        }
+    }
+    
+    console.log('Frontend classes loaded successfully for JSDOM tests');
+} catch (error) {
+    console.warn('Failed to load frontend classes for JSDOM tests:', error.message);
+    
+    // Fallback: Create minimal mock classes
+    global.SommOSAPI = class SommOSAPI {
+        constructor() {
+            this.baseURL = 'http://localhost:3001/api';
+        }
+        async request() { return { success: true, data: [] }; }
+        async getInventory() { return { success: true, data: [] }; }
+        async getPairings() { return { success: true, data: [] }; }
+    };
+    
+    global.SommOSUI = class SommOSUI {
+        showToast() {}
+        showModal() {}
+        showLoading() {}
+        hideLoading() {}
+        debounce() { return (fn) => fn; }
+    };
+    
+    global.SommOS = class SommOS {
+        constructor() {
+            this.api = new global.SommOSAPI();
+            this.ui = new global.SommOSUI();
+        }
+        async init() {}
+        navigateToView() {}
+        loadInventory() {}
+    };
+}

@@ -17,6 +17,7 @@ describe('SommOS Full Stack Integration Tests', () => {
     let db;
     let testHelpers;
     let testDataset;
+    let authToken;
 
     beforeAll(async () => {
         // Set up test environment
@@ -40,6 +41,20 @@ describe('SommOS Full Stack Integration Tests', () => {
         // Import the app after environment setup
         app = require('../../backend/server');
         server = app.listen(0);
+
+        // Create test user and get auth token
+        const loginResponse = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: 'admin@sommos.com',
+                password: 'admin123'
+            });
+        
+        if (loginResponse.status === 200) {
+            authToken = loginResponse.headers['set-cookie']
+                .find(cookie => cookie.startsWith('access_token='))
+                ?.split(';')[0];
+        }
     });
 
     afterAll(async () => {
@@ -48,6 +63,7 @@ describe('SommOS Full Stack Integration Tests', () => {
         }
         
         if (db) {
+            await testHelpers.cleanupTestDatabase(db);
             await db.close();
         }
         
@@ -57,12 +73,20 @@ describe('SommOS Full Stack Integration Tests', () => {
         }
     });
 
+    // Helper function to make authenticated requests
+    const authenticatedRequest = (method, url) => {
+        const req = request(app)[method.toLowerCase()](url);
+        if (authToken) {
+            req.set('Cookie', authToken);
+        }
+        return req;
+    };
+
 
     describe('Complete Wine Inventory Flow', () => {
         test('should fetch, display, and interact with wine inventory', async () => {
             // 1. Fetch inventory via API
-            const inventoryResponse = await request(app)
-                .get('/api/inventory/stock')
+            const inventoryResponse = await authenticatedRequest('get', '/api/inventory/stock')
                 .expect(200);
 
             expect(inventoryResponse.body.success).toBe(true);
