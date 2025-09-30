@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  spec-parity:
+    name: spec-parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify OpenAPI parity
+        run: npm run spec:parity
+
+  ci:
+    name: ci
+    needs: spec-parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate environment contract
+        env:
+          SESSION_SECRET: ci-session-secret
+          JWT_SECRET: ci-jwt-secret
+          OPEN_METEO_BASE: https://archive-api.open-meteo.com/v1/archive
+          DATABASE_PATH: ./data/sommos-ci.db
+        run: npm run verify:env
+
+      - name: Build frontend bundle
+        run: npm run build
+
+      - name: Generate CycloneDX SBOM
+        run: npm run sbom:generate
+
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyclonedx-sbom
+          path: build/sbom.json

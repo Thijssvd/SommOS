@@ -244,9 +244,12 @@ Use different API keys for different environments:
 OPENAI_API_KEY=sk-dev-key...
 ```
 
-**Production** (`.env.production`):
+**Production** (GitHub or server secrets):
 ```bash
 OPENAI_API_KEY=sk-prod-key...
+SESSION_SECRET=generated-session-secret
+JWT_SECRET=generated-jwt-secret
+OPEN_METEO_BASE=https://archive-api.open-meteo.com/v1/archive
 ```
 
 ### Cost Management

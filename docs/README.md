@@ -173,6 +173,7 @@ PurchaseOrders (id, supplier_id, status, created_at)
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
+   npm run verify:env
    ```
 
 4. **Initialize the database:**
@@ -194,29 +195,23 @@ The application will be available at `http://localhost:3000`
 
 ### Environment Configuration
 
-Create a `.env` file with the following variables:
+Create a `.env` file based on `.env.example`. The most important settings are:
 
-```bash
-# Server Configuration
-PORT=3000
-NODE_ENV=development
+| Variable | Required | Description |
+| --- | --- | --- |
+| `PORT` | No | Local HTTP port for the API gateway (defaults to `3001`). |
+| `NODE_ENV` | No | Runtime mode. Use `development` locally. |
+| `OPEN_METEO_BASE` | Production only | Base URL for the Open-Meteo archive API. |
+| `DATABASE_PATH` | No | Location of the SQLite database file. |
+| `SESSION_SECRET` | Yes (prod) | Secret used to sign session cookies. |
+| `JWT_SECRET` | Yes (prod) | Secret used to issue API access tokens. |
+| `OPENAI_API_KEY` | Optional | Enables AI-assisted explanations. |
+| `WEATHER_API_KEY` | Optional | Unlocks premium weather insights. |
+| `SOMMOS_DISABLE_EXTERNAL_CALLS` | No | Set to `true` to run fully offline (tests/demos). |
 
-# Database
-DATABASE_PATH=./data/sommos.db
+Run `npm run verify:env` after editing to confirm your configuration.
 
-# AI Features (Optional)
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Security
-JWT_SECRET=your_jwt_secret_here
-
-# Weather API
-WEATHER_API_ENABLED=true
-
-# PWA Settings
-PWA_NAME=SommOS
-PWA_SHORT_NAME=SommOS
-```
+> 📘 Need to wire up GitHub checks and secrets? See [`docs/operations/github-quick-actions.md`](operations/github-quick-actions.md).
 
 ### Production Setup
 
