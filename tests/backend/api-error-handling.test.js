@@ -48,7 +48,7 @@ describe('SommOS API error handling and edge cases', () => {
             .expect(500)
             .expect(res => {
                 expect(res.body.success).toBe(false);
-                expect(res.body.error).toBe('Pairing failure');
+                expect(res.body.error.message).toBe('Pairing failure');
             });
 
         await request(app)
@@ -57,7 +57,7 @@ describe('SommOS API error handling and edge cases', () => {
             .expect(500)
             .expect(res => {
                 expect(res.body.success).toBe(false);
-                expect(res.body.error).toBe('Quick pairing failure');
+                expect(res.body.error.message).toBe('Quick pairing failure');
             });
 
         jest.restoreAllMocks();
@@ -92,7 +92,7 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/inventory/stock')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe(errorMessages.stock);
+                expect(res.body.error.message).toBe(errorMessages.stock);
             });
 
         await request(app)
@@ -100,7 +100,7 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ vintage_id: 'vintage-1', location: 'main-cellar', quantity: 1 })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe(errorMessages.consume);
+                expect(res.body.error.message).toBe(errorMessages.consume);
             });
 
         await request(app)
@@ -108,7 +108,7 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ vintage_id: 'vintage-1', location: 'main-cellar', quantity: 6 })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe(errorMessages.receive);
+                expect(res.body.error.message).toBe(errorMessages.receive);
             });
 
         await request(app)
@@ -116,7 +116,7 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ items: [] })
             .expect(400)
             .expect(res => {
-                expect(res.body.error).toBe(errorMessages.intake);
+                expect(res.body.error.message).toBe(errorMessages.intake);
             });
 
         await request(app)
@@ -124,14 +124,14 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ receipts: [{ wine_name: 'Test', quantity_received: 1 }] })
             .expect(400)
             .expect(res => {
-                expect(res.body.error).toBe(errorMessages.intakeReceive);
+                expect(res.body.error.message).toBe(errorMessages.intakeReceive);
             });
 
         await request(app)
             .get('/api/inventory/intake/42/status')
             .expect(404)
             .expect(res => {
-                expect(res.body.error).toBe(errorMessages.intakeStatus);
+                expect(res.body.error.message).toBe(errorMessages.intakeStatus);
             });
 
         await request(app)
@@ -139,7 +139,7 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ vintage_id: 'vintage-1', from_location: 'A', to_location: 'B', quantity: 1 })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe(errorMessages.move);
+                expect(res.body.error.message).toBe(errorMessages.move);
             });
 
         await request(app)
@@ -147,14 +147,14 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ vintage_id: 'vintage-1', location: 'main-cellar', quantity: 2 })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe(errorMessages.reserve);
+                expect(res.body.error.message).toBe(errorMessages.reserve);
             });
 
         await request(app)
             .get('/api/inventory/ledger/vintage-1')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe(errorMessages.ledger);
+                expect(res.body.error.message).toBe(errorMessages.ledger);
             });
 
         jest.restoreAllMocks();
@@ -171,7 +171,7 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/procurement/opportunities')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Opportunity analysis failed');
+                expect(res.body.error.message).toBe('Opportunity analysis failed');
             });
 
         await request(app)
@@ -179,7 +179,7 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ vintage_id: 'vintage-1', supplier_id: 'supplier-1' })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Purchase decision failed');
+                expect(res.body.error.message).toBe('Purchase decision failed');
             });
 
         await request(app)
@@ -190,7 +190,7 @@ describe('SommOS API error handling and edge cases', () => {
             })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Purchase order failed');
+                expect(res.body.error.message).toBe('Purchase order failed');
             });
 
         jest.restoreAllMocks();
@@ -211,7 +211,7 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/wines?region=Bordeaux&producer=Test&wine_type=Red&search=Test')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Catalog query failed');
+                expect(res.body.error.message).toBe('Catalog query failed');
             });
 
         await request(app)
@@ -223,14 +223,14 @@ describe('SommOS API error handling and edge cases', () => {
             })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Inventory enrichment failed');
+                expect(res.body.error.message).toBe('Inventory enrichment failed');
             });
 
         await request(app)
             .get('/api/wines/test-wine-1')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Wine lookup failed');
+                expect(res.body.error.message).toBe('Wine lookup failed');
             });
 
         jest.restoreAllMocks();
@@ -271,7 +271,7 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/vintage/analysis/test-wine-1')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Weather context unavailable');
+                expect(res.body.error.message).toBe('Weather context unavailable');
             });
 
         await request(app)
@@ -279,14 +279,14 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ wine_id: 'test-wine-1' })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Enrichment failed');
+                expect(res.body.error.message).toBe('Enrichment failed');
             });
 
         await request(app)
             .get('/api/vintage/procurement-recommendations')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Recommendation engine offline');
+                expect(res.body.error.message).toBe('Recommendation engine offline');
             });
 
         await request(app)
@@ -294,7 +294,7 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ filters: { region: 'Bordeaux' }, limit: 0 })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Batch enrichment failed');
+                expect(res.body.error.message).toBe('Batch enrichment failed');
             });
 
         await request(app)
@@ -302,7 +302,7 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ wine_id: 'test-wine-1', dish_context: { dish: 'Steak' } })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Insight generation failed');
+                expect(res.body.error.message).toBe('Insight generation failed');
             });
 
         jest.restoreAllMocks();
@@ -319,7 +319,7 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/system/health')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Database offline');
+                expect(res.body.error.message).toBe('Database offline');
                 expect(res.body.status).toBe('unhealthy');
             });
 
@@ -327,7 +327,7 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/system/activity')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Database offline');
+                expect(res.body.error.message).toBe('Database offline');
             });
 
         await request(app)
@@ -335,7 +335,7 @@ describe('SommOS API error handling and edge cases', () => {
             .expect(404)
             .expect(res => {
                 expect(res.body.success).toBe(false);
-                expect(res.body.error).toBe('Endpoint not found');
+                expect(res.body.error.message).toBe('Endpoint not found');
             });
 
         jest.restoreAllMocks();

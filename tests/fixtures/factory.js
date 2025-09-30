@@ -244,6 +244,13 @@ class TestDataFactory {
     async createBasicDataset(db) {
         console.log('Creating basic test dataset...');
         
+        // Create test user for authentication
+        const testUser = await this.createUser(db, {
+            email: 'admin@sommos.com',
+            role: 'admin',
+            name: 'Test Admin'
+        });
+        
         // Create first complete wine (Bordeaux)
         const bordeaux = await this.createCompleteWine(db, {
             wine: { name: 'Château Test Bordeaux', region: 'Bordeaux' },
@@ -290,7 +297,30 @@ class TestDataFactory {
         });
 
         console.log('Basic test dataset created successfully');
-        return { bordeaux, burgundy, champagne };
+        return { testUser, bordeaux, burgundy, champagne };
+    }
+
+    // User creation for authentication tests
+    async createUser(db, overrides = {}) {
+        const bcrypt = require('bcrypt');
+        const user = {
+            email: 'admin@sommos.com',
+            password_hash: await bcrypt.hash('admin123', 10),
+            role: 'admin',
+            name: 'Test Admin',
+            active: 1,
+            ...overrides
+        };
+
+        const result = await db.run(`
+            INSERT INTO Users (email, password_hash, role, name, active)
+            VALUES (?, ?, ?, ?, ?)
+        `, [user.email, user.password_hash, user.role, user.name, user.active]);
+
+        const createdUser = { ...user, id: result.lastID };
+        this.createdRecords.users = this.createdRecords.users || [];
+        this.createdRecords.users.push(createdUser);
+        return createdUser;
     }
 
     // Cleanup all created records
@@ -298,7 +328,7 @@ class TestDataFactory {
         console.log('Cleaning up test data...');
         
         // Clean up in reverse dependency order
-        const tables = ['Ledger', 'PriceBook', 'Stock', 'Vintages', 'Wines', 'Suppliers', 'WeatherVintage'];
+        const tables = ['Ledger', 'PriceBook', 'Stock', 'Vintages', 'Wines', 'Suppliers', 'WeatherVintage', 'Users'];
         
         for (const table of tables) {
             await db.run(`DELETE FROM ${table} WHERE id > 0`);
@@ -311,7 +341,8 @@ class TestDataFactory {
             suppliers: [],
             stock: [],
             pricebook: [],
-            ledger: []
+            ledger: [],
+            users: []
         };
         
         console.log('Test data cleanup completed');

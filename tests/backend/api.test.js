@@ -341,7 +341,7 @@ describe('SommOS API Endpoints', () => {
                 .expect(500);
 
             expect(response.body.success).toBe(false);
-            expect(response.body.error).toContain('Mock failure');
+            expect(response.body.error.message).toContain('Mock failure');
 
             ProcurementEngine.prototype.analyzeProcurementOpportunities = original;
         });
@@ -431,7 +431,7 @@ describe('SommOS API Endpoints', () => {
                 .expect(500);
 
             expect(response.body.success).toBe(false);
-            expect(response.body.error).toContain('positive quantity');
+            expect(response.body.error.message).toContain('positive quantity');
         });
 
         test('POST /api/procurement/order should require supplier id', async () => {
@@ -527,7 +527,7 @@ describe('SommOS API Endpoints', () => {
                 .expect(404);
 
             expect(response.body.success).toBe(false);
-            expect(response.body.error).toBe('Wine not found');
+            expect(response.body.error.message).toBe('Wine not found');
         });
     });
 
@@ -566,7 +566,7 @@ describe('SommOS API Endpoints', () => {
                 .expect(400);
 
             expect(response.body.success).toBe(false);
-            expect(response.body.error).toBe('wine_id is required');
+            expect(response.body.error.message).toBe('wine_id is required');
         });
 
         test('GET /api/vintage/procurement-recommendations should return recommendations', async () => {
@@ -718,7 +718,7 @@ describe('SommOS API Endpoints', () => {
             getUserSpy.mockRestore();
 
             expect(response.body.success).toBe(false);
-            expect(response.body.error?.code || response.body.error).toBe('FORBIDDEN');
+            expect(response.body.error?.code || response.body.error.message).toBe('FORBIDDEN');
         });
 
         test('POST /api/memories should create a memory note for crew members', async () => {

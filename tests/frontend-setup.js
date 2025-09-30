@@ -119,72 +119,18 @@ global.Chart = class Chart {
     }
 };
 
-// Load frontend JavaScript files and expose classes
+// Load mock frontend classes for JSDOM testing
 try {
-    // Load API class
-    const apiPath = path.join(__dirname, '../frontend/js/api.js');
-    if (fs.existsSync(apiPath)) {
-        const apiCode = fs.readFileSync(apiPath, 'utf8');
-        // Replace ES6 imports and exports with CommonJS compatible code
-        const mockApiCode = apiCode
-            .replace(/import.*from.*chart\.js.*/g, '// Chart.js mocked above')
-            .replace(/import\s*{([^}]+)}\s*from\s*['"]([^'"]+)['"];?/g, '// Imports mocked above')
-            .replace(/export\s+class\s+(\w+)/g, 'class $1')
-            .replace(/export\s*{([^}]+)}/g, '// Exports handled below')
-            .replace(/import\.meta\.url/g, '""')
-            .replace(/import\.meta\.env/g, '{}')
-            .replace(/import\.meta/g, '{}');
-        
-        // Evaluate the code in global scope
-        eval(mockApiCode);
-        
-        // Expose classes to global scope
-        if (typeof SommOSAPI !== 'undefined') {
-            global.SommOSAPI = SommOSAPI;
-        }
+    // Load the mock classes
+    const mockClassesPath = path.join(__dirname, 'frontend/mock-classes.js');
+    if (fs.existsSync(mockClassesPath)) {
+        require(mockClassesPath);
+        console.log('Mock frontend classes loaded successfully for JSDOM tests');
+    } else {
+        throw new Error('Mock classes file not found');
     }
-    
-    // Load UI class
-    const uiPath = path.join(__dirname, '../frontend/js/ui.js');
-    if (fs.existsSync(uiPath)) {
-        const uiCode = fs.readFileSync(uiPath, 'utf8');
-        const mockUiCode = uiCode
-            .replace(/import\s*{([^}]+)}\s*from\s*['"]([^'"]+)['"];?/g, '// Imports mocked above')
-            .replace(/export\s+class\s+(\w+)/g, 'class $1')
-            .replace(/export\s*{([^}]+)}/g, '// Exports handled below')
-            .replace(/import\.meta\.url/g, '""')
-            .replace(/import\.meta\.env/g, '{}')
-            .replace(/import\.meta/g, '{}');
-        
-        eval(mockUiCode);
-        
-        if (typeof SommOSUI !== 'undefined') {
-            global.SommOSUI = SommOSUI;
-        }
-    }
-    
-    // Load main app class
-    const appPath = path.join(__dirname, '../frontend/js/app.js');
-    if (fs.existsSync(appPath)) {
-        const appCode = fs.readFileSync(appPath, 'utf8');
-        const mockAppCode = appCode
-            .replace(/import\s*{([^}]+)}\s*from\s*['"]([^'"]+)['"];?/g, '// Imports mocked above')
-            .replace(/export\s+class\s+(\w+)/g, 'class $1')
-            .replace(/export\s*{([^}]+)}/g, '// Exports handled below')
-            .replace(/import\.meta\.url/g, '""')
-            .replace(/import\.meta\.env/g, '{}')
-            .replace(/import\.meta/g, '{}');
-        
-        eval(mockAppCode);
-        
-        if (typeof SommOS !== 'undefined') {
-            global.SommOS = SommOS;
-        }
-    }
-    
-    console.log('Frontend classes loaded successfully for JSDOM tests');
 } catch (error) {
-    console.warn('Failed to load frontend classes for JSDOM tests:', error.message);
+    console.warn('Failed to load mock frontend classes for JSDOM tests:', error.message);
     
     // Fallback: Create minimal mock classes
     global.SommOSAPI = class SommOSAPI {

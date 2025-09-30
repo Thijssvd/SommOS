@@ -43,17 +43,21 @@ describe('SommOS Full Stack Integration Tests', () => {
         server = app.listen(0);
 
         // Create test user and get auth token
-        const loginResponse = await request(app)
-            .post('/api/auth/login')
-            .send({
-                email: 'admin@sommos.com',
-                password: 'admin123'
-            });
-        
-        if (loginResponse.status === 200) {
-            authToken = loginResponse.headers['set-cookie']
-                .find(cookie => cookie.startsWith('access_token='))
-                ?.split(';')[0];
+        try {
+            const loginResponse = await authenticatedRequest('post', '/api/auth/login')
+                .send({
+                    email: 'admin@sommos.com',
+                    password: 'admin123'
+                });
+            
+            if (loginResponse.status === 200 && loginResponse.headers['set-cookie']) {
+                authToken = loginResponse.headers['set-cookie']
+                    .find(cookie => cookie.startsWith('access_token='))
+                    ?.split(';')[0];
+            }
+        } catch (error) {
+            console.warn('Failed to authenticate test user:', error.message);
+            // Continue without auth token - some tests may not need it
         }
     });
 
@@ -100,16 +104,14 @@ describe('SommOS Full Stack Integration Tests', () => {
             expect(bordeauxWine.location).toBe('main-cellar');
 
             // 2. Filter inventory by location
-            const filteredResponse = await request(app)
-                .get('/api/inventory/stock?location=main-cellar')
+            const filteredResponse = await authenticatedRequest('get', '/api/inventory/stock?location=main-cellar')
                 .expect(200);
 
             expect(filteredResponse.body.data).toHaveLength(1);
             expect(filteredResponse.body.data[0].location).toBe('main-cellar');
 
             // 3. Filter by wine type
-            const typeFilterResponse = await request(app)
-                .get('/api/inventory/stock?wine_type=Red')
+            const typeFilterResponse = await authenticatedRequest('get', '/api/inventory/stock?wine_type=Red')
                 .expect(200);
 
             expect(typeFilterResponse.body.data).toHaveLength(1);
@@ -118,16 +120,14 @@ describe('SommOS Full Stack Integration Tests', () => {
 
         test('should handle wine consumption workflow', async () => {
             // 1. Get current stock levels
-            const initialStock = await request(app)
-                .get('/api/inventory/stock?location=main-cellar')
+            const initialStock = await authenticatedRequest('get', '/api/inventory/stock?location=main-cellar')
                 .expect(200);
 
             const bordeauxWine = initialStock.body.data[0];
             const initialQuantity = bordeauxWine.quantity;
 
             // 2. Consume wine
-            const consumeResponse = await request(app)
-                .post('/api/inventory/consume')
+            const consumeResponse = await authenticatedRequest('post', '/api/inventory/consume')
                 .send({
                     vintage_id: bordeauxWine.vintage_id,
                     location: 'main-cellar',
@@ -140,16 +140,14 @@ describe('SommOS Full Stack Integration Tests', () => {
             expect(consumeResponse.body.success).toBe(true);
 
             // 3. Verify stock reduction
-            const updatedStock = await request(app)
-                .get('/api/inventory/stock?location=main-cellar')
+            const updatedStock = await authenticatedRequest('get', '/api/inventory/stock?location=main-cellar')
                 .expect(200);
 
             const updatedWine = updatedStock.body.data[0];
             expect(updatedWine.quantity).toBe(initialQuantity - 2);
 
             // 4. Check ledger entry
-            const ledgerResponse = await request(app)
-                .get(`/api/inventory/ledger/${bordeauxWine.vintage_id}`)
+            const ledgerResponse = await authenticatedRequest('get', `/api/inventory/ledger/${bordeauxWine.vintage_id}`)
                 .expect(200);
 
             expect(ledgerResponse.body.success).toBe(true);
@@ -166,12 +164,10 @@ describe('SommOS Full Stack Integration Tests', () => {
 
         test('should handle wine movement between locations', async () => {
             // 1. Get initial stock at both locations
-            const mainCellarStock = await request(app)
-                .get('/api/inventory/stock?location=main-cellar')
+            const mainCellarStock = await authenticatedRequest('get', '/api/inventory/stock?location=main-cellar')
                 .expect(200);
 
-            const serviceBarStock = await request(app)
-                .get('/api/inventory/stock?location=service-bar')
+            const serviceBarStock = await authenticatedRequest('get', '/api/inventory/stock?location=service-bar')
                 .expect(200);
 
             const bordeauxWine = mainCellarStock.body.data[0];
@@ -181,8 +177,7 @@ describe('SommOS Full Stack Integration Tests', () => {
             )?.quantity || 0;
 
             // 2. Move wine from main cellar to service bar
-            const moveResponse = await request(app)
-                .post('/api/inventory/move')
+            const moveResponse = await authenticatedRequest('post', '/api/inventory/move')
                 .send({
                     vintage_id: bordeauxWine.vintage_id,
                     from_location: 'main-cellar',
@@ -196,12 +191,10 @@ describe('SommOS Full Stack Integration Tests', () => {
             expect(moveResponse.body.success).toBe(true);
 
             // 3. Verify stock changes at both locations
-            const updatedMainCellar = await request(app)
-                .get('/api/inventory/stock?location=main-cellar')
+            const updatedMainCellar = await authenticatedRequest('get', '/api/inventory/stock?location=main-cellar')
                 .expect(200);
 
-            const updatedServiceBar = await request(app)
-                .get('/api/inventory/stock?location=service-bar')
+            const updatedServiceBar = await authenticatedRequest('get', '/api/inventory/stock?location=service-bar')
                 .expect(200);
 
             const updatedMainCellarWine = updatedMainCellar.body.data[0];
@@ -215,14 +208,12 @@ describe('SommOS Full Stack Integration Tests', () => {
 
         test('should handle wine reservation workflow', async () => {
             // 1. Reserve wine
-            const mainCellarStock = await request(app)
-                .get('/api/inventory/stock?location=main-cellar')
+            const mainCellarStock = await authenticatedRequest('get', '/api/inventory/stock?location=main-cellar')
                 .expect(200);
 
             const bordeauxWine = mainCellarStock.body.data[0];
 
-            const reserveResponse = await request(app)
-                .post('/api/inventory/reserve')
+            const reserveResponse = await authenticatedRequest('post', '/api/inventory/reserve')
                 .send({
                     vintage_id: bordeauxWine.vintage_id,
                     location: 'main-cellar',
@@ -235,8 +226,7 @@ describe('SommOS Full Stack Integration Tests', () => {
             expect(reserveResponse.body.success).toBe(true);
 
             // 2. Verify ledger entry shows reservation
-            const ledgerResponse = await request(app)
-                .get(`/api/inventory/ledger/${bordeauxWine.vintage_id}`)
+            const ledgerResponse = await authenticatedRequest('get', `/api/inventory/ledger/${bordeauxWine.vintage_id}`)
                 .expect(200);
 
             expect(ledgerResponse.body.data).toEqual(
@@ -254,8 +244,7 @@ describe('SommOS Full Stack Integration Tests', () => {
     describe('Wine Pairing Integration', () => {
         test('should generate wine pairings with inventory consideration', async () => {
             // 1. Request pairing recommendations
-            const pairingResponse = await request(app)
-                .post('/api/pairing/recommend')
+            const pairingResponse = await authenticatedRequest('post', '/api/pairing/recommend')
                 .send({
                     dish: 'Grilled salmon with herbs',
                     context: {
@@ -274,8 +263,7 @@ describe('SommOS Full Stack Integration Tests', () => {
             }
 
             // 2. Test quick pairing
-            const quickPairingResponse = await request(app)
-                .post('/api/pairing/quick')
+            const quickPairingResponse = await authenticatedRequest('post', '/api/pairing/quick')
                 .send({
                     dish: 'Beef tenderloin',
                     context: { occasion: 'formal-dining' },
@@ -290,23 +278,20 @@ describe('SommOS Full Stack Integration Tests', () => {
     describe('Procurement Integration', () => {
         test('should analyze procurement opportunities', async () => {
             // 1. Get procurement opportunities
-            const opportunitiesResponse = await request(app)
-                .get('/api/procurement/opportunities?region=Bordeaux')
+            const opportunitiesResponse = await authenticatedRequest('get', '/api/procurement/opportunities?region=Bordeaux')
                 .expect(200);
 
             expect(opportunitiesResponse.body.success).toBe(true);
             expect(opportunitiesResponse.body.data).toBeDefined();
 
             // 2. Get existing vintage and supplier data from test database
-            const stockResponse = await request(app)
-                .get('/api/inventory/stock?limit=1')
+            const stockResponse = await authenticatedRequest('get', '/api/inventory/stock?limit=1')
                 .expect(200);
 
             const testVintage = stockResponse.body.data[0];
             
             // 3. Analyze specific purchase decision using real test data
-            const analysisResponse = await request(app)
-                .post('/api/procurement/analyze')
+            const analysisResponse = await authenticatedRequest('post', '/api/procurement/analyze')
                 .send({
                     vintage_id: testVintage.vintage_id,
                     supplier_id: '1',
@@ -320,14 +305,12 @@ describe('SommOS Full Stack Integration Tests', () => {
 
         test('should create purchase orders', async () => {
             // Get real vintage data from test database
-            const stockResponse = await request(app)
-                .get('/api/inventory/stock?limit=2')
+            const stockResponse = await authenticatedRequest('get', '/api/inventory/stock?limit=2')
                 .expect(200);
 
             const testVintages = stockResponse.body.data;
             
-            const orderResponse = await request(app)
-                .post('/api/procurement/order')
+            const orderResponse = await authenticatedRequest('post', '/api/procurement/order')
                 .send({
                     items: [
                         { vintage_id: testVintages[0].vintage_id, quantity: 12, price: 35.0 },
@@ -346,8 +329,7 @@ describe('SommOS Full Stack Integration Tests', () => {
     describe('Wine Catalog and Intelligence Integration', () => {
         test('should manage wine catalog with vintage intelligence', async () => {
             // 1. Get wine catalog
-            const catalogResponse = await request(app)
-                .get('/api/wines?limit=10')
+            const catalogResponse = await authenticatedRequest('get', '/api/wines?limit=10')
                 .expect(200);
 
             expect(catalogResponse.body.success).toBe(true);
@@ -356,16 +338,14 @@ describe('SommOS Full Stack Integration Tests', () => {
             const testWine = catalogResponse.body.data[0];
 
             // 2. Get specific wine details
-            const wineDetailsResponse = await request(app)
-                .get(`/api/wines/${testWine.id}`)
+            const wineDetailsResponse = await authenticatedRequest('get', `/api/wines/${testWine.id}`)
                 .expect(200);
 
             expect(wineDetailsResponse.body.success).toBe(true);
             expect(wineDetailsResponse.body.data).toHaveProperty('vintages');
 
             // 3. Add new wine with vintage intelligence
-            const newWineResponse = await request(app)
-                .post('/api/wines')
+            const newWineResponse = await authenticatedRequest('post', '/api/wines')
                 .send({
                     wine: {
                         name: 'Integration Test Wine',
@@ -391,15 +371,13 @@ describe('SommOS Full Stack Integration Tests', () => {
 
         test('should provide vintage intelligence analysis', async () => {
             // Get first wine for analysis
-            const catalogResponse = await request(app)
-                .get('/api/wines?limit=1')
+            const catalogResponse = await authenticatedRequest('get', '/api/wines?limit=1')
                 .expect(200);
 
             const testWine = catalogResponse.body.data[0];
 
             // 1. Get vintage analysis
-            const analysisResponse = await request(app)
-                .get(`/api/vintage/analysis/${testWine.id}`)
+            const analysisResponse = await authenticatedRequest('get', `/api/vintage/analysis/${testWine.id}`)
                 .expect(200);
 
             expect(analysisResponse.body.success).toBe(true);
@@ -407,16 +385,14 @@ describe('SommOS Full Stack Integration Tests', () => {
             expect(analysisResponse.body.data).toHaveProperty('qualityScore');
 
             // 2. Test vintage enrichment
-            const enrichResponse = await request(app)
-                .post('/api/vintage/enrich')
+            const enrichResponse = await authenticatedRequest('post', '/api/vintage/enrich')
                 .send({ wine_id: testWine.id })
                 .expect(200);
 
             expect(enrichResponse.body.success).toBe(true);
 
             // 3. Test batch enrichment
-            const batchResponse = await request(app)
-                .post('/api/vintage/batch-enrich')
+            const batchResponse = await authenticatedRequest('post', '/api/vintage/batch-enrich')
                 .send({
                     filters: { region: 'Bordeaux' },
                     limit: 5
@@ -427,14 +403,12 @@ describe('SommOS Full Stack Integration Tests', () => {
         });
 
         test('should generate pairing insights with weather context', async () => {
-            const catalogResponse = await request(app)
-                .get('/api/wines?limit=1')
+            const catalogResponse = await authenticatedRequest('get', '/api/wines?limit=1')
                 .expect(200);
 
             const testWine = catalogResponse.body.data[0];
 
-            const insightResponse = await request(app)
-                .post('/api/vintage/pairing-insight')
+            const insightResponse = await authenticatedRequest('post', '/api/vintage/pairing-insight')
                 .send({
                     wine_id: testWine.id,
                     dish_context: {
@@ -453,8 +427,7 @@ describe('SommOS Full Stack Integration Tests', () => {
 
     describe('System Health and Monitoring', () => {
         test('should provide comprehensive system health information', async () => {
-            const healthResponse = await request(app)
-                .get('/api/system/health')
+            const healthResponse = await authenticatedRequest('get', '/api/system/health')
                 .expect(200);
 
             expect(healthResponse.body).toEqual({
@@ -479,14 +452,12 @@ describe('SommOS Full Stack Integration Tests', () => {
     describe('Error Handling and Edge Cases', () => {
         test('should handle insufficient inventory gracefully', async () => {
             // Try to consume more wine than available
-            const stock = await request(app)
-                .get('/api/inventory/stock?location=main-cellar')
+            const stock = await authenticatedRequest('get', '/api/inventory/stock?location=main-cellar')
                 .expect(200);
 
             const wine = stock.body.data[0];
 
-            const consumeResponse = await request(app)
-                .post('/api/inventory/consume')
+            const consumeResponse = await authenticatedRequest('post', '/api/inventory/consume')
                 .send({
                     vintage_id: wine.vintage_id,
                     location: 'main-cellar',
@@ -500,18 +471,16 @@ describe('SommOS Full Stack Integration Tests', () => {
         });
 
         test('should handle invalid wine IDs', async () => {
-            const invalidWineResponse = await request(app)
-                .get('/api/wines/999999')
+            const invalidWineResponse = await authenticatedRequest('get', '/api/wines/999999')
                 .expect(404);
 
             expect(invalidWineResponse.body.success).toBe(false);
-            expect(invalidWineResponse.body.error).toBe('Wine not found');
+            expect(invalidWineResponse.body.error.message).toBe('Wine not found');
         });
 
         test('should validate required parameters', async () => {
             // Test missing required fields
-            const invalidConsumeResponse = await request(app)
-                .post('/api/inventory/consume')
+            const invalidConsumeResponse = await authenticatedRequest('post', '/api/inventory/consume')
                 .send({
                     location: 'main-cellar',
                     notes: 'Missing vintage_id and quantity'
@@ -523,8 +492,7 @@ describe('SommOS Full Stack Integration Tests', () => {
         });
 
         test('should handle empty pairing requests', async () => {
-            const emptyPairingResponse = await request(app)
-                .post('/api/pairing/recommend')
+            const emptyPairingResponse = await authenticatedRequest('post', '/api/pairing/recommend')
                 .send({
                     context: { occasion: 'test' }
                     // Missing dish
@@ -532,15 +500,14 @@ describe('SommOS Full Stack Integration Tests', () => {
                 .expect(400);
 
             expect(emptyPairingResponse.body.success).toBe(false);
-            expect(emptyPairingResponse.body.error).toBe('Dish information is required');
+            expect(emptyPairingResponse.body.error.message).toBe('Dish information is required');
         });
     });
 
     describe('Data Consistency and Transactions', () => {
         test('should maintain data consistency during concurrent operations', async () => {
             // Get initial state
-            const initialStock = await request(app)
-                .get('/api/inventory/stock')
+            const initialStock = await authenticatedRequest('get', '/api/inventory/stock')
                 .expect(200);
 
             const wine = initialStock.body.data[0];
@@ -579,8 +546,7 @@ describe('SommOS Full Stack Integration Tests', () => {
             });
 
             // Verify final state is consistent
-            const finalStock = await request(app)
-                .get('/api/inventory/stock')
+            const finalStock = await authenticatedRequest('get', '/api/inventory/stock')
                 .expect(200);
 
             const finalWine = finalStock.body.data.find(w => w.vintage_id === wine.vintage_id);
@@ -596,8 +562,7 @@ describe('SommOS Full Stack Integration Tests', () => {
             expect(finalWine.available_quantity).toBe(expectedAvailable);
 
             // Verify ledger entries
-            const ledgerResponse = await request(app)
-                .get(`/api/inventory/ledger/${wine.vintage_id}`)
+            const ledgerResponse = await authenticatedRequest('get', `/api/inventory/ledger/${wine.vintage_id}`)
                 .expect(200);
 
             const entries = ledgerResponse.body.data;

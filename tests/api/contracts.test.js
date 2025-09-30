@@ -19,9 +19,11 @@ const extractRoutes = () => {
   while ((match = routeRegex.exec(source)) !== null) {
     const method = match[1].toLowerCase();
     const routePath = match[2];
+    // Add /api prefix to match OpenAPI spec
+    const fullPath = routePath.startsWith('/api') ? routePath : `/api${routePath}`;
     matches.push({
       method,
-      path: routePath,
+      path: fullPath,
     });
   }
 
