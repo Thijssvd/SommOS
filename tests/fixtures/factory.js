@@ -248,7 +248,11 @@ class TestDataFactory {
         const bordeaux = await this.createCompleteWine(db, {
             wine: { name: 'Château Test Bordeaux', region: 'Bordeaux' },
             vintage: { year: 2020, quality_score: 92 },
-            stock: { location: 'main-cellar', quantity: 24 }
+            stock: { location: 'main-cellar', quantity: 24 },
+            supplier: { name: 'Premium Wine Importers', email: 'contact@premiumwines.com' },
+            price: { price_per_bottle: 150.00, availability_status: 'In Stock' },
+            weather: { growing_season_temp_avg: 18.5, vintage_rating: 'Excellent' },
+            ledger: { transaction_type: 'IN', quantity: 24, unit_cost: 150.00 }
         });
 
         // Create second complete wine (Burgundy)  
@@ -261,11 +265,32 @@ class TestDataFactory {
                 grape_varieties: JSON.stringify(['Chardonnay'])
             },
             vintage: { year: 2021, quality_score: 89 },
-            stock: { location: 'service-bar', quantity: 12 }
+            stock: { location: 'service-bar', quantity: 12 },
+            supplier: { name: 'Elite Wine Co', email: 'sales@elitewine.com' },
+            price: { price_per_bottle: 85.00, availability_status: 'In Stock' },
+            weather: { growing_season_temp_avg: 17.8, vintage_rating: 'Good' },
+            ledger: { transaction_type: 'IN', quantity: 12, unit_cost: 85.00 }
+        });
+
+        // Create third wine (Champagne) for more comprehensive testing
+        const champagne = await this.createCompleteWine(db, {
+            wine: { 
+                name: 'Test Champagne', 
+                producer: 'Champagne Test',
+                region: 'Champagne',
+                wine_type: 'Sparkling',
+                grape_varieties: JSON.stringify(['Chardonnay', 'Pinot Noir'])
+            },
+            vintage: { year: 2018, quality_score: 94 },
+            stock: { location: 'service-bar', quantity: 18 },
+            supplier: { name: 'Sparkling Wines Ltd', email: 'orders@sparkling.com' },
+            price: { price_per_bottle: 120.00, availability_status: 'Limited' },
+            weather: { growing_season_temp_avg: 16.2, vintage_rating: 'Very Good' },
+            ledger: { transaction_type: 'IN', quantity: 18, unit_cost: 120.00 }
         });
 
         console.log('Basic test dataset created successfully');
-        return { bordeaux, burgundy };
+        return { bordeaux, burgundy, champagne };
     }
 
     // Cleanup all created records
