@@ -1,5 +1,5 @@
 // SommOS API Client
-// Handles all API communication with offline fallback
+// Handles all API communication with offline fallback and retry logic
 
 export class SommOSAPIError extends Error {
     constructor(message, { status, code, details } = {}) {
@@ -11,8 +11,113 @@ export class SommOSAPIError extends Error {
     }
 }
 
+// Retry configuration and logic
+const DEFAULT_RETRY_CONFIG = {
+    retries: 3,
+    retryDelay: 1000,
+    retryCondition: (error, response) => {
+        // Retry on network errors, timeouts, and 5xx server errors
+        if (error) {
+            return error.name === 'AbortError' || 
+                   /Failed to fetch|NetworkError|load failed/i.test(error.message || '');
+        }
+        if (response) {
+            return response.status >= 500 && response.status < 600;
+        }
+        return false;
+    }
+};
+
+// Exponential backoff delay calculation
+function calculateRetryDelay(attempt, baseDelay = 1000) {
+    return Math.min(baseDelay * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
+}
+
+// Enhanced fetch with retry logic
+async function fetchWithRetry(url, options = {}) {
+    const retryConfig = { ...DEFAULT_RETRY_CONFIG, ...options.retryConfig };
+    const { retries, retryDelay, retryCondition } = retryConfig;
+    
+    // Remove retry config from fetch options
+    const fetchOptions = { ...options };
+    delete fetchOptions.retryConfig;
+    
+    let lastError;
+    let lastResponse;
+    
+    for (let attempt = 1; attempt <= retries + 1; attempt++) {
+        try {
+            console.log(`Fetch attempt ${attempt}/${retries + 1} for ${url}`);
+            
+            const response = await fetch(url, fetchOptions);
+            lastResponse = response;
+            
+            // Check if we should retry based on response
+            if (!response.ok && retryCondition(null, response)) {
+                if (attempt <= retries) {
+                    const delay = calculateRetryDelay(attempt, retryDelay);
+                    console.warn(`Request failed with status ${response.status}, retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+            }
+            
+            // Success or non-retryable error
+            return response;
+            
+        } catch (error) {
+            lastError = error;
+            
+            // Check if we should retry based on error
+            if (retryCondition(error, null)) {
+                if (attempt <= retries) {
+                    const delay = calculateRetryDelay(attempt, retryDelay);
+                    console.warn(`Request failed with error: ${error.message}, retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+            }
+            
+            // Non-retryable error or max retries reached
+            throw error;
+        }
+    }
+    
+    // This should never be reached, but just in case
+    if (lastError) throw lastError;
+    if (lastResponse) return lastResponse;
+    throw new Error('Unexpected retry loop exit');
+}
+
+/**
+ * Enhanced SommOS API Client with centralized retry logic and configuration
+ * 
+ * Features:
+ * - Automatic retry with exponential backoff for network errors and 5xx responses
+ * - Configurable retry behavior (retries, delay, conditions)
+ * - Offline support with request queuing
+ * - Batch request capabilities
+ * - Custom retry configuration per request
+ * 
+ * @example
+ * // Basic usage with default retry configuration
+ * const api = new SommOSAPI();
+ * 
+ * // Custom configuration
+ * const api = new SommOSAPI({
+ *   retries: 5,
+ *   retryDelay: 2000,
+ *   timeout: 15000
+ * });
+ * 
+ * // Disable retries for specific requests
+ * await api.requestWithoutRetry('/health');
+ * 
+ * // Custom retry configuration for specific requests
+ * await api.requestWithCustomRetry('/data', {}, { retries: 1, retryDelay: 500 });
+ */
 export class SommOSAPI {
-    constructor() {
+    constructor(options = {}) {
         const viteEnvBase = (typeof import.meta !== 'undefined'
             && import.meta.env
             && import.meta.env.VITE_API_BASE)
@@ -47,8 +152,28 @@ export class SommOSAPI {
         }
 
         this.baseURL = computedBase.replace(/\/$/, '');
-        this.timeout = 10000; // 10 seconds default timeout
+        this.timeout = options.timeout || 10000; // 10 seconds default timeout
         this.syncService = null;
+        
+        // Centralized retry configuration
+        this.retryConfig = {
+            retries: options.retries || 3,
+            retryDelay: options.retryDelay || 1000,
+            retryCondition: options.retryCondition || this.shouldRetry.bind(this)
+        };
+    }
+    
+    // Default retry condition method
+    shouldRetry(error, response) {
+        // Retry on network errors, timeouts, and 5xx server errors
+        if (error) {
+            return error.name === 'AbortError' || 
+                   /Failed to fetch|NetworkError|load failed/i.test(error.message || '');
+        }
+        if (response) {
+            return response.status >= 500 && response.status < 600;
+        }
+        return false;
     }
 
     async request(endpoint, options = {}) {
@@ -98,9 +223,12 @@ export class SommOSAPI {
             }, this.timeout);
 
             console.log(`Making API request to: ${url}`);
-            const response = await fetch(url, {
+            
+            // Use fetchWithRetry with centralized retry configuration
+            const response = await fetchWithRetry(url, {
                 ...config,
-                signal: controller.signal
+                signal: controller.signal,
+                retryConfig: this.retryConfig
             });
 
             clearTimeout(timeoutId);
@@ -282,6 +410,46 @@ export class SommOSAPI {
         if (this.syncService && typeof this.syncService.setAPI === 'function') {
             this.syncService.setAPI(this);
         }
+    }
+    
+    // Configuration methods for retry behavior
+    setRetryConfig(config) {
+        this.retryConfig = { ...this.retryConfig, ...config };
+    }
+    
+    getRetryConfig() {
+        return { ...this.retryConfig };
+    }
+    
+    // Method to disable retries for specific requests
+    requestWithoutRetry(endpoint, options = {}) {
+        const noRetryOptions = {
+            ...options,
+            retryConfig: { retries: 0 }
+        };
+        return this.request(endpoint, noRetryOptions);
+    }
+    
+    // Method to make requests with custom retry configuration
+    requestWithCustomRetry(endpoint, options = {}, retryConfig = {}) {
+        const customRetryOptions = {
+            ...options,
+            retryConfig: { ...this.retryConfig, ...retryConfig }
+        };
+        return this.request(endpoint, customRetryOptions);
+    }
+    
+    // Health check with retry disabled for faster failure detection
+    async healthCheckQuick() {
+        return this.requestWithoutRetry('/system/health');
+    }
+    
+    // Batch request method for multiple endpoints
+    async batchRequest(requests) {
+        const promises = requests.map(({ endpoint, options = {} }) => 
+            this.request(endpoint, options)
+        );
+        return Promise.allSettled(promises);
     }
 
     static generateOperationId() {
