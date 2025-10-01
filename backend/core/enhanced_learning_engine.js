@@ -750,6 +750,16 @@ class EnhancedLearningEngine {
         return this.normalizeWeights(stored, this.defaultProcurementWeights);
     }
 
+    async getDemandMultipliers() {
+        const stored = await this.getParameter('demand_factors', {});
+        return stored || {};
+    }
+
+    getDemandMultiplier(wineType) {
+        const factors = this.parameterCache.demand_factors || {};
+        return factors?.[wineType] || 1;
+    }
+
     async recordPairingFeedback(recommendationId, rating, notes = '', selected = true) {
         // Convert old format to new format
         const enhancedFeedback = {

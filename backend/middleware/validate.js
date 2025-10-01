@@ -302,11 +302,14 @@ const validate = (schemaConfig) => {
           message: issue.message,
         }));
 
-        return res.status(422).json({
+        // Use the first error message as the main message, or a generic one if no specific message
+        const mainMessage = details.length > 0 ? details[0].message : "Request validation failed.";
+
+        return res.status(400).json({
           success: false,
           error: {
-            code: "UNPROCESSABLE_ENTITY",
-            message: "Request validation failed.",
+            code: "VALIDATION_ERROR",
+            message: mainMessage,
             details,
           },
         });

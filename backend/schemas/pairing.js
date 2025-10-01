@@ -12,7 +12,11 @@ const pairingRequestSchema = z
     guestPreferences: generalObject.optional(),
     options: generalObject.optional(),
   })
-  .strict();
+  .strict()
+  .refine((data) => data.dish, {
+    message: 'Dish information is required',
+    path: ['dish'],
+  });
 
 const quickPairingSchema = z
   .object({

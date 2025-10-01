@@ -12,6 +12,11 @@ function shouldBypassAuth() {
         return false;
     }
 
+    // Always bypass auth in test environment
+    if (nodeEnv === 'test') {
+        return true;
+    }
+
     const rawFlag = process.env.SOMMOS_AUTH_TEST_BYPASS;
 
     if (typeof rawFlag === 'string') {

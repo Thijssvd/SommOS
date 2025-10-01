@@ -470,7 +470,7 @@ describe('SommOS Full Stack Integration Tests', () => {
                     notes: 'Test overconsumption',
                     created_by: 'Integration Test'
                 })
-                .expect(500); // Should fail
+                .expect(409); // Should fail with conflict
 
             expect(consumeResponse.body.success).toBe(false);
         });
@@ -481,7 +481,7 @@ describe('SommOS Full Stack Integration Tests', () => {
                 .expect(404);
 
             expect(invalidWineResponse.body.success).toBe(false);
-            expect(invalidWineResponse.body.error).toBe('Wine not found');
+            expect(invalidWineResponse.body.error.message).toBe('Wine not found.');
         });
 
         test('should validate required parameters', async () => {
@@ -495,7 +495,7 @@ describe('SommOS Full Stack Integration Tests', () => {
                 .expect(400);
 
             expect(invalidConsumeResponse.body.success).toBe(false);
-            expect(invalidConsumeResponse.body.error).toContain('required');
+            expect(invalidConsumeResponse.body.error.message).toContain('required');
         });
 
         test('should handle empty pairing requests', async () => {
@@ -508,7 +508,7 @@ describe('SommOS Full Stack Integration Tests', () => {
                 .expect(400);
 
             expect(emptyPairingResponse.body.success).toBe(false);
-            expect(emptyPairingResponse.body.error).toBe('Dish information is required');
+            expect(emptyPairingResponse.body.error.message).toBe('Dish information is required');
         });
     });
 

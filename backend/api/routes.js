@@ -535,7 +535,7 @@ router.get(
 
 // GET /api/locations
 // List available storage locations
-router.get('/locations', validate(), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.get('/locations', requireRole('admin', 'crew', 'guest'), validate(), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
     const locations = await inventoryManager.listLocations();
 
     res.json({
@@ -577,6 +577,7 @@ router.post(
                 data: serializeInventoryAction(result)
             });
         } catch (error) {
+            console.error('Inventory consume error:', error);
             const conflict = typeof InventoryManager.isConflictError === 'function'
                 && InventoryManager.isConflictError(error);
             if (conflict) {
@@ -932,7 +933,7 @@ router.post(
 
 // GET /api/wines
 // Get wine catalog
-router.get('/wines', validate(validators.winesList), asyncHandler(withServices(async ({ db }, req, res) => {
+router.get('/wines', requireRole('admin', 'crew', 'guest'), validate(validators.winesList), asyncHandler(withServices(async ({ db }, req, res) => {
     const { region, wine_type, producer, search, limit = 50, offset = 0 } = req.query;
 
     try {
@@ -1032,7 +1033,7 @@ router.post('/wines', requireRole('admin', 'crew'), validate(validators.winesCre
 
 // GET /api/wines/:id
 // Get specific wine details
-router.get('/wines/:id', validate(validators.winesById), asyncHandler(withServices(async ({ db }, req, res) => {
+router.get('/wines/:id', requireRole('admin', 'crew', 'guest'), validate(validators.winesById), asyncHandler(withServices(async ({ db }, req, res) => {
     const { id } = req.params;
 
     try {
@@ -1101,7 +1102,7 @@ router.get('/wines/:id', validate(validators.winesById), asyncHandler(withServic
 
 // GET /api/vintage/analysis/:wine_id
 // Get vintage analysis for specific wine
-router.get('/vintage/analysis/:wine_id', validate(validators.vintageAnalysis), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
+router.get('/vintage/analysis/:wine_id', requireRole('admin', 'crew', 'guest'), validate(validators.vintageAnalysis), asyncHandler(withServices(async ({ db, vintageIntelligenceService }, req, res) => {
     const { wine_id } = req.params;
 
     try {
@@ -1272,7 +1273,7 @@ router.get(
 
 // GET /api/vintage/procurement-recommendations
 // Get procurement recommendations for current inventory
-router.get('/vintage/procurement-recommendations', validate(), asyncHandler(withServices(async ({ vintageIntelligenceService }, req, res) => {
+router.get('/vintage/procurement-recommendations', requireRole('admin', 'crew', 'guest'), validate(), asyncHandler(withServices(async ({ vintageIntelligenceService }, req, res) => {
     try {
         const recommendations = await vintageIntelligenceService.getInventoryProcurementRecommendations();
 
@@ -1400,7 +1401,7 @@ router.post('/vintage/pairing-insight', requireRole('admin', 'crew'), validate(v
 
 // GET /api/system/health
 // System health check
-router.get('/system/health', validate(), asyncHandler(async (req, res) => {
+router.get('/system/health', requireRole('admin', 'crew', 'guest'), validate(), asyncHandler(async (req, res) => {
     try {
         const db = Database.getInstance();
 
@@ -1433,7 +1434,7 @@ router.get('/system/health', validate(), asyncHandler(async (req, res) => {
 
 // GET /api/sync/changes
 // Retrieve delta updates for syncable resources since a Unix timestamp
-router.get('/sync/changes', validate(validators.syncChanges), asyncHandler(withServices(async ({ db }, req, res) => {
+router.get('/sync/changes', requireRole('admin', 'crew', 'guest'), validate(validators.syncChanges), asyncHandler(withServices(async ({ db }, req, res) => {
     const sinceParam = req.query.since;
     const parsedSince = typeof sinceParam === 'number'
         ? sinceParam
@@ -1476,7 +1477,7 @@ router.get('/sync/changes', validate(validators.syncChanges), asyncHandler(withS
 
 // GET /api/system/activity
 // Recent system activity derived from ledger and intake updates
-router.get('/system/activity', validate(validators.systemActivity), asyncHandler(withServices(async ({ db }, req, res) => {
+router.get('/system/activity', requireRole('admin', 'crew', 'guest'), validate(validators.systemActivity), asyncHandler(withServices(async ({ db }, req, res) => {
     const { limit = 10 } = req.query;
 
     const parsedLimit = Number.parseInt(limit, 10);
@@ -1560,7 +1561,7 @@ router.get('/system/activity', validate(validators.systemActivity), asyncHandler
 
 // GET /api/system/spec
 // Serve the OpenAPI specification
-router.get('/system/spec', validate(), (req, res, next) => {
+router.get('/system/spec', requireRole('admin', 'crew', 'guest'), validate(), (req, res, next) => {
     const specPath = path.join(__dirname, 'openapi.yaml');
 
     res.type('application/yaml');

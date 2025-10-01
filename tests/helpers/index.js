@@ -25,6 +25,20 @@ class TestHelpers {
             await db.exec(schema);
         }
         
+        // Load enhanced learning schema from migration file
+        const migrationPath = path.join(__dirname, '../../backend/database/migrations/001_enhanced_learning_schema.sql');
+        if (fs.existsSync(migrationPath)) {
+            const migration = fs.readFileSync(migrationPath, 'utf8');
+            await db.exec(migration);
+        }
+        
+        // Load ML models schema from migration file
+        const mlMigrationPath = path.join(__dirname, '../../backend/database/migrations/002_ml_models_schema.sql');
+        if (fs.existsSync(mlMigrationPath)) {
+            const mlMigration = fs.readFileSync(mlMigrationPath, 'utf8');
+            await db.exec(mlMigration);
+        }
+        
         // Create basic test dataset using factory
         const dataset = await this.factory.createBasicDataset(db);
         

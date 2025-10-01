@@ -185,6 +185,76 @@ CREATE TABLE IF NOT EXISTS Explanations (
 
 CREATE INDEX IF NOT EXISTS idx_explanations_entity ON Explanations(entity_type, entity_id);
 
+-- Feature engineering tables
+CREATE TABLE IF NOT EXISTS WineFeatures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wine_id INTEGER NOT NULL,
+    
+    -- Basic features
+    grape_varieties TEXT, -- JSON array
+    region_encoded TEXT,
+    country_encoded TEXT,
+    vintage_year INTEGER,
+    alcohol_content REAL,
+    price_tier TEXT, -- 'budget', 'mid', 'premium', 'luxury'
+    style_encoded TEXT,
+    
+    -- Derived features
+    body_score REAL, -- 1-5 scale
+    acidity_score REAL, -- 1-5 scale
+    tannin_score REAL, -- 1-5 scale
+    sweetness_score REAL, -- 1-5 scale
+    complexity_score REAL, -- 1-5 scale
+    
+    -- Quality indicators
+    critic_score INTEGER,
+    quality_score INTEGER,
+    weather_score INTEGER,
+    
+    -- Feature vector (for ML models)
+    feature_vector TEXT, -- JSON array of normalized features
+    
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE RESTRICT,
+    UNIQUE(wine_id)
+);
+
+CREATE TABLE IF NOT EXISTS DishFeatures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dish_description TEXT NOT NULL,
+    dish_hash TEXT NOT NULL, -- Hash of normalized dish description
+    
+    -- Parsed features
+    cuisine_type TEXT,
+    preparation_method TEXT,
+    protein_type TEXT,
+    cooking_style TEXT,
+    flavor_intensity TEXT, -- 'light', 'medium', 'rich', 'bold'
+    texture_profile TEXT, -- 'tender', 'crispy', 'creamy', 'firm'
+    spice_level TEXT, -- 'mild', 'medium', 'spicy', 'very_spicy'
+    
+    -- Ingredient analysis
+    dominant_ingredients TEXT, -- JSON array
+    flavor_notes TEXT, -- JSON array
+    cooking_techniques TEXT, -- JSON array
+    
+    -- Derived features
+    richness_score REAL, -- 1-5 scale
+    complexity_score REAL, -- 1-5 scale
+    acidity_level REAL, -- 1-5 scale
+    fat_content REAL, -- 1-5 scale
+    
+    -- Feature vector (for ML models)
+    feature_vector TEXT, -- JSON array of normalized features
+    
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(dish_hash)
+);
+
 -- Memories table moved to System Tables section to avoid duplication
 
 CREATE TABLE InventoryIntakeOrders (
@@ -361,6 +431,14 @@ CREATE INDEX idx_weather_region_year ON WeatherVintage(region, year);
 CREATE INDEX idx_pricebook_vintage ON PriceBook(vintage_id);
 CREATE INDEX idx_memories_context ON Memories(context_type);
 CREATE INDEX idx_explainability_type ON Explainability(request_type);
+
+-- Feature engineering indexes
+CREATE INDEX IF NOT EXISTS idx_wine_features_wine_id ON WineFeatures(wine_id);
+CREATE INDEX IF NOT EXISTS idx_wine_features_region ON WineFeatures(region_encoded);
+CREATE INDEX IF NOT EXISTS idx_wine_features_style ON WineFeatures(style_encoded);
+CREATE INDEX IF NOT EXISTS idx_dish_features_hash ON DishFeatures(dish_hash);
+CREATE INDEX IF NOT EXISTS idx_dish_features_cuisine ON DishFeatures(cuisine_type);
+CREATE INDEX IF NOT EXISTS idx_dish_features_preparation ON DishFeatures(preparation_method);
 
 -- Authentication & Authorization Tables
 
