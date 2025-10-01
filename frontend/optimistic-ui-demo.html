@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SommOS - Optimistic UI Demo</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/optimistic-ui.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .demo-section {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .demo-section h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #2196f3;
+            padding-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+            color: #333;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+        
+        .btn:hover {
+            background: #f5f5f5;
+            border-color: #bbb;
+        }
+        
+        .btn-primary {
+            background: #2196f3;
+            color: #fff;
+            border-color: #2196f3;
+        }
+        
+        .btn-primary:hover {
+            background: #1976d2;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+        }
+        
+        .status.success {
+            background: #e8f5e8;
+            color: #388e3c;
+            border: 1px solid #c8e6c9;
+        }
+        
+        .status.error {
+            background: #ffebee;
+            color: #d32f2f;
+            border: 1px solid #ffcdd2;
+        }
+        
+        .pending-operations {
+            background: #fff3e0;
+            border: 1px solid #ffcc02;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .pending-operations h3 {
+            margin-top: 0;
+            color: #f57c00;
+        }
+        
+        .pending-operation {
+            background: #fff;
+            border: 1px solid #ffcc02;
+            border-radius: 4px;
+            padding: 8px;
+            margin: 4px 0;
+            font-size: 0.9em;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #d32f2f;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍷 SommOS Optimistic UI Demo</h1>
+            <p>Experience immediate UI feedback with automatic rollback on errors</p>
+        </div>
+
+        <div class="demo-section">
+            <h2>Demo Controls</h2>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="loadInventory()">Load Inventory</button>
+                <button class="btn" onclick="clearPendingOperations()">Clear Pending Operations</button>
+                <button class="btn" onclick="simulateNetworkError()">Simulate Network Error</button>
+                <button class="btn" onclick="showPendingOperations()">Show Pending Operations</button>
+            </div>
+            
+            <div id="status" class="status info" style="display: none;">
+                Ready to demonstrate optimistic UI updates
+            </div>
+            
+            <div id="pending-operations" class="pending-operations" style="display: none;">
+                <h3>Pending Operations</h3>
+                <div id="pending-list"></div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>Inventory List</h2>
+            <div id="inventory-list">
+                <div class="error">Click "Load Inventory" to see the optimistic UI in action</div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>How It Works</h2>
+            <div style="line-height: 1.6;">
+                <h3>Optimistic Updates</h3>
+                <p>When you perform an inventory operation (consume, receive, move, reserve), the UI immediately updates to show the expected result. This provides instant feedback to the user.</p>
+                
+                <h3>Automatic Rollback</h3>
+                <p>If the API call fails, the UI automatically rolls back to the previous state and shows an error message. This ensures the UI always reflects the actual server state.</p>
+                
+                <h3>Visual Feedback</h3>
+                <ul>
+                    <li><strong>Pending State:</strong> Orange border and loading indicator</li>
+                    <li><strong>Success:</strong> Green confirmation toast</li>
+                    <li><strong>Error:</strong> Red error toast with rollback animation</li>
+                    <li><strong>Loading:</strong> Spinner and disabled buttons</li>
+                </ul>
+                
+                <h3>Try It Out</h3>
+                <p>Click on any action button (Consume, Receive, Move, Reserve) to see the optimistic UI in action. The UI will update immediately, and if the operation fails, it will roll back automatically.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the inventory management modules -->
+    <script type="module">
+        import { inventoryManager, uiManager } from './js/inventory-manager.js';
+        import { inventoryUI } from './js/inventory-ui.js';
+        
+        // Make available globally for demo
+        window.inventoryManager = inventoryManager;
+        window.uiManager = uiManager;
+        window.inventoryUI = inventoryUI;
+        
+        // Setup demo functions
+        window.loadInventory = async function() {
+            try {
+                showStatus('Loading inventory...', 'info');
+                await inventoryUI.renderInventoryList('inventory-list');
+                showStatus('Inventory loaded successfully', 'success');
+            } catch (error) {
+                showStatus(`Failed to load inventory: ${error.message}`, 'error');
+            }
+        };
+        
+        window.clearPendingOperations = function() {
+            inventoryManager.clearPendingOperations();
+            showStatus('Pending operations cleared', 'info');
+            hidePendingOperations();
+        };
+        
+        window.simulateNetworkError = function() {
+            // This would simulate a network error in a real scenario
+            showStatus('Network error simulation - try an operation to see rollback', 'error');
+        };
+        
+        window.showPendingOperations = function() {
+            const pending = inventoryManager.getPendingOperations();
+            if (pending.length === 0) {
+                showStatus('No pending operations', 'info');
+                return;
+            }
+            
+            const list = document.getElementById('pending-list');
+            list.innerHTML = pending.map(op => `
+                <div class="pending-operation">
+                    <strong>${op.operation}</strong> on vintage ${op.vintageId}<br>
+                    <small>Status: ${op.status} | Started: ${new Date(op.timestamp).toLocaleTimeString()}</small>
+                </div>
+            `).join('');
+            
+            document.getElementById('pending-operations').style.display = 'block';
+        };
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        function hidePendingOperations() {
+            document.getElementById('pending-operations').style.display = 'none';
+        }
+        
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', () => {
+            showStatus('Demo ready - click "Load Inventory" to start', 'info');
+        });
+    </script>
+</body>
+</html>

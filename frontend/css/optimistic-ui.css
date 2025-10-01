@@ -1,0 +1,368 @@
+/**
+ * SommOS Optimistic UI Styles
+ * Provides visual feedback for optimistic updates
+ */
+
+/* Inventory Item Styles */
+.inventory-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 8px 0;
+  background: #fff;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.inventory-item.pending-operation {
+  border-color: #ffa500;
+  background: #fff8e1;
+  box-shadow: 0 2px 8px rgba(255, 165, 0, 0.2);
+}
+
+.inventory-item.rollback {
+  border-color: #f44336;
+  background: #ffebee;
+  animation: rollback-shake 0.5s ease-in-out;
+}
+
+@keyframes rollback-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Item Header */
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.wine-name {
+  margin: 0;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #333;
+}
+
+.vintage-year {
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #666;
+}
+
+/* Item Details */
+.item-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 0.9em;
+  color: #666;
+}
+
+/* Stock Info */
+.stock-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.stock-info > div {
+  padding: 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.stock-quantity {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.reserved-quantity {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.available-quantity {
+  background: #e8f5e8;
+  color: #388e3c;
+}
+
+.stock-quantity.updated,
+.reserved-quantity.updated,
+.available-quantity.updated {
+  animation: update-pulse 0.6s ease-in-out;
+}
+
+@keyframes update-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Item Actions */
+.item-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.item-actions button {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s ease;
+}
+
+.item-actions button:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #bbb;
+}
+
+.item-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.consume-btn {
+  border-color: #f44336;
+  color: #f44336;
+}
+
+.consume-btn:hover:not(:disabled) {
+  background: #f44336;
+  color: #fff;
+}
+
+.receive-btn {
+  border-color: #4caf50;
+  color: #4caf50;
+}
+
+.receive-btn:hover:not(:disabled) {
+  background: #4caf50;
+  color: #fff;
+}
+
+.move-btn {
+  border-color: #2196f3;
+  color: #2196f3;
+}
+
+.move-btn:hover:not(:disabled) {
+  background: #2196f3;
+  color: #fff;
+}
+
+.reserve-btn {
+  border-color: #ff9800;
+  color: #ff9800;
+}
+
+.reserve-btn:hover:not(:disabled) {
+  background: #ff9800;
+  color: #fff;
+}
+
+/* Pending Indicator */
+.pending-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #ffa500;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+/* Loading Indicator */
+.loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #2196f3;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Toast Notifications */
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: 500;
+  z-index: 1000;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  max-width: 300px;
+  word-wrap: break-word;
+}
+
+.toast.show {
+  transform: translateX(0);
+}
+
+.toast-info {
+  background: #2196f3;
+}
+
+.toast-success {
+  background: #4caf50;
+}
+
+.toast-error {
+  background: #f44336;
+}
+
+.toast-warning {
+  background: #ff9800;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .inventory-item {
+    padding: 12px;
+  }
+  
+  .item-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .item-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .stock-info {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .item-actions {
+    flex-direction: column;
+  }
+  
+  .item-actions button {
+    width: 100%;
+  }
+  
+  .toast {
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .inventory-item {
+    background: #2d2d2d;
+    border-color: #444;
+    color: #fff;
+  }
+  
+  .inventory-item.pending-operation {
+    background: #3d2f00;
+    border-color: #ffa500;
+  }
+  
+  .inventory-item.rollback {
+    background: #3d1a1a;
+    border-color: #f44336;
+  }
+  
+  .wine-name {
+    color: #fff;
+  }
+  
+  .vintage-year {
+    background: #444;
+    color: #ccc;
+  }
+  
+  .item-details {
+    color: #ccc;
+  }
+  
+  .item-actions button {
+    background: #444;
+    border-color: #666;
+    color: #fff;
+  }
+  
+  .item-actions button:hover:not(:disabled) {
+    background: #555;
+  }
+  
+  .loading-indicator {
+    background: rgba(45, 45, 45, 0.95);
+    color: #fff;
+  }
+}
+
+/* Accessibility */
+.inventory-item:focus-within {
+  outline: 2px solid #2196f3;
+  outline-offset: 2px;
+}
+
+.item-actions button:focus {
+  outline: 2px solid #2196f3;
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .inventory-item {
+    border-width: 2px;
+  }
+  
+  .inventory-item.pending-operation {
+    border-width: 3px;
+  }
+  
+  .inventory-item.rollback {
+    border-width: 3px;
+  }
+  
+  .item-actions button {
+    border-width: 2px;
+  }
+}
