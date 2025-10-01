@@ -1,11 +1,92 @@
 /**
  * SommOS Pairing Engine
  * AI-powered wine pairing recommendations with expert sommelier knowledge
+ * 
+ * @fileoverview Advanced wine pairing engine combining AI analysis with traditional sommelier expertise
+ * @author SommOS Development Team
+ * @version 1.2.0
+ * @since 1.0.0
  */
 
 const OpenAI = require('openai');
 const Database = require('../database/connection');
 const { getConfig } = require('../config/env');
+
+/**
+ * @typedef {Object} Wine
+ * @property {number} id - Wine identifier
+ * @property {string} name - Wine name
+ * @property {string} producer - Wine producer
+ * @property {string} region - Wine region
+ * @property {string} wine_type - Type of wine (Red, White, Rosé, Sparkling, etc.)
+ * @property {string} style - Wine style description
+ * @property {string} tasting_notes - Detailed tasting notes
+ * @property {number} year - Vintage year
+ * @property {number} quality_score - Quality score (0-100)
+ * @property {number} quantity - Available quantity
+ * @property {string} location - Storage location
+ */
+
+/**
+ * @typedef {Object} DishContext
+ * @property {string} name - Dish name
+ * @property {string} cuisine - Cuisine type (e.g., 'french', 'italian')
+ * @property {string} preparation - Cooking method (e.g., 'grilled', 'roasted')
+ * @property {string} intensity - Flavor intensity ('light', 'medium', 'heavy')
+ * @property {string[]} dominant_flavors - Array of dominant flavor profiles
+ * @property {string} texture - Dish texture description
+ * @property {string} season - Seasonal context
+ */
+
+/**
+ * @typedef {Object} PairingScore
+ * @property {number} total - Combined total score (0-1)
+ * @property {number} ai_score - AI confidence score (0-1)
+ * @property {number} style_match - Style compatibility score (0-1)
+ * @property {number} flavor_harmony - Flavor harmony score (0-1)
+ * @property {number} texture_balance - Texture balance score (0-1)
+ * @property {number} regional_tradition - Regional tradition score (0-1)
+ * @property {number} seasonal_appropriateness - Seasonal appropriateness score (0-1)
+ * @property {number} confidence - Overall confidence level (0-1)
+ */
+
+/**
+ * @typedef {Object} PairingRecommendation
+ * @property {Wine} wine - Wine object with full details
+ * @property {PairingScore} score - Comprehensive scoring breakdown
+ * @property {string} reasoning - Detailed explanation of the pairing
+ * @property {boolean} ai_enhanced - Whether AI enhancement was applied
+ * @property {string} generated_at - ISO timestamp of generation
+ * @property {string} [learning_session_id] - Learning session identifier
+ * @property {string} [learning_recommendation_id] - Learning recommendation ID
+ */
+
+/**
+ * @typedef {Object} PairingContext
+ * @property {string} [occasion] - Dining occasion
+ * @property {string} [season] - Current season
+ * @property {string} [weather] - Weather conditions
+ * @property {number} [guestCount] - Number of guests
+ * @property {string} [event] - Special event type
+ * @property {Object} [owner_preferences] - Yacht owner preferences
+ */
+
+/**
+ * @typedef {Object} GuestPreferences
+ * @property {Object} [guest_preferences] - Guest-specific preferences
+ * @property {string[]} [guest_preferences.preferred_types] - Preferred wine types
+ * @property {string[]} [guest_preferences.avoided_types] - Wine types to avoid
+ * @property {string[]} [guest_preferences.preferred_regions] - Preferred wine regions
+ * @property {string[]} [dietary_restrictions] - Dietary restrictions
+ * @property {string} [budget_range] - Budget constraints
+ */
+
+/**
+ * @typedef {Object} PairingOptions
+ * @property {number} [maxRecommendations=8] - Maximum recommendations to return
+ * @property {boolean} [includeReasoning=true] - Include detailed reasoning
+ * @property {boolean} [forceAI=false] - Force AI generation
+ */
 
 class PairingEngine {
     constructor(database, learningEngine = null, explainabilityService = null) {
@@ -23,6 +104,20 @@ class PairingEngine {
             regional_tradition: 0.15,
             seasonal_appropriateness: 0.10
         };
+        
+        // Performance optimization: Cache frequently accessed data
+        this._cache = {
+            wineInventory: null,
+            wineInventoryTimestamp: null,
+            regionalTraditions: new Map(),
+            flavorMappings: new Map()
+        };
+        
+        // Cache TTL in milliseconds (5 minutes)
+        this.CACHE_TTL = 5 * 60 * 1000;
+        
+        // Initialize flavor mappings cache
+        this._initializeFlavorMappings();
     }
 
     /**
@@ -78,63 +173,247 @@ class PairingEngine {
     }
     
     /**
-     * Generate AI-powered pairing recommendations
+     * Generates AI-powered wine pairing recommendations using OpenAI GPT models
+     * 
+     * This method combines advanced AI analysis with traditional sommelier expertise
+     * to provide sophisticated wine pairing recommendations. It leverages OpenAI's
+     * language models to understand dish characteristics and match them with available
+     * wines from the yacht's cellar inventory.
+     * 
+     * @async
+     * @function generateAIPairings
+     * @param {string|Object} dish - The dish description or detailed context object
+     *   - If string: Natural language description (e.g., "grilled salmon with lemon butter")
+     *   - If object: Structured dish context with cuisine, preparation, intensity, etc.
+     * @param {Object} [context={}] - Additional pairing context and environmental factors
+     * @param {string} [context.occasion] - Dining occasion (e.g., 'casual', 'formal', 'celebration')
+     * @param {string} [context.season] - Current season for seasonal appropriateness
+     * @param {string} [context.weather] - Weather conditions affecting preferences
+     * @param {number} [context.guestCount] - Number of guests for portion planning
+     * @param {string} [context.event] - Special event or celebration type
+     * @param {Object} [context.owner_preferences] - Yacht owner's specific preferences
+     * @param {Object} [preferences={}] - Guest preferences and dietary constraints
+     * @param {Object} [preferences.guest_preferences] - Guest-specific preferences
+     * @param {string[]} [preferences.guest_preferences.preferred_types] - Preferred wine types
+     * @param {string[]} [preferences.guest_preferences.avoided_types] - Wine types to avoid
+     * @param {string[]} [preferences.guest_preferences.preferred_regions] - Preferred wine regions
+     * @param {string[]} [preferences.dietary_restrictions] - Dietary restrictions to consider
+     * @param {string} [preferences.budget_range] - Budget constraints for wine selection
+     * @param {Object} [options={}] - Additional options for customization
+     * @param {number} [options.maxRecommendations=8] - Maximum number of recommendations to return
+     * @param {boolean} [options.includeReasoning=true] - Whether to include detailed reasoning
+     * @param {boolean} [options.forceAI=false] - Force AI generation even if OpenAI is unavailable
+     * @param {Object} [dishContext=null] - Pre-parsed dish context to avoid re-parsing
+     * @returns {Promise<Array<PairingRecommendation>>} Array of enhanced pairing recommendations
+     * @returns {Object} PairingRecommendation.wine - Wine object with full details
+     * @returns {Object} PairingRecommendation.score - Comprehensive scoring breakdown
+     * @returns {number} PairingRecommendation.score.total - Combined AI + traditional score (0-1)
+     * @returns {number} PairingRecommendation.score.ai_score - AI confidence score (0-1)
+     * @returns {number} PairingRecommendation.score.style_match - Style compatibility (0-1)
+     * @returns {number} PairingRecommendation.score.flavor_harmony - Flavor harmony score (0-1)
+     * @returns {number} PairingRecommendation.score.texture_balance - Texture balance (0-1)
+     * @returns {number} PairingRecommendation.score.regional_tradition - Regional tradition score (0-1)
+     * @returns {number} PairingRecommendation.score.seasonal_appropriateness - Seasonal fit (0-1)
+     * @returns {number} PairingRecommendation.score.confidence - Overall confidence level (0-1)
+     * @returns {string} PairingRecommendation.reasoning - Detailed explanation of the pairing
+     * @returns {boolean} PairingRecommendation.ai_enhanced - Whether AI enhancement was applied
+     * @returns {string} [PairingRecommendation.learning_session_id] - Learning session identifier
+     * @returns {string} [PairingRecommendation.learning_recommendation_id] - Learning recommendation ID
+     * 
+     * @throws {Error} When OpenAI API is unavailable and fallback fails
+     * @throws {Error} When no wines are available in inventory
+     * @throws {Error} When dish parsing fails and no fallback context provided
+     * 
+     * @example
+     * // Basic usage with string dish description
+     * const recommendations = await pairingEngine.generateAIPairings(
+     *   "pan-seared halibut with asparagus",
+     *   { occasion: 'formal', season: 'spring' },
+     *   { guest_preferences: { preferred_types: ['White', 'Rosé'] } }
+     * );
+     * 
+     * @example
+     * // Advanced usage with structured context
+     * const recommendations = await pairingEngine.generateAIPairings(
+     *   {
+     *     name: "Beef Wellington",
+     *     cuisine: "British",
+     *     preparation: "roasted",
+     *     intensity: "heavy",
+     *     dominant_flavors: ["rich", "savory", "umami"]
+     *   },
+     *   { 
+     *     occasion: 'celebration',
+     *     weather: 'cool',
+     *     guestCount: 12
+     *   },
+     *   { 
+     *     budget_range: 'premium',
+     *     dietary_restrictions: ['vegetarian_alternatives']
+     *   },
+     *   { maxRecommendations: 6, includeReasoning: true }
+     * );
+     * 
+     * @since 1.0.0
+     * @version 1.2.0
+     * @see {@link generateTraditionalPairings} For fallback when AI is unavailable
+     * @see {@link parseNaturalLanguageDish} For dish context parsing
+     * @see {@link callOpenAIForPairings} For AI recommendation generation
      */
     async generateAIPairings(dish, context = {}, preferences = {}, options = {}, dishContext = null) {
-        try {
-            // Get available wines from inventory
-            const availableWines = await this.getAvailableWines();
+        // Input validation and sanitization
+        if (!dish || (typeof dish !== 'string' && typeof dish !== 'object')) {
+            throw new Error('Dish parameter must be a non-empty string or object');
+        }
+        
+        if (typeof context !== 'object' || context === null) {
+            context = {};
+        }
+        
+        if (typeof preferences !== 'object' || preferences === null) {
+            preferences = {};
+        }
+        
+        if (typeof options !== 'object' || options === null) {
+            options = {};
+        }
 
+        const maxRecommendations = Math.min(Math.max(options.maxRecommendations || 8, 1), 12);
+        const includeReasoning = options.includeReasoning !== false;
+        const forceAI = options.forceAI === true;
+
+        try {
+            // Validate OpenAI availability
+            if (!this.openai && !forceAI) {
+                console.warn('OpenAI not available, falling back to traditional pairing');
+                const fallbackDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
+                return await this.generateTraditionalPairings(fallbackDish, preferences);
+            }
+
+            // Get available wines from inventory with error handling
+            const availableWines = await this.getAvailableWines();
+            if (!availableWines || availableWines.length === 0) {
+                throw new Error('No wines available in inventory for pairing recommendations');
+            }
+
+            // Parse dish context if not provided
             const parsedDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
-            
-            // Create wine inventory summary for AI
-            const wineInventory = availableWines.map(wine => ({
-                name: wine.name,
-                producer: wine.producer,
-                region: wine.region,
-                wine_type: wine.wine_type,
-                year: wine.year,
-                style: wine.style,
-                tasting_notes: wine.tasting_notes,
-                location: wine.location,
-                quantity: wine.quantity
-            }));
-            
-            // Generate AI pairing recommendations
-            const aiRecommendations = await this.callOpenAIForPairings(dish, context, wineInventory, preferences);
-            
-            // Combine AI insights with traditional scoring
-            const enhancedPairings = [];
-            for (const aiRec of aiRecommendations) {
-                const wine = availableWines.find(w => 
-                    w.name === aiRec.wine_name && w.producer === aiRec.producer
-                );
-                
-                if (wine) {
-                    const traditionalScore = await this.calculatePairingScore(wine,
-                        parsedDish, preferences);
-                    
-                    enhancedPairings.push({
-                        wine,
-                        score: {
-                            ...traditionalScore,
-                            ai_score: aiRec.confidence_score,
-                            total: (traditionalScore.total * 0.6) + (aiRec.confidence_score * 0.4)
-                        },
-                        reasoning: aiRec.reasoning,
-                        ai_enhanced: true
-                    });
-                }
+            if (!parsedDish) {
+                throw new Error('Failed to parse dish context for AI pairing analysis');
             }
             
-            return enhancedPairings
+            // Create optimized wine inventory summary for AI processing
+            const wineInventory = availableWines
+                .filter(wine => wine.quantity > 0) // Only include wines with stock
+                .map(wine => ({
+                    name: wine.name,
+                    producer: wine.producer,
+                    region: wine.region,
+                    wine_type: wine.wine_type,
+                    year: wine.year,
+                    style: wine.style,
+                    tasting_notes: wine.tasting_notes,
+                    location: wine.location,
+                    quantity: wine.quantity,
+                    quality_score: wine.quality_score || 0
+                }))
+                .sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0)); // Prioritize higher quality wines
+            
+            if (wineInventory.length === 0) {
+                throw new Error('No wines with available stock found in inventory');
+            }
+            
+            // Generate AI pairing recommendations with timeout handling
+            const aiRecommendations = await Promise.race([
+                this.callOpenAIForPairings(dish, context, wineInventory, preferences),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('AI pairing request timeout')), 30000)
+                )
+            ]);
+            
+            if (!Array.isArray(aiRecommendations) || aiRecommendations.length === 0) {
+                throw new Error('AI failed to generate pairing recommendations');
+            }
+            
+            // Combine AI insights with traditional scoring for enhanced accuracy
+            const enhancedPairings = [];
+            const processedWines = new Set(); // Prevent duplicate recommendations
+            
+            for (const aiRec of aiRecommendations) {
+                // Validate AI recommendation structure
+                if (!aiRec.wine_name || !aiRec.producer) {
+                    console.warn('Invalid AI recommendation structure:', aiRec);
+                    continue;
+                }
+                
+                // Find matching wine in inventory
+                const wine = availableWines.find(w => 
+                    w.name === aiRec.wine_name && 
+                    w.producer === aiRec.producer &&
+                    w.quantity > 0
+                );
+                
+                if (!wine) {
+                    console.warn(`Wine not found in inventory: ${aiRec.wine_name} by ${aiRec.producer}`);
+                    continue;
+                }
+                
+                // Prevent duplicate recommendations
+                const wineKey = `${wine.name}-${wine.producer}-${wine.year}`;
+                if (processedWines.has(wineKey)) {
+                    continue;
+                }
+                processedWines.add(wineKey);
+                
+                // Calculate traditional sommelier score
+                const traditionalScore = await this.calculatePairingScore(wine, parsedDish, preferences);
+                
+                // Validate AI confidence score
+                const aiScore = Math.max(0, Math.min(1, aiRec.confidence_score || 0.5));
+                
+                // Create enhanced pairing with weighted scoring
+                const enhancedPairing = {
+                    wine,
+                    score: {
+                        ...traditionalScore,
+                        ai_score: aiScore,
+                        total: (traditionalScore.total * 0.6) + (aiScore * 0.4)
+                    },
+                    reasoning: includeReasoning ? (aiRec.reasoning || 'AI-enhanced pairing recommendation') : undefined,
+                    ai_enhanced: true,
+                    generated_at: new Date().toISOString()
+                };
+                
+                enhancedPairings.push(enhancedPairing);
+            }
+            
+            // Sort by total score and return top recommendations
+            const sortedPairings = enhancedPairings
                 .sort((a, b) => b.score.total - a.score.total)
-                .slice(0, 8);
+                .slice(0, maxRecommendations);
+            
+            if (sortedPairings.length === 0) {
+                throw new Error('No valid AI-enhanced pairings could be generated');
+            }
+            
+            console.log(`Generated ${sortedPairings.length} AI-enhanced pairing recommendations`);
+            return sortedPairings;
                 
         } catch (error) {
-            console.error('AI pairing failed, falling back to traditional:', error.message);
-            const fallbackDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
-            return await this.generateTraditionalPairings(fallbackDish, preferences);
+            console.error('AI pairing failed, falling back to traditional pairing:', error.message);
+            
+            // Attempt graceful fallback to traditional pairing
+            try {
+                const fallbackDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
+                const fallbackPairings = await this.generateTraditionalPairings(fallbackDish, preferences);
+                
+                console.log(`Fallback successful: Generated ${fallbackPairings.length} traditional pairings`);
+                return fallbackPairings.slice(0, maxRecommendations);
+                
+            } catch (fallbackError) {
+                console.error('Traditional pairing fallback also failed:', fallbackError.message);
+                throw new Error(`Both AI and traditional pairing failed: ${error.message}`);
+            }
         }
     }
     
@@ -358,17 +637,104 @@ class PairingEngine {
         return reasons.join('. ') + '.';
     }
 
-    // Helper methods
+    /**
+     * Initialize flavor mappings cache for performance optimization
+     * @private
+     */
+    _initializeFlavorMappings() {
+        const complementaryMap = {
+            'citrus': ['crisp', 'light', 'earth'],
+            'herb': ['earth', 'spice', 'herbal'],
+            'rich': ['full', 'tannic', 'sweet', 'smooth'],
+            'spicy': ['sweet', 'fruit', 'spice'],
+            'sweet': ['sweet', 'fruit', 'smooth'],
+            'delicate': ['light', 'floral', 'crisp'],
+            'umami': ['earth', 'spice', 'tannic']
+        };
+        
+        const conflictMap = {
+            'delicate': ['tannic', 'full'],
+            'sweet': ['tannic'],
+            'spicy': ['tannic'],
+            'citrus': ['tannic']
+        };
+        
+        this._cache.flavorMappings.set('complementary', complementaryMap);
+        this._cache.flavorMappings.set('conflict', conflictMap);
+    }
+
+    /**
+     * Get available wines with caching for performance optimization
+     * @async
+     * @returns {Promise<Array<Wine>>} Array of available wines with stock information
+     * @private
+     */
     async getAvailableWines() {
-        return this.db.query(`
-            SELECT w.*, v.year, v.quality_score, s.quantity, s.location,
-                   (s.quantity - s.reserved_quantity) as available_quantity
-            FROM Stock s
-            JOIN Vintages v ON v.id = s.vintage_id
-            JOIN Wines w ON w.id = v.wine_id
-            WHERE s.quantity > s.reserved_quantity
-            ORDER BY v.quality_score DESC NULLS LAST, s.quantity DESC
-        `);
+        const now = Date.now();
+        
+        // Return cached data if still valid
+        if (this._cache.wineInventory && 
+            this._cache.wineInventoryTimestamp && 
+            (now - this._cache.wineInventoryTimestamp) < this.CACHE_TTL) {
+            return this._cache.wineInventory;
+        }
+        
+        try {
+            const wines = await this.db.query(`
+                SELECT w.*, v.year, v.quality_score, s.quantity, s.location,
+                       (s.quantity - s.reserved_quantity) as available_quantity
+                FROM Stock s
+                JOIN Vintages v ON v.id = s.vintage_id
+                JOIN Wines w ON w.id = v.wine_id
+                WHERE s.quantity > s.reserved_quantity
+                ORDER BY v.quality_score DESC NULLS LAST, s.quantity DESC
+            `);
+            
+            // Update cache
+            this._cache.wineInventory = wines;
+            this._cache.wineInventoryTimestamp = now;
+            
+            return wines;
+        } catch (error) {
+            console.error('Failed to fetch available wines:', error.message);
+            throw new Error(`Database query failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Clear wine inventory cache (useful after inventory updates)
+     * @public
+     */
+    clearWineInventoryCache() {
+        this._cache.wineInventory = null;
+        this._cache.wineInventoryTimestamp = null;
+    }
+
+    /**
+     * Clear all caches (useful for testing or when data changes)
+     * @public
+     */
+    clearAllCaches() {
+        this._cache.wineInventory = null;
+        this._cache.wineInventoryTimestamp = null;
+        this._cache.regionalTraditions.clear();
+        // Note: flavorMappings cache is not cleared as it contains static data
+    }
+
+    /**
+     * Get cache statistics for monitoring and debugging
+     * @returns {Object} Cache statistics
+     * @public
+     */
+    getCacheStats() {
+        return {
+            wineInventoryCached: this._cache.wineInventory !== null,
+            wineInventoryAge: this._cache.wineInventoryTimestamp ? 
+                Date.now() - this._cache.wineInventoryTimestamp : null,
+            regionalTraditionsCount: this._cache.regionalTraditions.size,
+            flavorMappingsCount: this._cache.flavorMappings.size,
+            cacheTTL: this.CACHE_TTL
+        };
     }
 
     getWineBody(wine) {
@@ -414,29 +780,28 @@ class PairingEngine {
         return flavors;
     }
 
+    /**
+     * Check if a dish flavor is complementary to wine descriptors
+     * @param {string} dishFlavor - The dish flavor to check
+     * @param {Array|Set} wineDescriptors - Wine flavor descriptors
+     * @returns {boolean} True if flavors are complementary
+     * @private
+     */
     isComplementaryFlavor(dishFlavor, wineDescriptors) {
-        const complementaryMap = {
-            'citrus': ['crisp', 'light', 'earth'],
-            'herb': ['earth', 'spice', 'herbal'],
-            'rich': ['full', 'tannic', 'sweet', 'smooth'],
-            'spicy': ['sweet', 'fruit', 'spice'],
-            'sweet': ['sweet', 'fruit', 'smooth'],
-            'delicate': ['light', 'floral', 'crisp'],
-            'umami': ['earth', 'spice', 'tannic']
-        };
-
+        const complementaryMap = this._cache.flavorMappings.get('complementary');
         const descriptors = Array.isArray(wineDescriptors) ? wineDescriptors : Array.from(wineDescriptors);
         return complementaryMap[dishFlavor]?.some(f => descriptors.includes(f)) || false;
     }
 
+    /**
+     * Check if a dish flavor conflicts with wine descriptors
+     * @param {string} dishFlavor - The dish flavor to check
+     * @param {Array|Set} wineDescriptors - Wine flavor descriptors
+     * @returns {boolean} True if flavors conflict
+     * @private
+     */
     isConflictingFlavor(dishFlavor, wineDescriptors) {
-        const conflictMap = {
-            'delicate': ['tannic', 'full'],
-            'sweet': ['tannic'],
-            'spicy': ['tannic'],
-            'citrus': ['tannic']
-        };
-
+        const conflictMap = this._cache.flavorMappings.get('conflict');
         const descriptors = Array.isArray(wineDescriptors) ? wineDescriptors : Array.from(wineDescriptors);
         return conflictMap[dishFlavor]?.some(f => descriptors.includes(f)) || false;
     }
@@ -508,7 +873,21 @@ class PairingEngine {
         return 'medium_red';
     }
 
+    /**
+     * Get regional wine pairing traditions with caching
+     * @param {string} wineRegion - The wine region
+     * @param {string} cuisine - The cuisine type
+     * @returns {Object} Regional tradition match information
+     * @private
+     */
     async getRegionalTraditions(wineRegion, cuisine) {
+        const cacheKey = `${wineRegion}-${cuisine}`;
+        
+        // Check cache first
+        if (this._cache.regionalTraditions.has(cacheKey)) {
+            return this._cache.regionalTraditions.get(cacheKey);
+        }
+        
         // Simplified regional tradition lookup
         const traditions = {
             'burgundy': { 'french': { perfect_match: true } },
@@ -525,7 +904,12 @@ class PairingEngine {
             'california': { 'american': { good_match: true }, 'international': { acceptable_match: true } }
         };
 
-        return traditions[wineRegion]?.[cuisine] || {};
+        const result = traditions[wineRegion]?.[cuisine] || {};
+        
+        // Cache the result
+        this._cache.regionalTraditions.set(cacheKey, result);
+        
+        return result;
     }
 
     calculateConfidence(scores) {
