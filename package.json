@@ -46,6 +46,7 @@
     "node-cron": "^4.2.1",
     "openai": "^6.0.0",
     "sqlite3": "^5.1.6",
+    "ws": "^8.14.2",
     "zod": "^4.1.11"
   },
   "devDependencies": {
