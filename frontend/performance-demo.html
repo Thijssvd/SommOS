@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Monitoring Demo - SommOS</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .demo-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .demo-section h2 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .metrics-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .log-container {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-entry.info {
+            color: #007bff;
+        }
+        
+        .log-entry.warning {
+            color: #ffc107;
+        }
+        
+        .log-entry.error {
+            color: #dc3545;
+        }
+        
+        .log-entry.success {
+            color: #28a745;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background: #28a745;
+        }
+        
+        .status-inactive {
+            background: #dc3545;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        
+        .dashboard-container {
+            min-height: 400px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍷 SommOS Performance Monitoring Demo</h1>
+            <p>Real User Monitoring (RUM) and Performance Analytics</p>
+        </div>
+        
+        <div class="demo-section">
+            <h2>Performance Monitor Status</h2>
+            <div class="metrics-display">
+                <div class="metric-card">
+                    <div class="metric-value" id="monitorStatus">
+                        <span class="status-indicator status-inactive"></span>
+                        Inactive
+                    </div>
+                    <div class="metric-label">Monitor Status</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="sessionId">-</div>
+                    <div class="metric-label">Session ID</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="userId">-</div>
+                    <div class="metric-label">User ID</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="webVitalsScore">-</div>
+                    <div class="metric-label">Web Vitals Score</div>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="initializeMonitor()">Initialize Monitor</button>
+                <button class="btn btn-success" onclick="startDashboard()">Start Dashboard</button>
+                <button class="btn btn-warning" onclick="simulateLoad()">Simulate Load</button>
+                <button class="btn btn-danger" onclick="simulateError()">Simulate Error</button>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>Web Vitals</h2>
+            <div class="metrics-display">
+                <div class="metric-card">
+                    <div class="metric-value" id="lcpValue">-</div>
+                    <div class="metric-label">LCP (ms)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="fidValue">-</div>
+                    <div class="metric-label">FID (ms)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="clsValue">-</div>
+                    <div class="metric-label">CLS</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="fcpValue">-</div>
+                    <div class="metric-label">FCP (ms)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="ttfbValue">-</div>
+                    <div class="metric-label">TTFB (ms)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>Custom Metrics</h2>
+            <div class="form-group">
+                <label for="customMetricName">Metric Name:</label>
+                <input type="text" id="customMetricName" placeholder="e.g., user_action" value="demo_metric">
+            </div>
+            <div class="form-group">
+                <label for="customMetricValue">Metric Value:</label>
+                <input type="number" id="customMetricValue" placeholder="e.g., 150" value="100">
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="recordCustomMetric()">Record Custom Metric</button>
+                <button class="btn btn-success" onclick="recordUserInteraction()">Record User Interaction</button>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>Performance Dashboard</h2>
+            <div class="dashboard-container" id="dashboardContainer">
+                <div class="loading">Click "Start Dashboard" to initialize the performance dashboard</div>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>Activity Log</h2>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry info">[INFO] Performance monitoring demo initialized</div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import PerformanceMonitor from './js/performance-monitor.js';
+        import PerformanceDashboard from './js/performance-dashboard.js';
+        import performanceIntegration from './js/performance-integration.js';
+        
+        // Make available globally for demo functions
+        window.PerformanceMonitor = PerformanceMonitor;
+        window.PerformanceDashboard = PerformanceDashboard;
+        window.performanceIntegration = performanceIntegration;
+        
+        let monitor = null;
+        let dashboard = null;
+        
+        // Logging function
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Update status display
+        function updateStatus() {
+            if (monitor) {
+                document.getElementById('monitorStatus').innerHTML = 
+                    '<span class="status-indicator status-active"></span>Active';
+                document.getElementById('sessionId').textContent = monitor.sessionId;
+                document.getElementById('userId').textContent = monitor.userId;
+                
+                const summary = monitor.getWebVitalsSummary();
+                const passing = Object.values(summary).filter(v => v.passed).length;
+                const total = Object.keys(summary).length;
+                const score = total > 0 ? Math.round((passing / total) * 100) : 0;
+                document.getElementById('webVitalsScore').textContent = `${score}%`;
+                
+                // Update individual Web Vitals
+                Object.entries(summary).forEach(([name, vital]) => {
+                    const element = document.getElementById(`${name.toLowerCase()}Value`);
+                    if (element) {
+                        element.textContent = Math.round(vital.value);
+                        element.style.color = vital.passed ? '#28a745' : '#dc3545';
+                    }
+                });
+            } else {
+                document.getElementById('monitorStatus').innerHTML = 
+                    '<span class="status-indicator status-inactive"></span>Inactive';
+                document.getElementById('sessionId').textContent = '-';
+                document.getElementById('userId').textContent = '-';
+                document.getElementById('webVitalsScore').textContent = '-';
+            }
+        }
+        
+        // Initialize monitor
+        window.initializeMonitor = function() {
+            try {
+                monitor = new PerformanceMonitor({
+                    debug: true,
+                    sampleRate: 1.0,
+                    reportInterval: 10000, // 10 seconds for demo
+                    endpoint: '/api/performance/rum'
+                });
+                
+                // Listen for metric events
+                window.addEventListener('rum-metric', (event) => {
+                    const { type, data } = event.detail;
+                    log(`Metric recorded: ${type} - ${JSON.stringify(data)}`, 'success');
+                    updateStatus();
+                });
+                
+                log('Performance monitor initialized successfully', 'success');
+                updateStatus();
+            } catch (error) {
+                log(`Failed to initialize monitor: ${error.message}`, 'error');
+            }
+        };
+        
+        // Start dashboard
+        window.startDashboard = function() {
+            try {
+                if (dashboard) {
+                    dashboard.destroy();
+                }
+                
+                dashboard = new PerformanceDashboard('dashboardContainer', {
+                    apiEndpoint: '/api/performance/rum',
+                    refreshInterval: 10000, // 10 seconds for demo
+                    debug: true
+                });
+                
+                log('Performance dashboard started', 'success');
+            } catch (error) {
+                log(`Failed to start dashboard: ${error.message}`, 'error');
+            }
+        };
+        
+        // Simulate load
+        window.simulateLoad = function() {
+            if (!monitor) {
+                log('Monitor not initialized', 'warning');
+                return;
+            }
+            
+            // Simulate some CPU-intensive work
+            const startTime = performance.now();
+            let result = 0;
+            for (let i = 0; i < 1000000; i++) {
+                result += Math.random();
+            }
+            const endTime = performance.now();
+            
+            monitor.recordCustomMetric('simulated_load', {
+                duration: endTime - startTime,
+                iterations: 1000000,
+                result: result
+            });
+            
+            log(`Simulated load completed in ${Math.round(endTime - startTime)}ms`, 'info');
+        };
+        
+        // Simulate error
+        window.simulateError = function() {
+            if (!monitor) {
+                log('Monitor not initialized', 'warning');
+                return;
+            }
+            
+            try {
+                // Intentionally throw an error
+                throw new Error('Simulated error for testing');
+            } catch (error) {
+                monitor.recordError('simulated', {
+                    message: error.message,
+                    stack: error.stack
+                });
+                log(`Simulated error: ${error.message}`, 'error');
+            }
+        };
+        
+        // Record custom metric
+        window.recordCustomMetric = function() {
+            if (!monitor) {
+                log('Monitor not initialized', 'warning');
+                return;
+            }
+            
+            const name = document.getElementById('customMetricName').value;
+            const value = parseFloat(document.getElementById('customMetricValue').value);
+            
+            if (!name || isNaN(value)) {
+                log('Please enter valid metric name and value', 'warning');
+                return;
+            }
+            
+            monitor.recordCustomMetric(name, {
+                value: value,
+                timestamp: Date.now(),
+                source: 'demo'
+            });
+            
+            log(`Custom metric recorded: ${name} = ${value}`, 'success');
+        };
+        
+        // Record user interaction
+        window.recordUserInteraction = function() {
+            if (!monitor) {
+                log('Monitor not initialized', 'warning');
+                return;
+            }
+            
+            monitor.recordUserInteraction('demo_click', {
+                target: 'demo_button',
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                timestamp: Date.now()
+            });
+            
+            log('User interaction recorded', 'success');
+        };
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Demo page loaded', 'info');
+            
+            // Auto-initialize monitor after a short delay
+            setTimeout(() => {
+                initializeMonitor();
+            }, 1000);
+        });
+        
+        // Update status periodically
+        setInterval(updateStatus, 2000);
+    </script>
+</body>
+</html>
