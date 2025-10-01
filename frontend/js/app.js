@@ -2,7 +2,7 @@
 // Handles app initialization, navigation, and core functionality
 
 import { SommOSAPI } from './api';
-import { SommOSUI } from './ui';
+import { SommOSUI, VirtualScroll } from './ui';
 import { SommOSSyncService } from './sync';
 import { RealTimeSync } from './realtime-sync';
 import Chart from 'chart.js/auto';
@@ -29,6 +29,17 @@ export class SommOS {
         this.sessionWarningShown = false;
         this.explanationsCache = new Map();
         this.memoriesCache = new Map();
+        
+        // Virtual scroll instances for performance optimization
+        this.inventoryVirtualScroll = null;
+        this.catalogVirtualScroll = null;
+        
+        // Performance monitoring
+        this.performanceMetrics = {
+            inventory: { renderTime: 0, itemCount: 0, virtualScrollEnabled: false },
+            catalog: { renderTime: 0, itemCount: 0, virtualScrollEnabled: false }
+        };
+        
         this.init();
     }
 
@@ -50,6 +61,44 @@ export class SommOS {
         }
 
         console.log('✅ SommOS initialized successfully');
+    }
+
+    // Performance monitoring methods
+    startPerformanceTimer() {
+        return performance.now();
+    }
+
+    endPerformanceTimer(startTime, component, itemCount, virtualScrollEnabled = false) {
+        const endTime = performance.now();
+        const renderTime = endTime - startTime;
+        
+        this.performanceMetrics[component] = {
+            renderTime: renderTime,
+            itemCount: itemCount,
+            virtualScrollEnabled: virtualScrollEnabled
+        };
+        
+        console.log(`Performance: ${component} rendered ${itemCount} items in ${renderTime.toFixed(2)}ms (Virtual Scroll: ${virtualScrollEnabled ? 'ON' : 'OFF'})`);
+        
+        // Show performance toast for large lists
+        if (itemCount > 100 && renderTime > 100) {
+            const savings = virtualScrollEnabled ? ' (Virtual scrolling active)' : ' (Consider enabling virtual scrolling)';
+            this.ui.showToast(`Rendered ${itemCount} items in ${renderTime.toFixed(0)}ms${savings}`, 'info', 3000);
+        }
+        
+        return renderTime;
+    }
+
+    getPerformanceMetrics() {
+        return this.performanceMetrics;
+    }
+
+    logPerformanceSummary() {
+        console.group('SommOS Performance Summary');
+        Object.entries(this.performanceMetrics).forEach(([component, metrics]) => {
+            console.log(`${component}: ${metrics.itemCount} items, ${metrics.renderTime.toFixed(2)}ms, Virtual Scroll: ${metrics.virtualScrollEnabled ? 'ON' : 'OFF'}`);
+        });
+        console.groupEnd();
     }
 
     cacheRootElements() {
@@ -1064,6 +1113,7 @@ export class SommOS {
     }
 
     displayInventory(inventory) {
+        const startTime = this.startPerformanceTimer();
         console.log('Displaying inventory:', inventory);
         const grid = document.getElementById('inventory-grid');
         const isGuest = this.isGuestUser();
@@ -1085,63 +1135,98 @@ export class SommOS {
             return;
         }
         
-        console.log(`Rendering ${inventory.length} wine cards...`);
+        console.log(`Rendering ${inventory.length} wine cards with virtual scrolling...`);
         
         try {
-            // Show all wines now that we know it works
-            grid.innerHTML = inventory.map((item, index) => {
-                // Improve region display
-                const displayRegion = this.getDisplayRegion(item);
-                const displayCountry = item.country && item.country !== 'Unknown' ? item.country : '';
-                const actionSection = isGuest
-                    ? `
-                        <div class="card-actions-simple guest-readonly" aria-live="polite">
-                            <span class="guest-readonly-message">🔒 Guest access is read-only</span>
-                        </div>
-                    `
-                    : `
-                        <div class="card-actions-simple">
-                            <button class="btn-small secondary" onclick="app.showWineDetailModal('${item.vintage_id || item.id}')">
-                                📝 Details
-                            </button>
-                            <button class="btn-small primary" onclick="app.reserveWineModal('${item.vintage_id || item.id}', '${(item.name || "Unknown").replace(/'/g, "\\'") }')">
-                                🍷 Reserve
-                            </button>
-                            ${(item.quantity || 0) > 0 ? `
-                                <button class="btn-small" onclick="app.consumeWineModal('${item.vintage_id || item.id}', '${(item.name || "Unknown").replace(/'/g, "\\'") }')">
-                                    🥂 Serve
-                                </button>
-                            ` : ''}
-                        </div>
-                    `;
-
-                return `
-                    <div class="wine-card simple-card fade-in" style="animation-delay: ${Math.min(index * 0.02, 2)}s">
-                        <div class="wine-header">
-                            <div class="wine-type-badge ${item.wine_type?.toLowerCase() || 'unknown'}">
-                                ${this.getWineTypeIcon(item.wine_type)} ${item.wine_type || 'Wine'}
-                            </div>
-                            <div class="price">${item.cost_per_bottle && !isGuest ? '$' + parseFloat(item.cost_per_bottle).toFixed(2) : ''}</div>
-                        </div>
-                        <h3>${item.name || 'Unknown Wine'}</h3>
-                        <p><strong>Producer:</strong> ${item.producer || 'Unknown'}</p>
-                        <p><strong>Year:</strong> ${item.year || 'N/A'} ${displayCountry ? '| ' + displayCountry : ''}</p>
-                        <p><strong>Region:</strong> ${displayRegion}</p>
-                        <div class="stock-display">
-                            <span class="quantity">${item.quantity || 0} bottles</span>
-                            <span class="location">${!isGuest ? `📍 ${item.location || 'Unknown'}` : '🔒 Location hidden'}</span>
-                        </div>
-                        ${actionSection}
-                    </div>
-                `;
-            }).join('');
+            const useVirtualScroll = inventory.length > 50;
             
-            console.log('Wine cards rendered successfully');
+            // Initialize or update virtual scroll for inventory
+            if (!this.inventoryVirtualScroll) {
+                this.inventoryVirtualScroll = new VirtualScroll(
+                    grid, 
+                    inventory, 
+                    220, // Wine card height
+                    { 
+                        threshold: 50, // Use virtual scrolling for lists > 50 items
+                        bufferSize: 3 
+                    }
+                );
+                
+                // Set render callback for inventory items
+                this.inventoryVirtualScroll.setRenderCallback((item, index) => {
+                    return this.createInventoryWineCard(item, index, isGuest);
+                });
+            } else {
+                // Update existing virtual scroll with new data
+                this.inventoryVirtualScroll.setItems(inventory);
+            }
+            
+            console.log('Inventory virtual scroll initialized successfully');
+            
+            // End performance timer
+            this.endPerformanceTimer(startTime, 'inventory', inventory.length, useVirtualScroll);
             
         } catch (error) {
-            console.error('Error rendering inventory:', error);
-            grid.innerHTML = '<div class="inventory-placeholder"><p>Error displaying wines</p></div>';
+            console.error('Error setting up inventory virtual scroll:', error);
+            // Fallback to regular rendering
+            this.displayInventoryFallback(inventory, grid, isGuest);
+            this.endPerformanceTimer(startTime, 'inventory', inventory.length, false);
         }
+    }
+
+    createInventoryWineCard(item, index, isGuest) {
+        // Improve region display
+        const displayRegion = this.getDisplayRegion(item);
+        const displayCountry = item.country && item.country !== 'Unknown' ? item.country : '';
+        const actionSection = isGuest
+            ? `
+                <div class="card-actions-simple guest-readonly" aria-live="polite">
+                    <span class="guest-readonly-message">🔒 Guest access is read-only</span>
+                </div>
+            `
+            : `
+                <div class="card-actions-simple">
+                    <button class="btn-small secondary" onclick="app.showWineDetailModal('${item.vintage_id || item.id}')">
+                        📝 Details
+                    </button>
+                    <button class="btn-small primary" onclick="app.reserveWineModal('${item.vintage_id || item.id}', '${(item.name || "Unknown").replace(/'/g, "\\'") }')">
+                        🍷 Reserve
+                    </button>
+                    ${(item.quantity || 0) > 0 ? `
+                        <button class="btn-small" onclick="app.consumeWineModal('${item.vintage_id || item.id}', '${(item.name || "Unknown").replace(/'/g, "\\'") }')">
+                            🥂 Serve
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+
+        return `
+            <div class="wine-card simple-card fade-in" style="animation-delay: ${Math.min(index * 0.02, 2)}s">
+                <div class="wine-header">
+                    <div class="wine-type-badge ${item.wine_type?.toLowerCase() || 'unknown'}">
+                        ${this.getWineTypeIcon(item.wine_type)} ${item.wine_type || 'Wine'}
+                    </div>
+                    <div class="price">${item.cost_per_bottle && !isGuest ? '$' + parseFloat(item.cost_per_bottle).toFixed(2) : ''}</div>
+                </div>
+                <h3>${item.name || 'Unknown Wine'}</h3>
+                <p><strong>Producer:</strong> ${item.producer || 'Unknown'}</p>
+                <p><strong>Year:</strong> ${item.year || 'N/A'} ${displayCountry ? '| ' + displayCountry : ''}</p>
+                <p><strong>Region:</strong> ${displayRegion}</p>
+                <div class="stock-display">
+                    <span class="quantity">${item.quantity || 0} bottles</span>
+                    <span class="location">${!isGuest ? `📍 ${item.location || 'Unknown'}` : '🔒 Location hidden'}</span>
+                </div>
+                ${actionSection}
+            </div>
+        `;
+    }
+
+    displayInventoryFallback(inventory, grid, isGuest) {
+        // Fallback method for when virtual scrolling fails
+        console.log('Using fallback inventory rendering');
+        grid.innerHTML = inventory.map((item, index) => {
+            return this.createInventoryWineCard(item, index, isGuest);
+        }).join('');
     }
     
     getDisplayRegion(item) {
@@ -3715,6 +3800,7 @@ export class SommOS {
     }
 
     displayCatalogWines(wines) {
+        const startTime = this.startPerformanceTimer();
         const grid = document.getElementById('catalog-grid');
         
         if (!wines || wines.length === 0) {
@@ -3725,6 +3811,71 @@ export class SommOS {
         const viewClass = `view-${this.catalogView}`;
         grid.className = `catalog-grid ${viewClass}`;
         
+        console.log(`Rendering ${wines.length} catalog wines with virtual scrolling...`);
+        
+        try {
+            const useVirtualScroll = wines.length > 30;
+            
+            // Initialize or update virtual scroll for catalog
+            if (!this.catalogVirtualScroll) {
+                // Determine item height based on view type
+                const itemHeight = this.getCatalogItemHeight(this.catalogView);
+                
+                this.catalogVirtualScroll = new VirtualScroll(
+                    grid, 
+                    wines, 
+                    itemHeight,
+                    { 
+                        threshold: 30, // Use virtual scrolling for lists > 30 items
+                        bufferSize: 2 
+                    }
+                );
+                
+                // Set render callback for catalog items
+                this.catalogVirtualScroll.setRenderCallback((wine, index) => {
+                    return this.createCatalogWineCard(wine, this.catalogView);
+                });
+            } else {
+                // Update existing virtual scroll with new data and view
+                const itemHeight = this.getCatalogItemHeight(this.catalogView);
+                this.catalogVirtualScroll.updateItemHeight(itemHeight);
+                this.catalogVirtualScroll.setItems(wines);
+                
+                // Update render callback for new view type
+                this.catalogVirtualScroll.setRenderCallback((wine, index) => {
+                    return this.createCatalogWineCard(wine, this.catalogView);
+                });
+            }
+            
+            console.log('Catalog virtual scroll initialized successfully');
+            
+            // End performance timer
+            this.endPerformanceTimer(startTime, 'catalog', wines.length, useVirtualScroll);
+            
+        } catch (error) {
+            console.error('Error setting up catalog virtual scroll:', error);
+            // Fallback to regular rendering
+            this.displayCatalogWinesFallback(wines, grid);
+            this.endPerformanceTimer(startTime, 'catalog', wines.length, false);
+        }
+    }
+
+    getCatalogItemHeight(viewType) {
+        // Return appropriate height based on view type
+        switch (viewType) {
+            case 'list':
+                return 80; // Compact list view
+            case 'detail':
+                return 300; // Detailed view with more information
+            case 'grid':
+            default:
+                return 280; // Standard grid card height
+        }
+    }
+
+    displayCatalogWinesFallback(wines, grid) {
+        // Fallback method for when virtual scrolling fails
+        console.log('Using fallback catalog rendering');
         if (this.catalogView === 'grid') {
             grid.innerHTML = wines.map(wine => this.createCatalogWineCard(wine, 'grid')).join('');
         } else if (this.catalogView === 'list') {
@@ -3941,6 +4092,17 @@ export class SommOS {
         const grid = document.getElementById('catalog-grid');
         const viewClass = `view-${this.catalogView}`;
         grid.className = `catalog-grid ${viewClass}`;
+        
+        // Update virtual scroll with new view type if it exists
+        if (this.catalogVirtualScroll) {
+            const itemHeight = this.getCatalogItemHeight(this.catalogView);
+            this.catalogVirtualScroll.updateItemHeight(itemHeight);
+            
+            // Update render callback for new view type
+            this.catalogVirtualScroll.setRenderCallback((wine, index) => {
+                return this.createCatalogWineCard(wine, this.catalogView);
+            });
+        }
         
         // Re-render current wines with new view
         // This would typically re-call displayCatalogWines with current data

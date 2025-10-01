@@ -1174,12 +1174,47 @@ select:focus {
     grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
     gap: 2rem;
     margin-top: 1rem;
+    /* Virtual scrolling support */
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    min-height: 400px;
+}
+
+/* Virtual scrolling container styles */
+.inventory-grid.virtual-scroll-enabled {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 600px; /* Fixed height for virtual scrolling */
+    max-height: 80vh;
+}
+
+.inventory-grid.virtual-scroll-enabled .virtual-content {
+    position: relative;
+    width: 100%;
+}
+
+.inventory-grid.virtual-scroll-enabled .visible-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    pointer-events: none;
+}
+
+.inventory-grid.virtual-scroll-enabled .visible-container > * {
+    pointer-events: auto;
 }
 
 @media (max-width: 768px) {
     .inventory-grid {
         grid-template-columns: 1fr;
         gap: 1.5rem;
+    }
+    
+    .inventory-grid.virtual-scroll-enabled {
+        height: 500px; /* Smaller height on mobile */
+        max-height: 60vh;
     }
 }
 
@@ -3057,6 +3092,51 @@ select:focus {
     display: grid;
     gap: 1.5rem;
     margin-bottom: 2rem;
+    /* Virtual scrolling support */
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    min-height: 300px;
+}
+
+/* Virtual scrolling container styles for catalog */
+.catalog-grid.virtual-scroll-enabled {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 700px; /* Fixed height for virtual scrolling */
+    max-height: 75vh;
+}
+
+.catalog-grid.virtual-scroll-enabled .virtual-content {
+    position: relative;
+    width: 100%;
+}
+
+.catalog-grid.virtual-scroll-enabled .visible-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    pointer-events: none;
+}
+
+.catalog-grid.virtual-scroll-enabled .visible-container > * {
+    pointer-events: auto;
+}
+
+/* Responsive virtual scrolling for catalog */
+@media (max-width: 768px) {
+    .catalog-grid.virtual-scroll-enabled {
+        height: 600px; /* Smaller height on mobile */
+        max-height: 65vh;
+    }
+}
+
+@media (max-width: 480px) {
+    .catalog-grid.virtual-scroll-enabled {
+        height: 500px; /* Even smaller on small mobile */
+        max-height: 55vh;
+    }
 }
 
 /* Grid View */
