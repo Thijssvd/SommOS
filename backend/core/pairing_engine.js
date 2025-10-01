@@ -6,9 +6,10 @@
 const OpenAI = require('openai');
 const Database = require('../database/connection');
 const { getConfig } = require('../config/env');
+const { AIResponseCache } = require('./ai_response_cache');
 
 class PairingEngine {
-    constructor(database, learningEngine = null, explainabilityService = null) {
+    constructor(database, learningEngine = null, explainabilityService = null, cacheOptions = {}) {
         this.db = database || Database.getInstance();
         this.learningEngine = learningEngine;
         this.explainabilityService = explainabilityService;
@@ -23,6 +24,16 @@ class PairingEngine {
             regional_tradition: 0.15,
             seasonal_appropriateness: 0.10
         };
+        
+        // Initialize AI response cache
+        this.cache = new AIResponseCache({
+            maxSize: cacheOptions.maxSize || 1000,
+            maxMemorySize: cacheOptions.maxMemorySize || 100 * 1024 * 1024, // 100MB
+            defaultTtl: cacheOptions.defaultTtl || 24 * 60 * 60 * 1000, // 24 hours
+            strategy: cacheOptions.strategy || 'hybrid',
+            prefix: 'pairing_cache',
+            ...cacheOptions
+        });
     }
 
     /**
@@ -34,6 +45,23 @@ class PairingEngine {
      * @returns {Array} Ranked pairing recommendations
      */
     async generatePairings(dish, context = {}, preferences = {}, options = {}) {
+        // Generate cache key
+        const cacheKey = this.cache.generateCacheKey(dish, context, preferences);
+        
+        // Check cache first
+        let cached = null;
+        try {
+            cached = await this.cache.get(cacheKey);
+            if (cached) {
+                console.log('AI Cache: Hit for pairing request');
+                return cached;
+            }
+        } catch (error) {
+            console.warn('AI Cache: Error retrieving from cache, continuing with fresh generation:', error.message);
+        }
+
+        console.log('AI Cache: Miss for pairing request, generating fresh response');
+        
         const dishContext = typeof dish === 'string'
             ? await this.parseNaturalLanguageDish(dish, context)
             : dish;
@@ -71,10 +99,22 @@ class PairingEngine {
 
         await this.persistPairingExplanation(withMetadata, explanation);
 
-        return {
+        const result = {
             recommendations: withMetadata,
-            explanation
+            explanation,
+            cached: false,
+            generatedAt: new Date().toISOString()
         };
+
+        // Cache the result with appropriate TTL
+        try {
+            const ttl = this.getCacheTTL(dish, context, preferences, generatedByAI);
+            await this.cache.set(cacheKey, result, ttl);
+        } catch (error) {
+            console.warn('AI Cache: Error storing in cache:', error.message);
+        }
+
+        return result;
     }
     
     /**
@@ -653,16 +693,41 @@ Focus on wines that create harmony or interesting contrasts with the dish. Consi
      * Quick AI-powered pairing for immediate service
      */
     async quickPairing(dish, context = {}, ownerLikes = {}) {
+        // Generate cache key for quick pairing
+        const cacheKey = this.cache.generateCacheKey(dish, { ...context, quick: true }, ownerLikes);
+        
+        // Check cache first
+        let cached = null;
+        try {
+            cached = await this.cache.get(cacheKey);
+            if (cached) {
+                console.log('AI Cache: Hit for quick pairing request');
+                return cached;
+            }
+        } catch (error) {
+            console.warn('AI Cache: Error retrieving from cache for quick pairing, continuing with fresh generation:', error.message);
+        }
+
+        console.log('AI Cache: Miss for quick pairing request, generating fresh response');
+        
         await this.refreshAdaptiveWeights();
 
         if (!this.openai) {
             // Fallback to rule-based quick pairing
             const availableWines = await this.getAvailableWines();
-            return availableWines.slice(0, 3).map(wine => ({
+            const result = availableWines.slice(0, 3).map(wine => ({
                 wine,
                 reasoning: 'Quick selection based on availability and general pairing rules',
                 confidence: 0.6
             }));
+            
+            // Cache the result with shorter TTL for quick pairings
+            try {
+                await this.cache.set(cacheKey, result, 2 * 60 * 60 * 1000); // 2 hours
+            } catch (error) {
+                console.warn('AI Cache: Error storing quick pairing in cache:', error.message);
+            }
+            return result;
         }
         
         try {
@@ -673,20 +738,36 @@ Focus on wines that create harmony or interesting contrasts with the dish. Consi
                 owner_preferences: ownerLikes
             }, quickInventory, {});
             
-            return recommendations.slice(0, 3).map(rec => ({
+            const result = recommendations.slice(0, 3).map(rec => ({
                 wine: quickInventory.find(w => w.name === rec.wine_name && w.producer === rec.producer),
                 reasoning: rec.reasoning,
                 confidence: rec.confidence_score
             })).filter(p => p.wine);
             
+            // Cache the result with shorter TTL for quick pairings
+            try {
+                await this.cache.set(cacheKey, result, 2 * 60 * 60 * 1000); // 2 hours
+            } catch (error) {
+                console.warn('AI Cache: Error storing quick pairing in cache:', error.message);
+            }
+            return result;
+            
         } catch (error) {
             console.error('Quick pairing error:', error.message);
             const availableWines = await this.getAvailableWines();
-            return availableWines.slice(0, 3).map(wine => ({
+            const result = availableWines.slice(0, 3).map(wine => ({
                 wine,
                 reasoning: 'Quick selection (AI unavailable)',
                 confidence: 0.5
             }));
+            
+            // Cache the fallback result with shorter TTL
+            try {
+                await this.cache.set(cacheKey, result, 30 * 60 * 1000); // 30 minutes
+            } catch (error) {
+                console.warn('AI Cache: Error storing fallback quick pairing in cache:', error.message);
+            }
+            return result;
         }
     }
 
@@ -945,6 +1026,115 @@ Focus on wines that create harmony or interesting contrasts with the dish. Consi
         if (tasks.length > 0) {
             await Promise.all(tasks);
         }
+    }
+
+    /**
+     * Calculate appropriate cache TTL based on request characteristics
+     */
+    getCacheTTL(dish, context, preferences, generatedByAI) {
+        // Base TTL
+        let ttl = 24 * 60 * 60 * 1000; // 24 hours
+
+        // Adjust based on AI generation
+        if (generatedByAI) {
+            ttl = 12 * 60 * 60 * 1000; // 12 hours for AI-generated responses
+        }
+
+        // Adjust based on context
+        if (context.occasion === 'special' || context.event === 'anniversary') {
+            ttl = 6 * 60 * 60 * 1000; // 6 hours for special occasions
+        }
+
+        // Adjust based on preferences complexity
+        if (preferences.dietary_restrictions && preferences.dietary_restrictions.length > 0) {
+            ttl = Math.min(ttl, 4 * 60 * 60 * 1000); // Max 4 hours for complex dietary needs
+        }
+
+        // Adjust based on season (shorter TTL for seasonal recommendations)
+        if (context.season) {
+            ttl = Math.min(ttl, 8 * 60 * 60 * 1000); // Max 8 hours for seasonal
+        }
+
+        return ttl;
+    }
+
+    /**
+     * Get cache statistics
+     */
+    getCacheStats() {
+        return this.cache.getStats();
+    }
+
+    /**
+     * Clear cache
+     */
+    async clearCache() {
+        await this.cache.clear();
+        console.log('AI Cache: Cleared all cached pairing responses');
+    }
+
+    /**
+     * Invalidate cache entries by pattern
+     */
+    async invalidateCache(pattern) {
+        const count = await this.cache.invalidatePattern(pattern);
+        console.log(`AI Cache: Invalidated ${count} entries matching pattern: ${pattern}`);
+        return count;
+    }
+
+    /**
+     * Invalidate cache entries by dish
+     */
+    async invalidateCacheByDish(dishPattern) {
+        const count = await this.cache.invalidateByDish(dishPattern);
+        console.log(`AI Cache: Invalidated ${count} entries for dish: ${dishPattern}`);
+        return count;
+    }
+
+    /**
+     * Invalidate cache entries by context
+     */
+    async invalidateCacheByContext(contextPattern) {
+        const count = await this.cache.invalidateByContext(contextPattern);
+        console.log(`AI Cache: Invalidated ${count} entries for context: ${contextPattern}`);
+        return count;
+    }
+
+    /**
+     * Warm up cache with common pairings
+     */
+    async warmupCache(commonPairings) {
+        await this.cache.warmup(commonPairings);
+        console.log(`AI Cache: Warmed up with ${commonPairings.length} common pairings`);
+    }
+
+    /**
+     * Export cache for persistence
+     */
+    async exportCache() {
+        return await this.cache.export();
+    }
+
+    /**
+     * Import cache from persistence
+     */
+    async importCache(cacheData) {
+        await this.cache.import(cacheData);
+        console.log('AI Cache: Imported cache data');
+    }
+
+    /**
+     * Cleanup cache (remove expired entries)
+     */
+    async cleanupCache() {
+        await this.cache.cleanup();
+    }
+
+    /**
+     * Destroy cache and cleanup resources
+     */
+    destroy() {
+        this.cache.destroy();
     }
 }
 
