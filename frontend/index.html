@@ -15,10 +15,18 @@
     
     <title>SommOS - Yacht Wine Management</title>
     
+    <!-- Force CSS refresh -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Direct CSS import for testing -->
+    <link rel="stylesheet" href="/css/styles-cache-bust.css">
     <script>
         window.__SOMMOS_API_BASE__ = window.__SOMMOS_API_BASE__ || (function () {
             const { protocol, hostname, port } = window.location;

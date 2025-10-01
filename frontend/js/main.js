@@ -1,4 +1,4 @@
-import '../css/styles.css';
+import '../css/styles-cache-bust.css';
 import SommOS from './app';
 import { registerServiceWorker } from './sw-registration.mjs';
 import { ImageOptimizer } from './image-optimizer.js';

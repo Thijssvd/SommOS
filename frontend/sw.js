@@ -1,5 +1,5 @@
-const PRECACHE_VERSION = 'v1';
-const RUNTIME_VERSION = 'v1';
+const PRECACHE_VERSION = 'v2';
+const RUNTIME_VERSION = 'v2';
 const PRECACHE_CACHE_NAME = `sommos-precache-${PRECACHE_VERSION}`;
 const RUNTIME_CACHE_NAME = `sommos-runtime-${RUNTIME_VERSION}`;
 const CACHEABLE_API_PATHS = new Set(['/api/system/health']);

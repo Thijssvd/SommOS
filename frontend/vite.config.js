@@ -231,15 +231,7 @@ export default defineConfig(() => ({
     assetsInlineLimit: 4096
   },
   css: {
-    devSourcemap: true,
-    postcss: {
-      plugins: [
-        // Add autoprefixer for better browser compatibility
-        require('autoprefixer')({
-          overrideBrowserslist: ['> 1%', 'last 2 versions', 'not dead']
-        })
-      ]
-    }
+    devSourcemap: true
   },
   optimizeDeps: {
     include: [

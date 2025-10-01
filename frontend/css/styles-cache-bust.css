@@ -1,3 +1,4 @@
+/* CSS Updated: Wed Oct  1 23:01:46 CEST 2025 */
 /* SommOS - Yacht Wine Management System Styles */
 
 :root {
@@ -76,8 +77,6 @@ body {
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* TEST: This should make the page background more visible */
-    border: 5px solid #ff0000;
 }
 
 /* Skip to main content link */
