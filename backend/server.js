@@ -148,7 +148,11 @@ app.get('/health', (req, res) => {
 });
 
 // Serve PWA for all non-API routes
-app.get('/*', (req, res) => {
+app.use((req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+        return next();
+    }
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 

@@ -127,6 +127,22 @@ afterEach(async () => {
   await Database.resetInstance();
 });
 
+// Global cleanup for parallel processing engines
+afterAll(async () => {
+  // Clean up any remaining parallel processing engines
+  const ParallelProcessingEngine = require('../backend/core/parallel_processing_engine');
+  if (global.parallelProcessingEngines) {
+    for (const engine of global.parallelProcessingEngines) {
+      try {
+        await engine.shutdown();
+      } catch (error) {
+        // Ignore shutdown errors in tests
+      }
+    }
+    global.parallelProcessingEngines = [];
+  }
+});
+
 // Test utilities
 global.testUtils = {
   // Mock wine data generator

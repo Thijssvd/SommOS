@@ -262,7 +262,7 @@ class ParallelProcessingEngine extends EventEmitter {
      */
     handleWorkerExit(workerId, code) {
         // Only log in non-test environments to avoid Jest warnings
-        if (process.env.NODE_ENV !== 'test') {
+        if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
             console.log(`Worker ${workerId} exited with code ${code}`);
         }
         
