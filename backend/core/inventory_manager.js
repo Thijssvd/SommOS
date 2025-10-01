@@ -1093,9 +1093,43 @@ class InventoryManager {
     }
     
     /**
-     * Get current stock levels with filtering
+     * Get current stock levels with filtering and pagination
      */
-    async getCurrentStock(filters = {}) {
+    async getCurrentStock(filters = {}, options = {}) {
+        // First, get the total count for pagination metadata
+        let countQuery = `
+            SELECT COUNT(*) as total
+            FROM Stock s
+            JOIN Vintages v ON v.id = s.vintage_id
+            JOIN Wines w ON w.id = v.wine_id
+            WHERE 1=1
+        `;
+        
+        const countParams = [];
+        
+        if (filters.location) {
+            countQuery += ' AND s.location = ?';
+            countParams.push(filters.location);
+        }
+        
+        if (filters.wine_type) {
+            countQuery += ' AND w.wine_type = ?';
+            countParams.push(filters.wine_type);
+        }
+        
+        if (filters.region) {
+            countQuery += ' AND w.region LIKE ?';
+            countParams.push(`%${filters.region}%`);
+        }
+        
+        if (filters.available_only) {
+            countQuery += ' AND s.quantity > s.reserved_quantity';
+        }
+        
+        const countResult = await this.db.get(countQuery, countParams);
+        const total = countResult.total;
+        
+        // Now get the paginated results
         let query = `
             SELECT w.*, v.year, v.quality_score, s.*,
                    (s.quantity - s.reserved_quantity) as available_quantity
@@ -1127,29 +1161,29 @@ class InventoryManager {
         }
         
         query += ' ORDER BY w.name, v.year DESC';
-
-        return await this.db.all(query, params);
-    }
-
-    async getInventoryList(filters = {}, options = {}) {
-        const stock = await this.getCurrentStock(filters);
-
-        const total = stock.length;
+        
+        // Add pagination
         const limitValue = Number.parseInt(options.limit, 10);
         const offsetValue = Number.parseInt(options.offset, 10);
-        const limit = Number.isFinite(limitValue) && limitValue > 0 ? limitValue : total;
+        const limit = Number.isFinite(limitValue) && limitValue > 0 ? limitValue : 50;
         const offset = Number.isFinite(offsetValue) && offsetValue >= 0 ? offsetValue : 0;
-
-        const items = limit >= total && offset === 0
-            ? stock
-            : stock.slice(offset, offset + limit);
-
+        
+        query += ' LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+        
+        const items = await this.db.all(query, params);
+        
         return {
             items,
             total,
             limit,
             offset
         };
+    }
+
+    async getInventoryList(filters = {}, options = {}) {
+        // Use the paginated getCurrentStock method
+        return await this.getCurrentStock(filters, options);
     }
 
     async getStockItemById(stockId) {
