@@ -206,7 +206,7 @@ NODE_ENV=development
 PORT=3001
 
 # AI Integration
-OPENAI_API_KEY=sk-proj-[REDACTED]
+OPENAI_API_KEY=your-openai-api-key-here
 
 # Weather Data (Optional)
 OPEN_METEO_API_KEY=your_key_here
