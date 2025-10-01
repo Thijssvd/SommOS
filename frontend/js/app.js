@@ -3758,19 +3758,24 @@ export class SommOS {
 
         if (viewType === 'grid') {
             return `
-                <div class="wine-card catalog-card" onclick="app.showWineDetails('${wine.id}')">
+                <div class="wine-card catalog-card" 
+                     onclick="app.showWineDetails('${wine.id}')" 
+                     role="button" 
+                     tabindex="0"
+                     aria-label="View details for ${wine.name || 'Unknown Wine'} from ${wine.producer || 'Unknown Producer'}, ${wine.year || 'N/A'}"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.showWineDetails('${wine.id}')}">
                     <div class="wine-card-header">
-                        <div class="wine-type-badge ${wine.wine_type?.toLowerCase() || 'unknown'}">
-                            ${this.getWineTypeIcon(wine.wine_type)} ${wine.wine_type || 'Wine'}
+                        <div class="wine-type-badge ${wine.wine_type?.toLowerCase() || 'unknown'}" aria-label="Wine type: ${wine.wine_type || 'Wine'}">
+                            <span aria-hidden="true">${this.getWineTypeIcon(wine.wine_type)}</span> ${wine.wine_type || 'Wine'}
                         </div>
-                        <div class="wine-year">${wine.year || 'N/A'}</div>
+                        <div class="wine-year" aria-label="Vintage year: ${wine.year || 'N/A'}">${wine.year || 'N/A'}</div>
                     </div>
                     <div class="wine-card-body">
                         <h3>${wine.name || 'Unknown Wine'}</h3>
                         <p class="producer">${wine.producer || 'Unknown Producer'}</p>
                         <div class="wine-meta">
-                            <span class="meta-item">${displayRegion}</span>
-                            ${peakWindow ? `<span class="meta-item">Peak: ${peakWindow}</span>` : ''}
+                            <span class="meta-item" aria-label="Region: ${displayRegion}">${displayRegion}</span>
+                            ${peakWindow ? `<span class="meta-item" aria-label="Peak drinking window: ${peakWindow}">Peak: ${peakWindow}</span>` : ''}
                         </div>
                         ${scoreSummary || ''}
                         <div class="wine-guidance">
