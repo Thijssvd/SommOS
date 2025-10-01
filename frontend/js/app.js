@@ -2481,6 +2481,18 @@ export class SommOS {
             case 'check-stock':
                 this.navigateToView('inventory');
                 break;
+            case 'analyze-procurement-opportunities':
+                this.analyzeProcurementOpportunities();
+                break;
+            case 'show-purchase-decision-tool':
+                this.showPurchaseDecisionTool();
+                break;
+            case 'generate-purchase-order':
+                this.generatePurchaseOrder();
+                break;
+            case 'filter-procurement-opportunities':
+                this.filterProcurementOpportunities();
+                break;
         }
     }
 

@@ -131,9 +131,9 @@ function loadConfigFromEnv() {
     const validation = schema.safeParse(mergedEnv);
 
     if (!validation.success) {
-        const formattedErrors = validation.error.errors
-            .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
-            .join('\n');
+        const formattedErrors = validation.error?.errors
+            ?.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+            .join('\n') || 'Unknown validation error';
 
         throw new Error(`Invalid environment configuration:\n${formattedErrors}`);
     }

@@ -19,18 +19,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        window.__SOMMOS_API_BASE__ = window.__SOMMOS_API_BASE__ || (function () {
-            const { protocol, hostname, port } = window.location;
-            if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '3000') {
-                return `${protocol}//${hostname}:3001/api`;
-            }
-            const origin = window.location.origin.endsWith('/')
-                ? window.location.origin.slice(0, -1)
-                : window.location.origin;
-            return `${origin}/api`;
-        })();
-    </script>
+    <script src="/js/config.js"></script>
 </head>
 <body>
     <!-- Skip to main content -->
@@ -478,15 +467,15 @@
                         </div>
                         
                         <div class="procurement-actions">
-                            <button class="btn primary" onclick="app.analyzeProcurementOpportunities()">
+                            <button class="btn primary" data-action="analyze-procurement-opportunities">
                                 <span class="btn-icon">🔍</span>
                                 Analyze Opportunities
                             </button>
-                            <button class="btn secondary" onclick="app.showPurchaseDecisionTool()">
+                            <button class="btn secondary" data-action="show-purchase-decision-tool">
                                 <span class="btn-icon">⚖️</span>
                                 Purchase Decision Tool
                             </button>
-                            <button class="btn secondary" onclick="app.generatePurchaseOrder()">
+                            <button class="btn secondary" data-action="generate-purchase-order">
                                 <span class="btn-icon">📝</span>
                                 Create Purchase Order
                             </button>
@@ -517,7 +506,7 @@
                             
                             <input type="number" id="max-price-filter" placeholder="Max Price" min="0" step="10">
                             
-                            <button class="btn primary" onclick="app.filterProcurementOpportunities()">
+                            <button class="btn primary" data-action="filter-procurement-opportunities">
                                 <span class="btn-icon">🔍</span>
                                 Filter
                             </button>
