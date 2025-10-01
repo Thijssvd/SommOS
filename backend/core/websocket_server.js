@@ -3,6 +3,7 @@
 
 const WebSocket = require('ws');
 const { getConfig } = require('../config/env');
+const { rateLimitConfigs } = require('../config/security');
 const Database = require('../database/connection');
 
 class SommOSWebSocketServer {
@@ -15,6 +16,11 @@ class SommOSWebSocketServer {
         this.heartbeatInterval = null;
         this.heartbeatTimeout = 30000; // 30 seconds
         this.maxClients = 1000;
+        this.connectionAttempts = new Map(); // Track connection attempts per IP
+        this.maxConnectionAttempts = 10; // Max attempts per IP per minute
+        this.connectionAttemptWindow = 60 * 1000; // 1 minute
+        this.maxMessageSize = 1024 * 1024; // 1MB max message size
+        this.messageRateLimit = 100; // Max messages per minute per client
         
         this.init();
     }
@@ -33,13 +39,65 @@ class SommOSWebSocketServer {
     }
 
     verifyClient(info) {
-        // Basic verification - in production, you might want to verify JWT tokens
         const origin = info.origin;
+        const ip = info.req.socket.remoteAddress;
+        
+        // Check origin
         const allowedOrigins = this.config.isProduction 
             ? ['https://sommos.yacht'] 
             : ['http://localhost:3000', 'http://127.0.0.1:3000'];
         
-        return allowedOrigins.includes(origin);
+        if (!allowedOrigins.includes(origin)) {
+            console.warn(`WebSocket connection rejected: invalid origin ${origin} from ${ip}`);
+            return false;
+        }
+        
+        // Check connection rate limiting
+        if (!this.checkConnectionRateLimit(ip)) {
+            console.warn(`WebSocket connection rejected: rate limit exceeded for IP ${ip}`);
+            return false;
+        }
+        
+        // Check if we've reached max clients
+        if (this.clients.size >= this.maxClients) {
+            console.warn(`WebSocket connection rejected: max clients reached (${this.maxClients})`);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    checkConnectionRateLimit(ip) {
+        const now = Date.now();
+        const attempts = this.connectionAttempts.get(ip) || [];
+        
+        // Remove old attempts outside the window
+        const validAttempts = attempts.filter(timestamp => now - timestamp < this.connectionAttemptWindow);
+        
+        if (validAttempts.length >= this.maxConnectionAttempts) {
+            return false;
+        }
+        
+        // Add current attempt
+        validAttempts.push(now);
+        this.connectionAttempts.set(ip, validAttempts);
+        
+        return true;
+    }
+    
+    checkMessageRateLimit(client) {
+        const now = Date.now();
+        const oneMinuteAgo = now - (60 * 1000);
+        
+        // Remove old message timestamps
+        client.messageTimestamps = client.messageTimestamps.filter(timestamp => timestamp > oneMinuteAgo);
+        
+        // Check if client has exceeded rate limit
+        if (client.messageTimestamps.length >= this.messageRateLimit) {
+            return false;
+        }
+        
+        return true;
     }
 
     handleConnection(ws, req) {
@@ -52,7 +110,10 @@ class SommOSWebSocketServer {
             connectedAt: new Date(),
             lastPing: Date.now(),
             rooms: new Set(),
-            isAlive: true
+            isAlive: true,
+            messageCount: 0,
+            lastMessageTime: Date.now(),
+            messageTimestamps: []
         };
 
         this.clients.set(clientId, clientInfo);
@@ -83,7 +144,16 @@ class SommOSWebSocketServer {
 
     handleMessage(clientId, data) {
         try {
-            const message = JSON.parse(data.toString());
+            // Check message size
+            if (data.length > this.maxMessageSize) {
+                console.warn(`Message too large from client ${clientId}: ${data.length} bytes`);
+                this.sendToClient(clientId, {
+                    type: 'error',
+                    message: 'Message too large'
+                });
+                return;
+            }
+            
             const client = this.clients.get(clientId);
             
             if (!client) {
@@ -91,7 +161,21 @@ class SommOSWebSocketServer {
                 return;
             }
 
+            // Check message rate limiting
+            if (!this.checkMessageRateLimit(client)) {
+                console.warn(`Message rate limit exceeded for client ${clientId}`);
+                this.sendToClient(clientId, {
+                    type: 'error',
+                    message: 'Message rate limit exceeded'
+                });
+                return;
+            }
+
+            const message = JSON.parse(data.toString());
             client.lastPing = Date.now();
+            client.messageCount++;
+            client.lastMessageTime = Date.now();
+            client.messageTimestamps.push(Date.now());
 
             switch (message.type) {
                 case 'ping':

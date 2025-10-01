@@ -75,6 +75,11 @@ module.exports = {
       displayName: 'Sync Workflow Tests',
       testMatch: ['**/tests/sync/**/*.test.js'],
       testEnvironment: 'node'
+    },
+    {
+      displayName: 'Security Tests',
+      testMatch: ['**/tests/security/**/*.test.js'],
+      testEnvironment: 'node'
     }
   ],
   
