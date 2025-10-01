@@ -29,7 +29,14 @@ async function buildServiceWorker() {
       '**/*.{html,js,css,json,webmanifest,ico,png,svg,jpg,jpeg,webp,woff,woff2,ttf}'
     ],
     globIgnores: ['workbox-*.js', 'sw.js'],
-    maximumFileSizeToCacheInBytes: 6 * 1024 * 1024
+    maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+    // Additional Workbox configuration for advanced pre-caching
+    additionalManifestEntries: [
+      // Critical API routes for pre-caching
+      { url: '/api/inventory/stock', revision: null },
+      { url: '/api/wines/catalog', revision: null },
+      { url: '/api/system/health', revision: null }
+    ]
   });
 
   if (warnings && warnings.length > 0) {

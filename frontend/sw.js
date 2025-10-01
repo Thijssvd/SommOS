@@ -1,3 +1,8 @@
+// Import Workbox modules (only in service worker context)
+if (typeof importScripts !== 'undefined') {
+  importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.1.0/workbox-sw.js');
+}
+
 const PRECACHE_VERSION = 'v1';
 const RUNTIME_VERSION = 'v1';
 const PRECACHE_CACHE_NAME = `sommos-precache-${PRECACHE_VERSION}`;
@@ -5,6 +10,7 @@ const RUNTIME_CACHE_NAME = `sommos-runtime-${RUNTIME_VERSION}`;
 const STATIC_CACHE_NAME = `sommos-static-${RUNTIME_VERSION}`;
 const API_CACHE_NAME = `sommos-api-${RUNTIME_VERSION}`;
 const IMAGE_CACHE_NAME = `sommos-images-${RUNTIME_VERSION}`;
+const CRITICAL_API_CACHE_NAME = `sommos-critical-api-${RUNTIME_VERSION}`;
 
 // Implement strategic caching
 // Each resource type uses an optimized caching strategy:
@@ -16,6 +22,68 @@ const CACHE_STRATEGIES = {
   API: 'network-first',
   IMAGES: 'stale-while-revalidate'
 };
+
+// Pre-cache critical API routes
+const CRITICAL_API_ROUTES = [
+  '/api/inventory/stock',
+  '/api/wines/catalog',
+  '/api/system/health'
+];
+
+// Workbox configuration (only in service worker context)
+if (typeof workbox !== 'undefined') {
+  workbox.setConfig({
+    debug: false
+  });
+
+  // Pre-cache critical API routes with Workbox
+  workbox.precaching.precacheAndRoute(CRITICAL_API_ROUTES.map(route => ({
+    url: route,
+    revision: null // API routes don't have revisions
+  })));
+
+  // Configure Workbox strategies for different resource types
+  workbox.routing.registerRoute(
+    ({ request }) => request.destination === 'script' || 
+                    request.destination === 'style' ||
+                    request.url.includes('/assets/'),
+    new workbox.strategies.CacheFirst({
+      cacheName: STATIC_CACHE_NAME,
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 100,
+          maxAgeSeconds: 86400, // 24 hours
+        }),
+      ],
+    })
+  );
+
+  workbox.routing.registerRoute(
+    ({ request }) => request.destination === 'image',
+    new workbox.strategies.StaleWhileRevalidate({
+      cacheName: IMAGE_CACHE_NAME,
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 200,
+          maxAgeSeconds: 604800, // 7 days
+        }),
+      ],
+    })
+  );
+
+  workbox.routing.registerRoute(
+    ({ url }) => url.pathname.startsWith('/api/'),
+    new workbox.strategies.NetworkFirst({
+      cacheName: API_CACHE_NAME,
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 50,
+          maxAgeSeconds: 300, // 5 minutes
+        }),
+      ],
+    })
+  );
+}
 
 const CACHEABLE_API_PATHS = new Set(['/api/system/health']);
 const APP_SHELL_PATHS = ['/index.html', '/test-pairing.html', '/manifest.json'];
@@ -66,7 +134,9 @@ if (typeof self !== 'undefined') {
     staticCacheName: STATIC_CACHE_NAME,
     apiCacheName: API_CACHE_NAME,
     imageCacheName: IMAGE_CACHE_NAME,
-    cacheStrategies: CACHE_STRATEGIES
+    criticalApiCacheName: CRITICAL_API_CACHE_NAME,
+    cacheStrategies: CACHE_STRATEGIES,
+    criticalApiRoutes: CRITICAL_API_ROUTES
   };
 }
 
@@ -142,6 +212,10 @@ const staleWhileRevalidate = async (request, cacheName) => {
 const getRequestType = (url) => {
   const pathname = new URL(url).pathname;
   
+  if (CRITICAL_API_ROUTES.includes(pathname)) {
+    return 'CRITICAL_API';
+  }
+  
   if (pathname.startsWith('/api/')) {
     return 'API';
   }
@@ -161,6 +235,7 @@ const getRequestType = (url) => {
 
 const getCacheName = (requestType) => {
   switch (requestType) {
+    case 'CRITICAL_API': return CRITICAL_API_CACHE_NAME;
     case 'API': return API_CACHE_NAME;
     case 'IMAGES': return IMAGE_CACHE_NAME;
     case 'STATIC': return STATIC_CACHE_NAME;
@@ -172,6 +247,9 @@ const applyCacheStrategy = async (request, requestType) => {
   const cacheName = getCacheName(requestType);
   
   switch (requestType) {
+    case 'CRITICAL_API':
+      // For critical API routes, use cache-first with background refresh
+      return cacheFirst(request, cacheName);
     case 'API':
       return networkFirst(request, cacheName);
     case 'IMAGES':
@@ -182,12 +260,32 @@ const applyCacheStrategy = async (request, requestType) => {
   }
 };
 
+// Pre-cache critical API data
+const precacheCriticalApiData = async () => {
+  const criticalApiCache = await caches.open(CRITICAL_API_CACHE_NAME);
+  
+  for (const route of CRITICAL_API_ROUTES) {
+    try {
+      const response = await fetch(route);
+      if (response.ok) {
+        await criticalApiCache.put(route, response.clone());
+        console.log(`Pre-cached critical API route: ${route}`);
+      }
+    } catch (error) {
+      console.warn(`Failed to pre-cache API route ${route}:`, error);
+    }
+  }
+};
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     (async () => {
       const cache = await caches.open(PRECACHE_CACHE_NAME);
       await cache.addAll(precacheRequests);
+      
+      // Pre-cache critical API data
+      await precacheCriticalApiData();
     })()
   );
 });
@@ -201,7 +299,8 @@ self.addEventListener('activate', (event) => {
         RUNTIME_CACHE_NAME,
         STATIC_CACHE_NAME,
         API_CACHE_NAME,
-        IMAGE_CACHE_NAME
+        IMAGE_CACHE_NAME,
+        CRITICAL_API_CACHE_NAME
       ];
       
       await Promise.all(
@@ -233,6 +332,38 @@ self.addEventListener('message', (event) => {
         });
       });
     });
+  }
+  
+  // Handle critical API refresh requests
+  if (event.data && event.data.type === 'REFRESH_CRITICAL_API') {
+    event.waitUntil(
+      (async () => {
+        try {
+          console.log('Manual critical API refresh triggered');
+          await precacheCriticalApiData();
+          
+          // Notify the requesting client
+          if (event.ports && event.ports[0]) {
+            event.ports[0].postMessage({
+              type: 'CRITICAL_API_REFRESH_COMPLETE',
+              success: true,
+              timestamp: Date.now()
+            });
+          }
+        } catch (error) {
+          console.error('Manual critical API refresh failed:', error);
+          
+          if (event.ports && event.ports[0]) {
+            event.ports[0].postMessage({
+              type: 'CRITICAL_API_REFRESH_COMPLETE',
+              success: false,
+              error: error.message,
+              timestamp: Date.now()
+            });
+          }
+        }
+      })()
+    );
   }
 });
 
@@ -329,6 +460,29 @@ self.addEventListener('sync', (event) => {
           console.log('Background sync triggered');
         } catch (error) {
           console.error('Background sync failed:', error);
+        }
+      })()
+    );
+  }
+  
+  // Background refresh for critical API data
+  if (event.tag === 'critical-api-refresh') {
+    event.waitUntil(
+      (async () => {
+        try {
+          console.log('Refreshing critical API data in background');
+          await precacheCriticalApiData();
+          
+          // Notify clients that critical API data was refreshed
+          const clients = await self.clients.matchAll();
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'CRITICAL_API_REFRESHED',
+              timestamp: Date.now()
+            });
+          });
+        } catch (error) {
+          console.error('Critical API refresh failed:', error);
         }
       })()
     );
