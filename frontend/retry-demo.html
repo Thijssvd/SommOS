@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SommOS API Retry Logic Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e1e8ed;
+            border-radius: 6px;
+            background-color: #fafbfc;
+        }
+        
+        .demo-section h3 {
+            color: #34495e;
+            margin-top: 0;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .output {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .metrics {
+            background-color: #e8f5e8;
+            border: 1px solid #27ae60;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .metrics h4 {
+            color: #27ae60;
+            margin-top: 0;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 SommOS API Retry Logic Demo</h1>
+        
+        <div class="demo-section">
+            <h3>1. Basic Retry Functionality</h3>
+            <p>Demonstrates the built-in retry logic with exponential backoff and jitter.</p>
+            <button onclick="runDemo('basic')">Run Basic Retry Demo</button>
+            <div id="basic-output" class="output" style="display: none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>2. Simple requestWithRetry Method</h3>
+            <p>Uses the simple retry method as shown in the user code snippet.</p>
+            <button onclick="runDemo('simple')">Run Simple Retry Demo</button>
+            <div id="simple-output" class="output" style="display: none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>3. Custom Retry Configuration</h3>
+            <p>Shows how to customize retry behavior per request.</p>
+            <button onclick="runDemo('custom')">Run Custom Retry Demo</button>
+            <div id="custom-output" class="output" style="display: none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>4. Circuit Breaker Pattern</h3>
+            <p>Demonstrates circuit breaker pattern for failing endpoints.</p>
+            <button onclick="runDemo('circuit')">Run Circuit Breaker Demo</button>
+            <div id="circuit-output" class="output" style="display: none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>5. Batch Requests</h3>
+            <p>Shows batch request handling with retry logic.</p>
+            <button onclick="runDemo('batch')">Run Batch Request Demo</button>
+            <div id="batch-output" class="output" style="display: none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>6. Retry Metrics</h3>
+            <p>Displays retry statistics and performance metrics.</p>
+            <button onclick="showMetrics()">Show Retry Metrics</button>
+            <div id="metrics-output" class="metrics" style="display: none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>7. Run All Demos</h3>
+            <p>Executes all demo scenarios in sequence.</p>
+            <button onclick="runAllDemos()">Run All Demos</button>
+            <div id="all-output" class="output" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { SommOSAPI } from './js/api.js';
+        
+        // Create API instance
+        const api = new SommOSAPI({
+            retries: 3,
+            retryDelay: 1000,
+            jitter: true,
+            timeout: 10000
+        });
+        
+        // Global functions for demo buttons
+        window.runDemo = async function(type) {
+            const outputId = `${type}-output`;
+            const output = document.getElementById(outputId);
+            output.style.display = 'block';
+            output.textContent = `Running ${type} demo...\n`;
+            
+            try {
+                let result;
+                switch(type) {
+                    case 'basic':
+                        result = await api.request('/system/health');
+                        output.textContent += `✅ Basic retry successful: ${JSON.stringify(result, null, 2)}\n`;
+                        break;
+                    case 'simple':
+                        result = await api.requestWithRetry('/system/health', {}, 3);
+                        output.textContent += `✅ Simple retry successful: ${JSON.stringify(result, null, 2)}\n`;
+                        break;
+                    case 'custom':
+                        result = await api.requestWithCustomRetry('/system/health', {}, {
+                            retries: 5,
+                            retryDelay: 500,
+                            jitter: false
+                        });
+                        output.textContent += `✅ Custom retry successful: ${JSON.stringify(result, null, 2)}\n`;
+                        break;
+                    case 'circuit':
+                        result = await api.requestWithCircuitBreaker('/system/health', {}, {
+                            failureThreshold: 2,
+                            resetTimeout: 5000
+                        });
+                        output.textContent += `✅ Circuit breaker successful: ${JSON.stringify(result, null, 2)}\n`;
+                        break;
+                    case 'batch':
+                        const requests = [
+                            { endpoint: '/system/health' },
+                            { endpoint: '/system/activity', options: { limit: 5 } }
+                        ];
+                        const results = await api.batchRequest(requests);
+                        output.textContent += `✅ Batch requests completed:\n${JSON.stringify(results, null, 2)}\n`;
+                        break;
+                }
+            } catch (error) {
+                output.textContent += `❌ Demo failed: ${error.message}\n`;
+            }
+        };
+        
+        window.showMetrics = function() {
+            const output = document.getElementById('metrics-output');
+            output.style.display = 'block';
+            
+            const metrics = api.getRetryMetrics();
+            output.innerHTML = `
+                <h4>📊 Retry Metrics</h4>
+                <p><strong>Total Requests:</strong> ${metrics.totalRequests}</p>
+                <p><strong>Total Retries:</strong> ${metrics.totalRetries}</p>
+                <p><strong>Retry Rate:</strong> ${metrics.retryRate}</p>
+                <p><strong>Last Retry Time:</strong> ${metrics.lastRetryTime ? new Date(metrics.lastRetryTime).toISOString() : 'Never'}</p>
+                <p><strong>Retry Attempts by Endpoint:</strong></p>
+                <pre>${JSON.stringify(metrics.retryAttempts, null, 2)}</pre>
+            `;
+        };
+        
+        window.runAllDemos = async function() {
+            const output = document.getElementById('all-output');
+            output.style.display = 'block';
+            output.textContent = '🚀 Running all demos...\n\n';
+            
+            const demos = ['basic', 'simple', 'custom', 'circuit', 'batch'];
+            
+            for (const demo of demos) {
+                output.textContent += `Running ${demo} demo...\n`;
+                try {
+                    await window.runDemo(demo);
+                    output.textContent += `✅ ${demo} demo completed\n\n`;
+                } catch (error) {
+                    output.textContent += `❌ ${demo} demo failed: ${error.message}\n\n`;
+                }
+            }
+            
+            output.textContent += '📊 Final Metrics:\n';
+            const metrics = api.getRetryMetrics();
+            output.textContent += JSON.stringify(metrics, null, 2);
+        };
+        
+        // Make API available globally for debugging
+        window.api = api;
+    </script>
+</body>
+</html>

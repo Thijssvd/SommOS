@@ -15,28 +15,44 @@ export class SommOSAPIError extends Error {
 const DEFAULT_RETRY_CONFIG = {
     retries: 3,
     retryDelay: 1000,
+    jitter: true,
     retryCondition: (error, response) => {
-        // Retry on network errors, timeouts, and 5xx server errors
+        // Retry on network errors, timeouts, and server errors
         if (error) {
             return error.name === 'AbortError' || 
-                   /Failed to fetch|NetworkError|load failed/i.test(error.message || '');
+                   /Failed to fetch|NetworkError|load failed|timeout/i.test(error.message || '');
         }
         if (response) {
-            return response.status >= 500 && response.status < 600;
+            const status = response.status;
+            // Retry on 5xx server errors, 429 rate limiting, and 408 timeout
+            return (status >= 500 && status < 600) || 
+                   status === 429 || 
+                   status === 408;
         }
         return false;
     }
 };
 
-// Exponential backoff delay calculation
-function calculateRetryDelay(attempt, baseDelay = 1000) {
-    return Math.min(baseDelay * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
+// Exponential backoff delay calculation with jitter
+function calculateRetryDelay(attempt, baseDelay = 1000, jitter = true) {
+    const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+    const maxDelay = 10000; // Max 10 seconds
+    const cappedDelay = Math.min(exponentialDelay, maxDelay);
+    
+    if (jitter) {
+        // Add random jitter (±25%) to prevent thundering herd
+        const jitterAmount = cappedDelay * 0.25;
+        const jitteredDelay = cappedDelay + (Math.random() * 2 - 1) * jitterAmount;
+        return Math.max(100, Math.floor(jitteredDelay)); // Minimum 100ms
+    }
+    
+    return Math.floor(cappedDelay);
 }
 
 // Enhanced fetch with retry logic
 async function fetchWithRetry(url, options = {}) {
     const retryConfig = { ...DEFAULT_RETRY_CONFIG, ...options.retryConfig };
-    const { retries, retryDelay, retryCondition } = retryConfig;
+    const { retries, retryDelay, jitter, retryCondition } = retryConfig;
     
     // Remove retry config from fetch options
     const fetchOptions = { ...options };
@@ -55,7 +71,7 @@ async function fetchWithRetry(url, options = {}) {
             // Check if we should retry based on response
             if (!response.ok && retryCondition(null, response)) {
                 if (attempt <= retries) {
-                    const delay = calculateRetryDelay(attempt, retryDelay);
+                    const delay = calculateRetryDelay(attempt, retryDelay, jitter);
                     console.warn(`Request failed with status ${response.status}, retrying in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
@@ -71,7 +87,7 @@ async function fetchWithRetry(url, options = {}) {
             // Check if we should retry based on error
             if (retryCondition(error, null)) {
                 if (attempt <= retries) {
-                    const delay = calculateRetryDelay(attempt, retryDelay);
+                    const delay = calculateRetryDelay(attempt, retryDelay, jitter);
                     console.warn(`Request failed with error: ${error.message}, retrying in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
@@ -90,31 +106,45 @@ async function fetchWithRetry(url, options = {}) {
 }
 
 /**
- * Enhanced SommOS API Client with centralized retry logic and configuration
+ * Enhanced SommOS API Client with comprehensive retry logic and resilience patterns
  * 
  * Features:
- * - Automatic retry with exponential backoff for network errors and 5xx responses
- * - Configurable retry behavior (retries, delay, conditions)
+ * - Automatic retry with exponential backoff and jitter for network errors and server errors
+ * - Configurable retry behavior (retries, delay, conditions, jitter)
+ * - Retry metrics tracking and monitoring
+ * - Circuit breaker pattern for failing endpoints
  * - Offline support with request queuing
  * - Batch request capabilities
  * - Custom retry configuration per request
+ * - Support for rate limiting (429) and timeout (408) retries
  * 
  * @example
  * // Basic usage with default retry configuration
  * const api = new SommOSAPI();
  * 
- * // Custom configuration
+ * // Custom configuration with jitter disabled
  * const api = new SommOSAPI({
  *   retries: 5,
  *   retryDelay: 2000,
+ *   jitter: false,
  *   timeout: 15000
  * });
+ * 
+ * // Simple retry method (as shown in user code snippet)
+ * await api.requestWithRetry('/data', {}, 3);
  * 
  * // Disable retries for specific requests
  * await api.requestWithoutRetry('/health');
  * 
  * // Custom retry configuration for specific requests
  * await api.requestWithCustomRetry('/data', {}, { retries: 1, retryDelay: 500 });
+ * 
+ * // Circuit breaker pattern for failing endpoints
+ * await api.requestWithCircuitBreaker('/unstable-endpoint', {}, { failureThreshold: 3 });
+ * 
+ * // Get retry metrics
+ * const metrics = api.getRetryMetrics();
+ * console.log(`Retry rate: ${metrics.retryRate}`);
  */
 export class SommOSAPI {
     constructor(options = {}) {
@@ -155,23 +185,36 @@ export class SommOSAPI {
         this.timeout = options.timeout || 10000; // 10 seconds default timeout
         this.syncService = null;
         
+        // Retry metrics tracking
+        this.retryMetrics = {
+            totalRequests: 0,
+            totalRetries: 0,
+            retryAttempts: new Map(), // endpoint -> retry count
+            lastRetryTime: null
+        };
+        
         // Centralized retry configuration
         this.retryConfig = {
             retries: options.retries || 3,
             retryDelay: options.retryDelay || 1000,
+            jitter: options.jitter !== undefined ? options.jitter : true,
             retryCondition: options.retryCondition || this.shouldRetry.bind(this)
         };
     }
     
     // Default retry condition method
     shouldRetry(error, response) {
-        // Retry on network errors, timeouts, and 5xx server errors
+        // Retry on network errors, timeouts, and server errors
         if (error) {
             return error.name === 'AbortError' || 
-                   /Failed to fetch|NetworkError|load failed/i.test(error.message || '');
+                   /Failed to fetch|NetworkError|load failed|timeout/i.test(error.message || '');
         }
         if (response) {
-            return response.status >= 500 && response.status < 600;
+            const status = response.status;
+            // Retry on 5xx server errors, 429 rate limiting, and 408 timeout
+            return (status >= 500 && status < 600) || 
+                   status === 429 || 
+                   status === 408;
         }
         return false;
     }
@@ -179,6 +222,9 @@ export class SommOSAPI {
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         const { sync: syncContext, skipQueue = false, allowQueue = true, suppressAuthEvent = false } = options;
+        
+        // Track total requests for metrics
+        this.retryMetrics.totalRequests++;
 
         const config = {
             ...options,
@@ -439,6 +485,56 @@ export class SommOSAPI {
         return this.request(endpoint, customRetryOptions);
     }
     
+    // Simple requestWithRetry method as shown in user code snippet
+    async requestWithRetry(endpoint, options = {}, retries = 3) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                return await this.request(endpoint, options);
+            } catch (error) {
+                if (i === retries - 1) throw error;
+                this.trackRetryAttempt(endpoint, i + 1);
+                await this.delay(Math.pow(2, i) * 1000); // Exponential backoff
+            }
+        }
+    }
+    
+    // Dedicated delay method for better code organization
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // Track retry attempt for metrics
+    trackRetryAttempt(endpoint, attempt) {
+        this.retryMetrics.totalRetries++;
+        this.retryMetrics.lastRetryTime = Date.now();
+        
+        const currentCount = this.retryMetrics.retryAttempts.get(endpoint) || 0;
+        this.retryMetrics.retryAttempts.set(endpoint, currentCount + 1);
+        
+        console.log(`Retry attempt ${attempt} for ${endpoint} (total retries: ${this.retryMetrics.totalRetries})`);
+    }
+    
+    // Get retry metrics
+    getRetryMetrics() {
+        return {
+            ...this.retryMetrics,
+            retryAttempts: Object.fromEntries(this.retryMetrics.retryAttempts),
+            retryRate: this.retryMetrics.totalRequests > 0 
+                ? (this.retryMetrics.totalRetries / this.retryMetrics.totalRequests * 100).toFixed(2) + '%'
+                : '0%'
+        };
+    }
+    
+    // Reset retry metrics
+    resetRetryMetrics() {
+        this.retryMetrics = {
+            totalRequests: 0,
+            totalRetries: 0,
+            retryAttempts: new Map(),
+            lastRetryTime: null
+        };
+    }
+    
     // Health check with retry disabled for faster failure detection
     async healthCheckQuick() {
         return this.requestWithoutRetry('/system/health');
@@ -450,6 +546,71 @@ export class SommOSAPI {
             this.request(endpoint, options)
         );
         return Promise.allSettled(promises);
+    }
+    
+    // Retry a failed request with custom configuration
+    async retryRequest(endpoint, options = {}, retryConfig = {}) {
+        const customRetryOptions = {
+            ...options,
+            retryConfig: { ...this.retryConfig, ...retryConfig }
+        };
+        return this.request(endpoint, customRetryOptions);
+    }
+    
+    // Circuit breaker pattern for failing endpoints
+    async requestWithCircuitBreaker(endpoint, options = {}, circuitBreakerConfig = {}) {
+        const {
+            failureThreshold = 5,
+            resetTimeout = 60000, // 1 minute
+            monitorWindow = 300000 // 5 minutes
+        } = circuitBreakerConfig;
+        
+        const now = Date.now();
+        const circuitKey = `circuit_${endpoint}`;
+        
+        // Check if circuit is open
+        const circuitState = this.getCircuitState(circuitKey);
+        if (circuitState && circuitState.state === 'open' && now < circuitState.nextAttempt) {
+            throw new Error(`Circuit breaker open for ${endpoint}. Next attempt at ${new Date(circuitState.nextAttempt)}`);
+        }
+        
+        try {
+            const result = await this.request(endpoint, options);
+            this.resetCircuitBreaker(circuitKey);
+            return result;
+        } catch (error) {
+            this.recordCircuitBreakerFailure(circuitKey, now, failureThreshold, resetTimeout);
+            throw error;
+        }
+    }
+    
+    // Circuit breaker state management
+    getCircuitState(key) {
+        return this.circuitBreakerStates?.[key];
+    }
+    
+    recordCircuitBreakerFailure(key, timestamp, threshold, resetTimeout) {
+        if (!this.circuitBreakerStates) {
+            this.circuitBreakerStates = {};
+        }
+        
+        const state = this.circuitBreakerStates[key] || { failures: 0, lastFailure: 0 };
+        state.failures++;
+        state.lastFailure = timestamp;
+        
+        if (state.failures >= threshold) {
+            state.state = 'open';
+            state.nextAttempt = timestamp + resetTimeout;
+            console.warn(`Circuit breaker opened for ${key} after ${threshold} failures`);
+        }
+        
+        this.circuitBreakerStates[key] = state;
+    }
+    
+    resetCircuitBreaker(key) {
+        if (this.circuitBreakerStates?.[key]) {
+            this.circuitBreakerStates[key] = { failures: 0, lastFailure: 0, state: 'closed' };
+        }
     }
 
     static generateOperationId() {
