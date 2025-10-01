@@ -323,3 +323,277 @@ export class SommOSUI {
         }
     }
 }
+
+// Virtual Scroll Implementation for Large Lists
+export class VirtualScroll {
+    constructor(container, items, itemHeight, options = {}) {
+        this.container = container;
+        this.items = items || [];
+        this.itemHeight = itemHeight || 200; // Default card height
+        this.options = {
+            bufferSize: 5, // Extra items to render outside viewport
+            threshold: 1000, // Only use virtual scrolling for lists > 1000 items
+            ...options
+        };
+        
+        this.visibleItems = [];
+        this.startIndex = 0;
+        this.endIndex = 0;
+        this.containerHeight = 0;
+        this.scrollTop = 0;
+        this.isVirtualScrolling = false;
+        this.renderCallback = null;
+        this.itemCache = new Map();
+        
+        this.init();
+    }
+
+    init() {
+        if (!this.container) {
+            console.error('VirtualScroll: Container element not found');
+            return;
+        }
+
+        // Only enable virtual scrolling for large lists
+        if (this.items.length <= this.options.threshold) {
+            this.isVirtualScrolling = false;
+            this.renderAllItems();
+            return;
+        }
+
+        this.isVirtualScrolling = true;
+        this.setupVirtualScrolling();
+    }
+
+    setupVirtualScrolling() {
+        // Add CSS class to enable virtual scrolling styles
+        this.container.classList.add('virtual-scroll-enabled');
+        
+        // Set up container styles for virtual scrolling
+        this.container.style.position = 'relative';
+        this.container.style.overflow = 'auto';
+        this.container.style.height = '100%';
+        
+        // Create virtual content container
+        this.virtualContent = document.createElement('div');
+        this.virtualContent.className = 'virtual-content';
+        this.virtualContent.style.position = 'relative';
+        this.virtualContent.style.width = '100%';
+        this.virtualContent.style.minHeight = `${this.items.length * this.itemHeight}px`;
+        
+        // Create visible items container
+        this.visibleContainer = document.createElement('div');
+        this.visibleContainer.className = 'visible-container';
+        this.visibleContainer.style.position = 'absolute';
+        this.visibleContainer.style.top = '0';
+        this.visibleContainer.style.left = '0';
+        this.visibleContainer.style.width = '100%';
+        this.visibleContainer.style.pointerEvents = 'none';
+        
+        this.virtualContent.appendChild(this.visibleContainer);
+        this.container.appendChild(this.virtualContent);
+        
+        // Set up scroll listener
+        this.scrollHandler = this.debounce(() => this.handleScroll(), 16); // ~60fps
+        this.container.addEventListener('scroll', this.scrollHandler);
+        
+        // Initial render
+        this.updateContainerHeight();
+        this.renderVisibleItems();
+    }
+
+    updateContainerHeight() {
+        const rect = this.container.getBoundingClientRect();
+        this.containerHeight = rect.height;
+    }
+
+    handleScroll() {
+        if (!this.isVirtualScrolling) return;
+        
+        this.scrollTop = this.container.scrollTop;
+        this.renderVisibleItems();
+    }
+
+    renderVisibleItems() {
+        if (!this.isVirtualScrolling) return;
+
+        const visibleStart = Math.floor(this.scrollTop / this.itemHeight);
+        const visibleEnd = Math.min(
+            visibleStart + Math.ceil(this.containerHeight / this.itemHeight) + 1,
+            this.items.length
+        );
+
+        const startIndex = Math.max(0, visibleStart - this.options.bufferSize);
+        const endIndex = Math.min(this.items.length, visibleEnd + this.options.bufferSize);
+
+        // Only re-render if the visible range has changed significantly
+        if (Math.abs(startIndex - this.startIndex) > this.options.bufferSize || 
+            Math.abs(endIndex - this.endIndex) > this.options.bufferSize) {
+            
+            this.startIndex = startIndex;
+            this.endIndex = endIndex;
+            this.renderChunk(startIndex, endIndex);
+        }
+    }
+
+    renderChunk(startIndex, endIndex) {
+        if (!this.isVirtualScrolling || !this.renderCallback) return;
+
+        // Clear existing visible items
+        this.visibleContainer.innerHTML = '';
+        
+        // Render visible items
+        for (let i = startIndex; i < endIndex; i++) {
+            const item = this.items[i];
+            if (!item) continue;
+
+            const itemElement = this.createItemElement(item, i);
+            if (itemElement) {
+                itemElement.style.position = 'absolute';
+                itemElement.style.top = `${i * this.itemHeight}px`;
+                itemElement.style.left = '0';
+                itemElement.style.width = '100%';
+                itemElement.style.height = `${this.itemHeight}px`;
+                itemElement.style.pointerEvents = 'auto';
+                
+                this.visibleContainer.appendChild(itemElement);
+            }
+        }
+
+        // Update visible items array
+        this.visibleItems = this.items.slice(startIndex, endIndex);
+        
+        // Performance monitoring
+        this.logPerformanceMetrics(startIndex, endIndex);
+    }
+
+    createItemElement(item, index) {
+        // Use cached element if available
+        const cacheKey = `${item.id || index}_${this.itemHeight}`;
+        if (this.itemCache.has(cacheKey)) {
+            return this.itemCache.get(cacheKey).cloneNode(true);
+        }
+
+        // Create new element using render callback
+        if (this.renderCallback) {
+            const element = this.renderCallback(item, index);
+            if (element) {
+                // Cache the element template
+                this.itemCache.set(cacheKey, element.cloneNode(true));
+                return element;
+            }
+        }
+
+        return null;
+    }
+
+    renderAllItems() {
+        if (this.isVirtualScrolling) return;
+
+        if (this.renderCallback) {
+            this.container.innerHTML = this.items.map((item, index) => 
+                this.renderCallback(item, index)
+            ).join('');
+        }
+    }
+
+    setItems(newItems) {
+        this.items = newItems || [];
+        this.itemCache.clear(); // Clear cache when items change
+        
+        if (this.isVirtualScrolling) {
+            // Update virtual content height
+            if (this.virtualContent) {
+                this.virtualContent.style.minHeight = `${this.items.length * this.itemHeight}px`;
+            }
+            this.renderVisibleItems();
+        } else {
+            this.renderAllItems();
+        }
+    }
+
+    setRenderCallback(callback) {
+        this.renderCallback = callback;
+        if (this.isVirtualScrolling) {
+            this.renderVisibleItems();
+        } else {
+            this.renderAllItems();
+        }
+    }
+
+    updateItemHeight(newHeight) {
+        this.itemHeight = newHeight;
+        if (this.isVirtualScrolling && this.virtualContent) {
+            this.virtualContent.style.minHeight = `${this.items.length * this.itemHeight}px`;
+            this.renderVisibleItems();
+        }
+    }
+
+    scrollToItem(index) {
+        if (index < 0 || index >= this.items.length) return;
+        
+        const scrollTop = index * this.itemHeight;
+        this.container.scrollTop = scrollTop;
+    }
+
+    scrollToTop() {
+        this.container.scrollTop = 0;
+    }
+
+    scrollToBottom() {
+        this.container.scrollTop = this.container.scrollHeight;
+    }
+
+    getVisibleRange() {
+        if (!this.isVirtualScrolling) {
+            return { start: 0, end: this.items.length };
+        }
+        return { start: this.startIndex, end: this.endIndex };
+    }
+
+    getVisibleItems() {
+        return this.visibleItems;
+    }
+
+    isItemVisible(index) {
+        if (!this.isVirtualScrolling) return true;
+        return index >= this.startIndex && index < this.endIndex;
+    }
+
+    logPerformanceMetrics(startIndex, endIndex) {
+        const visibleCount = endIndex - startIndex;
+        const totalCount = this.items.length;
+        const memorySavings = ((totalCount - visibleCount) / totalCount * 100).toFixed(1);
+        
+        console.log(`VirtualScroll: Rendering ${visibleCount}/${totalCount} items (${memorySavings}% memory savings)`);
+    }
+
+    destroy() {
+        if (this.scrollHandler) {
+            this.container.removeEventListener('scroll', this.scrollHandler);
+        }
+        
+        if (this.virtualContent && this.virtualContent.parentNode) {
+            this.virtualContent.parentNode.removeChild(this.virtualContent);
+        }
+        
+        // Remove virtual scrolling CSS class
+        this.container.classList.remove('virtual-scroll-enabled');
+        
+        this.itemCache.clear();
+        this.visibleItems = [];
+    }
+
+    // Debounce utility
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+}
