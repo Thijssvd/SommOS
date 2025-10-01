@@ -126,7 +126,7 @@ describe('SommOS Performance Tests', () => {
                 if (Math.random() > 0.7) { // 30% chance of ledger entry
                     const transactionTypes = ['IN', 'OUT', 'MOVE', 'ADJUST'];
                     const transactionType = transactionTypes[Math.floor(Math.random() * transactionTypes.length)];
-                    const quantity = transactionType === 'OUT' ? -(Math.floor(Math.random() * 5) + 1) : Math.floor(Math.random() * 5) + 1;
+                    const quantity = Math.floor(Math.random() * 5) + 1; // Always positive for database constraint
 
                     await db.run(`
                         INSERT INTO Ledger (vintage_id, transaction_type, location, quantity, notes, created_by)

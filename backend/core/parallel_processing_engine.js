@@ -249,7 +249,10 @@ class ParallelProcessingEngine extends EventEmitter {
      * Handle worker error
      */
     handleWorkerError(workerId, error) {
-        console.error(`Worker ${workerId} error:`, error);
+        // Only log in non-test environments to avoid Jest warnings
+        if (process.env.NODE_ENV !== 'test') {
+            console.error(`Worker ${workerId} error:`, error);
+        }
         this.releaseWorker(workerId);
         this.emit('workerError', workerId, error);
     }
@@ -258,7 +261,10 @@ class ParallelProcessingEngine extends EventEmitter {
      * Handle worker exit
      */
     handleWorkerExit(workerId, code) {
-        console.log(`Worker ${workerId} exited with code ${code}`);
+        // Only log in non-test environments to avoid Jest warnings
+        if (process.env.NODE_ENV !== 'test') {
+            console.log(`Worker ${workerId} exited with code ${code}`);
+        }
         
         // Clean up worker
         this.workers.delete(workerId);

@@ -84,18 +84,33 @@ jest.mock('axios', () => ({
   }))
 }));
 
+// Mock parallel processing engine to prevent worker logging issues
+jest.mock('../backend/core/parallel_processing_engine', () => {
+  return jest.fn().mockImplementation(() => ({
+    start: jest.fn(),
+    stop: jest.fn(),
+    executeTask: jest.fn(() => Promise.resolve({ success: true, result: 'mocked' })),
+    getMetrics: jest.fn(() => ({ activeWorkers: 0, completedTasks: 0, failedTasks: 0 })),
+    on: jest.fn(),
+    emit: jest.fn()
+  }));
+});
+
 // Console mocking for cleaner test output
 const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
+const originalConsoleLog = console.log;
 
 beforeAll(() => {
   console.error = jest.fn();
   console.warn = jest.fn();
+  console.log = jest.fn();
 });
 
 afterAll(() => {
   console.error = originalConsoleError;
   console.warn = originalConsoleWarn;
+  console.log = originalConsoleLog;
 });
 
 // Global test timeout
@@ -107,9 +122,9 @@ afterEach(() => {
 });
 
 // Reset database instance between test suites
-afterEach(() => {
+afterEach(async () => {
   const Database = require('../backend/database/connection');
-  Database.resetInstance();
+  await Database.resetInstance();
 });
 
 // Test utilities
