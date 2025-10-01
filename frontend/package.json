@@ -19,7 +19,8 @@
   "license": "MIT",
   "dependencies": {
     "chart.js": "^4.4.4",
-    "idb": "^8.0.3"
+    "idb": "^8.0.3",
+    "web-vitals": "^3.5.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",

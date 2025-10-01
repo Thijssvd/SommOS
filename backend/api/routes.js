@@ -47,6 +47,7 @@ const authRouter = require('./auth');
 const enhancedLearningRouter = require('./enhanced_learning_routes');
 const mlRouter = require('./ml_routes');
 const performanceRouter = require('./performance_routes');
+const rumRouter = require('./rum_routes');
 
 let servicesPromise = null;
 
@@ -158,6 +159,7 @@ router.use('/auth', authRouter);
 router.use('/learning', enhancedLearningRouter);
 router.use('/ml', mlRouter);
 router.use('/performance', performanceRouter);
+router.use('/performance', rumRouter);
 
 const requireAuthAndRole = (...roles) => [requireAuth(), requireRole(...roles)];
 
