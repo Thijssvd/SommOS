@@ -56,6 +56,8 @@ const validators = {
         wine_type: optionalNonEmptyString,
         region: optionalNonEmptyString,
         available_only: booleanLike.optional(),
+        limit: integerLike.optional(),
+        offset: integerLike.optional(),
       })
       .passthrough(),
   },
