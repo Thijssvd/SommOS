@@ -7,6 +7,7 @@ const { randomUUID } = require('crypto');
 const Database = require('../database/connection');
 const VintageIntelligenceService = require('./vintage_intelligence');
 const InventoryIntakeProcessor = require('./inventory_intake_processor');
+const { webSocketIntegration } = require('./websocket_integration');
 
 class InventoryConflictError extends Error {
     constructor(message) {
@@ -126,12 +127,47 @@ class InventoryManager {
                 console.log('Vintage intelligence enrichment completed');
                 
                 // The enrichment automatically updates the database via updateVintageData
-                return { wine, vintage: { ...vintage, ...enrichedData }, success: true };
+                const result = { wine, vintage: { ...vintage, ...enrichedData }, success: true };
+                
+                // Broadcast inventory update via WebSocket
+                try {
+                    const enrichedVintage = { ...vintage, ...enrichedData };
+                    webSocketIntegration.broadcastItemAdded({
+                        id: wine.id,
+                        name: wine.name,
+                        vintage_year: enrichedVintage.vintage_year,
+                        location: stockData.location,
+                        quantity: stockData.quantity,
+                        wine_id: wine.id,
+                        vintage_id: enrichedVintage.id
+                    }, actor);
+                } catch (wsError) {
+                    console.warn('Failed to broadcast inventory update:', wsError.message);
+                }
+                
+                return result;
                 
             } catch (enrichmentError) {
                 console.warn('Vintage intelligence enrichment failed:', enrichmentError.message);
                 // Continue with standard wine addition even if enrichment fails
-                return { wine, vintage, success: true, enrichmentError: enrichmentError.message };
+                const result = { wine, vintage, success: true, enrichmentError: enrichmentError.message };
+                
+                // Broadcast inventory update via WebSocket (even without enrichment)
+                try {
+                    webSocketIntegration.broadcastItemAdded({
+                        id: wine.id,
+                        name: wine.name,
+                        vintage_year: vintage.vintage_year,
+                        location: stockData.location,
+                        quantity: stockData.quantity,
+                        wine_id: wine.id,
+                        vintage_id: vintage.id
+                    }, actor);
+                } catch (wsError) {
+                    console.warn('Failed to broadcast inventory update:', wsError.message);
+                }
+                
+                return result;
             }
             
         } catch (error) {
@@ -976,6 +1012,16 @@ class InventoryManager {
             updated_by: syncContext.updated_by || 'inventory-manager',
             origin: syncContext.origin || 'inventory.stock.update'
         });
+        
+        // Get current stock info for WebSocket broadcast
+        const currentStock = await this.db.get(`
+            SELECT s.*, v.vintage_year, w.name as wine_name
+            FROM Stock s
+            JOIN Vintages v ON s.vintage_id = v.id
+            JOIN Wines w ON v.wine_id = w.id
+            WHERE s.vintage_id = ? AND s.location = ?
+        `, [vintageId, location]);
+        
         await this.db.run(`
             UPDATE Stock
             SET quantity = quantity + ?,
@@ -985,6 +1031,25 @@ class InventoryManager {
                 origin = ?
             WHERE vintage_id = ? AND location = ?
         `, [quantityChange, ...params, vintageId, location]);
+        
+        // Broadcast stock update via WebSocket
+        if (currentStock) {
+            try {
+                const newQuantity = currentStock.quantity + quantityChange;
+                webSocketIntegration.broadcastItemUpdated({
+                    id: currentStock.vintage_id,
+                    name: currentStock.wine_name,
+                    vintage_year: currentStock.vintage_year,
+                    location: location,
+                    quantity: newQuantity,
+                    quantityChange: quantityChange,
+                    wine_id: currentStock.wine_id,
+                    vintage_id: vintageId
+                }, { quantity: newQuantity, quantityChange }, syncContext.updated_by);
+            } catch (wsError) {
+                console.warn('Failed to broadcast stock update:', wsError.message);
+            }
+        }
     }
 
     async checkAvailability(vintageId, location) {

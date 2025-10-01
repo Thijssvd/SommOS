@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SommOS WebSocket Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .connecting { background-color: #fff3cd; color: #856404; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        .log-info { color: #0066cc; }
+        .log-success { color: #28a745; }
+        .log-warning { color: #ffc107; }
+        .log-error { color: #dc3545; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .controls {
+            margin: 20px 0;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍷 SommOS WebSocket Test</h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button id="pingBtn" onclick="ping()" disabled>Ping</button>
+            <button id="clearBtn" onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="connectionTime">--</div>
+                <div class="stat-label">Connection Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="messagesReceived">0</div>
+                <div class="stat-label">Messages Received</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="lastPing">--</div>
+                <div class="stat-label">Last Ping (ms)</div>
+            </div>
+        </div>
+
+        <h3>WebSocket Log</h3>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script type="module">
+        import { RealTimeSync } from './js/realtime-sync.js';
+
+        let ws = null;
+        let connectionStartTime = null;
+        let messageCount = 0;
+        let lastPingTime = null;
+
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const pingBtn = document.getElementById('pingBtn');
+        const connectionTimeEl = document.getElementById('connectionTime');
+        const messagesReceivedEl = document.getElementById('messagesReceived');
+        const lastPingEl = document.getElementById('lastPing');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function updateStatus(status, className) {
+            statusEl.textContent = status;
+            statusEl.className = `status ${className}`;
+        }
+
+        function updateStats() {
+            if (connectionStartTime) {
+                const elapsed = Math.floor((Date.now() - connectionStartTime) / 1000);
+                connectionTimeEl.textContent = `${elapsed}s`;
+            }
+            messagesReceivedEl.textContent = messageCount;
+            if (lastPingTime) {
+                lastPingEl.textContent = lastPingTime;
+            }
+        }
+
+        function connect() {
+            if (ws) {
+                log('Already connected or connecting', 'warning');
+                return;
+            }
+
+            updateStatus('Connecting...', 'connecting');
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+            pingBtn.disabled = false;
+
+            ws = new RealTimeSync({
+                onConnect: () => {
+                    connectionStartTime = Date.now();
+                    updateStatus('Connected', 'connected');
+                    log('WebSocket connected successfully', 'success');
+                    updateStats();
+                },
+                onDisconnect: () => {
+                    updateStatus('Disconnected', 'disconnected');
+                    log('WebSocket disconnected', 'warning');
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    pingBtn.disabled = true;
+                    connectionStartTime = null;
+                    updateStats();
+                },
+                onError: (error) => {
+                    updateStatus('Error', 'disconnected');
+                    log(`WebSocket error: ${error.message || error}`, 'error');
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    pingBtn.disabled = true;
+                },
+                onInventoryUpdate: (update) => {
+                    messageCount++;
+                    log(`📦 Inventory Update: ${JSON.stringify(update, null, 2)}`, 'info');
+                    updateStats();
+                },
+                onInventoryAction: (action) => {
+                    messageCount++;
+                    log(`📦 Inventory Action: ${JSON.stringify(action, null, 2)}`, 'info');
+                    updateStats();
+                },
+                onSystemNotification: (notification) => {
+                    messageCount++;
+                    log(`🔔 System Notification: ${JSON.stringify(notification, null, 2)}`, 'info');
+                    updateStats();
+                }
+            });
+
+            // Add event listeners for additional events
+            ws.addEventListener('message', (data) => {
+                messageCount++;
+                const message = data.message;
+                log(`📨 Message: ${message.type} - ${JSON.stringify(message, null, 2)}`, 'info');
+                updateStats();
+            });
+
+            log('Attempting to connect to WebSocket server...', 'info');
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.destroy();
+                ws = null;
+                log('Disconnected from WebSocket server', 'info');
+            }
+        }
+
+        function ping() {
+            if (ws && ws.isConnected) {
+                const startTime = Date.now();
+                ws.ping();
+                log('Ping sent', 'info');
+                
+                // Simulate pong response (in real implementation, this would come from server)
+                setTimeout(() => {
+                    lastPingTime = Date.now() - startTime;
+                    log(`Pong received (${lastPingTime}ms)`, 'success');
+                    updateStats();
+                }, 100);
+            } else {
+                log('Cannot ping - not connected', 'warning');
+            }
+        }
+
+        function clearLog() {
+            logEl.innerHTML = '';
+            messageCount = 0;
+            updateStats();
+        }
+
+        // Update stats every second
+        setInterval(updateStats, 1000);
+
+        // Make functions globally available
+        window.connect = connect;
+        window.disconnect = disconnect;
+        window.ping = ping;
+        window.clearLog = clearLog;
+
+        // Auto-connect on page load
+        setTimeout(connect, 1000);
+    </script>
+</body>
+</html>

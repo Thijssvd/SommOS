@@ -4,6 +4,7 @@
 import { SommOSAPI } from './api';
 import { SommOSUI } from './ui';
 import { SommOSSyncService } from './sync';
+import { RealTimeSync } from './realtime-sync';
 import Chart from 'chart.js/auto';
 
 export class SommOS {
@@ -12,6 +13,14 @@ export class SommOS {
         this.api = new SommOSAPI();
         this.syncService = new SommOSSyncService({ api: this.api });
         this.api.setSyncService(this.syncService);
+        this.realtimeSync = new RealTimeSync({
+            onInventoryUpdate: (update) => this.handleRealtimeInventoryUpdate(update),
+            onInventoryAction: (action) => this.handleRealtimeInventoryAction(action),
+            onSystemNotification: (notification) => this.handleRealtimeSystemNotification(notification),
+            onConnect: () => this.handleRealtimeConnect(),
+            onDisconnect: () => this.handleRealtimeDisconnect(),
+            onError: (error) => this.handleRealtimeError(error)
+        });
         this.ui = new SommOSUI();
         this.isOnline = navigator.onLine;
         this.currentUser = null;
@@ -346,6 +355,96 @@ export class SommOS {
 
         if (this.authElements.loginError) {
             this.authElements.loginError.textContent = '';
+        }
+    }
+
+    // Real-time WebSocket event handlers
+    handleRealtimeConnect() {
+        console.log('🔌 Real-time sync connected');
+        this.ui.showToast('Real-time updates connected', 'success');
+    }
+
+    handleRealtimeDisconnect() {
+        console.log('🔌 Real-time sync disconnected');
+        this.ui.showToast('Real-time updates disconnected', 'warning');
+    }
+
+    handleRealtimeError(error) {
+        console.error('🔌 Real-time sync error:', error);
+        this.ui.showToast('Real-time connection error', 'error');
+    }
+
+    handleRealtimeInventoryUpdate(update) {
+        console.log('📦 Real-time inventory update received:', update);
+        
+        // Update local inventory if we have the item
+        if (this.fullInventory && update.item) {
+            const index = this.fullInventory.findIndex(item => item.id === update.item.id);
+            if (index !== -1) {
+                this.fullInventory[index] = { ...this.fullInventory[index], ...update.item };
+                
+                // Refresh current view if it's inventory-related
+                if (this.currentView === 'inventory' || this.currentView === 'dashboard') {
+                    this.refreshCurrentView();
+                }
+                
+                this.ui.showToast(`Inventory updated: ${update.item.name || 'Item'}`, 'info');
+            }
+        }
+    }
+
+    handleRealtimeInventoryAction(action) {
+        console.log('📦 Real-time inventory action received:', action);
+        
+        // Handle different action types
+        switch (action.type) {
+            case 'add':
+                if (this.fullInventory && action.item) {
+                    this.fullInventory.push(action.item);
+                    this.ui.showToast(`New item added: ${action.item.name}`, 'success');
+                }
+                break;
+                
+            case 'remove':
+                if (this.fullInventory && action.itemId) {
+                    const index = this.fullInventory.findIndex(item => item.id === action.itemId);
+                    if (index !== -1) {
+                        const removedItem = this.fullInventory.splice(index, 1)[0];
+                        this.ui.showToast(`Item removed: ${removedItem.name}`, 'warning');
+                    }
+                }
+                break;
+                
+            case 'move':
+                if (action.itemId && action.newLocation) {
+                    this.ui.showToast(`Item moved to ${action.newLocation}`, 'info');
+                }
+                break;
+        }
+        
+        // Refresh current view if it's inventory-related
+        if (this.currentView === 'inventory' || this.currentView === 'dashboard') {
+            this.refreshCurrentView();
+        }
+    }
+
+    handleRealtimeSystemNotification(notification) {
+        console.log('🔔 Real-time system notification received:', notification);
+        
+        // Show notification to user
+        this.ui.showToast(notification.message, notification.type || 'info');
+        
+        // Handle specific notification types
+        switch (notification.type) {
+            case 'maintenance':
+                // Could show a maintenance banner
+                break;
+            case 'security':
+                // Could trigger security-related actions
+                break;
+            case 'update':
+                // Could prompt for app update
+                break;
         }
     }
 

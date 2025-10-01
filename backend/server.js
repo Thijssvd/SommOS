@@ -51,6 +51,7 @@ const cookieParser = require('cookie-parser');
 
 const Database = require('./database/connection');
 const routes = require('./api/routes');
+const SommOSWebSocketServer = require('./core/websocket_server');
 
 const formatErrorPayload = (code, message, details) => {
     const payload = {
@@ -198,15 +199,23 @@ async function startServer() {
 🍷 SommOS Server running on port ${PORT}`);
             console.log(`📱 PWA available at: http://localhost:${PORT}`);
             console.log(`🔌 API available at: http://localhost:${PORT}/api`);
+            console.log(`🔌 WebSocket available at: ws://localhost:${PORT}/api/ws`);
             console.log(`❤️  Health check: http://localhost:${PORT}/health`);
             console.log(`
 🚀 Ready to serve yacht wine management!
 `);
         });
+
+        // Initialize WebSocket server
+        const wsServer = new SommOSWebSocketServer(server);
+        
+        // Make WebSocket server available globally for broadcasting
+        app.locals.wsServer = wsServer;
         
         // Graceful shutdown
         process.on('SIGTERM', () => {
             console.log('SIGTERM received, shutting down gracefully');
+            wsServer.close();
             server.close(() => {
                 console.log('Server closed');
                 db.close();
@@ -216,6 +225,7 @@ async function startServer() {
         
         process.on('SIGINT', () => {
             console.log('SIGINT received, shutting down gracefully');
+            wsServer.close();
             server.close(() => {
                 console.log('Server closed');
                 db.close();
