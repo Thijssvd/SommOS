@@ -5,6 +5,14 @@
 const { getConfig } = require('./config/env');
 const env = getConfig();
 
+// Security configuration
+const { 
+    helmetConfig, 
+    rateLimitConfigs, 
+    corsConfig, 
+    securityHeaders: securityConfig 
+} = require('./config/security');
+
 const REQUIRED_SECRETS = ['SESSION_SECRET', 'JWT_SECRET'];
 
 function ensureRequiredSecrets(config) {
@@ -52,6 +60,14 @@ const cookieParser = require('cookie-parser');
 const Database = require('./database/connection');
 const routes = require('./api/routes');
 const SommOSWebSocketServer = require('./core/websocket_server');
+const { 
+    validateRequestSize, 
+    validateUrlLength, 
+    validateContentType,
+    requestTiming,
+    securityHeaders,
+    preventSQLInjection
+} = require('./middleware/security');
 
 const formatErrorPayload = (code, message, details) => {
     const payload = {
@@ -74,40 +90,53 @@ const app = express();
 const PORT = env.port;
 const NODE_ENV = env.nodeEnv;
 
-// Security middleware
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'", 'http://localhost:3001', 'http://localhost:3000'],
-        },
-    },
-}));
+// Apply enhanced security middleware
+app.use(helmet(helmetConfig));
 
-// Rate limiting
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // Limit each IP to 1000 requests per windowMs
-    message: formatErrorPayload(
-        'RATE_LIMIT_EXCEEDED',
-        'Too many requests from this IP, please try again later.'
-    )
+// Additional security middleware
+app.use((req, res, next) => {
+    // Remove X-Powered-By header (redundant with helmet but extra safety)
+    res.removeHeader('X-Powered-By');
+    
+    // Add additional security headers
+    Object.entries(securityConfig.additionalHeaders).forEach(([key, value]) => {
+        res.setHeader(key, value);
+    });
+    
+    // Add cache control for sensitive endpoints
+    if (securityConfig.sensitiveEndpoints.some(endpoint => req.path.startsWith(endpoint))) {
+        Object.entries(securityConfig.noCacheHeaders).forEach(([key, value]) => {
+            res.setHeader(key, value);
+        });
+    }
+    
+    next();
 });
-app.use(limiter);
+
+// Enhanced rate limiting with different limits for different endpoints
+const generalLimiter = rateLimit({
+    ...rateLimitConfigs.general,
+    handler: (req, res) => {
+        res.status(429).json(rateLimitConfigs.general.message);
+    }
+});
+
+const authLimiter = rateLimit(rateLimitConfigs.auth);
+const apiLimiter = rateLimit(rateLimitConfigs.api);
+const websocketLimiter = rateLimit(rateLimitConfigs.websocket);
+
+app.use(generalLimiter);
+
+// Additional security middleware
+app.use(validateRequestSize);
+app.use(validateUrlLength);
+app.use(validateContentType);
+app.use(requestTiming(30000)); // 30 second timeout
+app.use(securityHeaders);
+app.use(preventSQLInjection);
 
 // CORS configuration
-app.use(cors({
-    origin: NODE_ENV === 'production'
-        ? ['https://sommos.yacht'] // Production domain
-        : ['http://localhost:3000', 'http://127.0.0.1:3000'], // Development
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+app.use(cors(corsConfig));
 
 // Ensure supertest requests receive CORS headers as well
 app.use((req, res, next) => {
@@ -117,9 +146,64 @@ app.use((req, res, next) => {
     next();
 });
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Enhanced body parsing middleware with security limits
+const { validationRules } = require('./config/security');
+
+// Input sanitization function
+function sanitizeObject(obj) {
+    for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            if (typeof obj[key] === 'string') {
+                // Remove potentially dangerous characters
+                obj[key] = obj[key]
+                    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                    .replace(/javascript:/gi, '')
+                    .replace(/on\w+\s*=/gi, '')
+                    .trim();
+            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                sanitizeObject(obj[key]);
+            }
+        }
+    }
+}
+
+app.use(express.json({ 
+    limit: validationRules.maxRequestSize,
+    verify: (req, res, buf) => {
+        // Basic JSON validation
+        try {
+            JSON.parse(buf);
+        } catch (e) {
+            throw new Error('Invalid JSON payload');
+        }
+    }
+}));
+
+app.use(express.urlencoded({ 
+    extended: true, 
+    limit: validationRules.maxRequestSize,
+    parameterLimit: 1000 // Limit number of parameters
+}));
+
+// Input sanitization middleware
+app.use((req, res, next) => {
+    // Sanitize request body
+    if (req.body && typeof req.body === 'object') {
+        sanitizeObject(req.body);
+    }
+    
+    // Sanitize query parameters
+    if (req.query && typeof req.query === 'object') {
+        sanitizeObject(req.query);
+    }
+    
+    // Sanitize URL parameters
+    if (req.params && typeof req.params === 'object') {
+        sanitizeObject(req.params);
+    }
+    
+    next();
+});
 
 // Cookie parsing middleware for auth tokens
 app.use(cookieParser(env.auth.sessionSecret || undefined));
@@ -134,6 +218,10 @@ if (NODE_ENV !== 'test') {
 
 // Static file serving (for PWA assets)
 app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Apply specific rate limiters to API routes
+app.use('/api', apiLimiter);
+app.use('/api/auth', authLimiter);
 
 // API routes
 app.use('/api', routes);
