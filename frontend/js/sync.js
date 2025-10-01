@@ -6,6 +6,13 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const DEFAULT_BACKOFF_BASE = 2000; // 2 seconds
 const DEFAULT_BACKOFF_MAX = 5 * 60 * 1000; // 5 minutes
 
+// Add retry logic for failed API calls
+const syncManager = {
+  retryFailedRequests: true,
+  maxRetries: 3,
+  backoffStrategy: 'exponential'
+};
+
 const generateOperationId = () => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
         return crypto.randomUUID();
@@ -45,7 +52,7 @@ const normaliseHeaders = (headers = {}) => {
 };
 
 export class SommOSSyncService {
-    constructor({ api, dbName = DEFAULT_DB_NAME, storeName = DEFAULT_STORE_NAME } = {}) {
+    constructor({ api, dbName = DEFAULT_DB_NAME, storeName = DEFAULT_STORE_NAME, syncConfig = {} } = {}) {
         this.api = api || null;
         this.dbName = dbName;
         this.storeName = storeName;
@@ -57,6 +64,17 @@ export class SommOSSyncService {
         this.maxDelay = DEFAULT_BACKOFF_MAX;
         this.maxAttempts = 5;
         this.extraStores = [];
+
+        // Enhanced sync manager configuration
+        this.syncManager = {
+            retryFailedRequests: syncConfig.retryFailedRequests ?? syncManager.retryFailedRequests,
+            maxRetries: syncConfig.maxRetries ?? syncManager.maxRetries,
+            backoffStrategy: syncConfig.backoffStrategy ?? syncManager.backoffStrategy,
+            retryableStatusCodes: syncConfig.retryableStatusCodes ?? [408, 429, 500, 502, 503, 504],
+            retryableErrors: syncConfig.retryableErrors ?? ['NetworkError', 'TimeoutError', 'AbortError'],
+            jitterEnabled: syncConfig.jitterEnabled ?? true,
+            maxJitter: syncConfig.maxJitter ?? 1000
+        };
 
         this.handleOnline = this.handleOnline.bind(this);
         this.handleOffline = this.handleOffline.bind(this);
@@ -248,6 +266,46 @@ export class SommOSSyncService {
         await this.db.put(this.storeName, record);
     }
 
+    getSyncManagerConfig() {
+        return { ...this.syncManager };
+    }
+
+    updateSyncManagerConfig(newConfig) {
+        this.syncManager = { ...this.syncManager, ...newConfig };
+        dispatchSyncEvent('sommos:sync-config-updated', { config: this.syncManager });
+    }
+
+    async getSyncStatistics() {
+        await this.ensureInitialised();
+        if (!this.db) {
+            return null;
+        }
+
+        const records = await this.getAllRecords();
+        const now = Date.now();
+        
+        const stats = {
+            totalRecords: records.length,
+            pendingRecords: records.filter(r => (r.nextAttemptAt || 0) <= now).length,
+            scheduledRecords: records.filter(r => (r.nextAttemptAt || 0) > now).length,
+            retryAttempts: records.reduce((sum, r) => sum + (r.attempts || 0), 0),
+            averageAttempts: records.length > 0 ? records.reduce((sum, r) => sum + (r.attempts || 0), 0) / records.length : 0,
+            oldestRecord: records.length > 0 ? Math.min(...records.map(r => r.queuedAt)) : null,
+            newestRecord: records.length > 0 ? Math.max(...records.map(r => r.queuedAt)) : null,
+            errorTypes: {}
+        };
+
+        // Count error types
+        records.forEach(record => {
+            if (record.lastError) {
+                const errorType = record.lastError.split(':')[0] || 'Unknown';
+                stats.errorTypes[errorType] = (stats.errorTypes[errorType] || 0) + 1;
+            }
+        });
+
+        return stats;
+    }
+
     ensureSyncContext(sync = {}) {
         const now = Math.floor(Date.now() / 1000);
         const context = { ...sync };
@@ -295,10 +353,57 @@ export class SommOSSyncService {
     }
 
     computeBackoffDelay(attempts = 1) {
-        const exponentialDelay = this.baseDelay * (2 ** Math.max(0, attempts - 1));
-        const cappedDelay = Math.min(this.maxDelay, exponentialDelay);
-        const jitter = Math.floor(Math.random() * 1000);
-        return cappedDelay + jitter;
+        let baseDelay;
+        
+        switch (this.syncManager.backoffStrategy) {
+            case 'exponential':
+                baseDelay = this.baseDelay * (2 ** Math.max(0, attempts - 1));
+                break;
+            case 'linear':
+                baseDelay = this.baseDelay * attempts;
+                break;
+            case 'fixed':
+                baseDelay = this.baseDelay;
+                break;
+            default:
+                baseDelay = this.baseDelay * (2 ** Math.max(0, attempts - 1));
+        }
+        
+        const cappedDelay = Math.min(this.maxDelay, baseDelay);
+        
+        if (this.syncManager.jitterEnabled) {
+            const jitter = Math.floor(Math.random() * this.syncManager.maxJitter);
+            return cappedDelay + jitter;
+        }
+        
+        return cappedDelay;
+    }
+
+    shouldRetryRequest(error, response = null) {
+        if (!this.syncManager.retryFailedRequests) {
+            return false;
+        }
+
+        // Check for retryable HTTP status codes
+        if (response && response.status) {
+            return this.syncManager.retryableStatusCodes.includes(response.status);
+        }
+
+        // Check for retryable error types
+        if (error && error.name) {
+            return this.syncManager.retryableErrors.includes(error.name);
+        }
+
+        // Check for network-related error messages
+        if (error && error.message) {
+            const message = error.message.toLowerCase();
+            return message.includes('network') || 
+                   message.includes('timeout') || 
+                   message.includes('connection') ||
+                   message.includes('fetch');
+        }
+
+        return false;
     }
 
     clearFlushTimer() {
@@ -376,7 +481,7 @@ export class SommOSSyncService {
                 }
 
                 try {
-                    await this.api.request(record.endpoint, {
+                    const response = await this.api.request(record.endpoint, {
                         method: record.method,
                         headers: record.headers,
                         body: record.body,
@@ -387,20 +492,30 @@ export class SommOSSyncService {
 
                     await this.removeRecord(record.id);
                     processed += 1;
-                    dispatchSyncEvent('sommos:sync-processed', { id: record.id, endpoint: record.endpoint, method: record.method });
+                    dispatchSyncEvent('sommos:sync-processed', { 
+                        id: record.id, 
+                        endpoint: record.endpoint, 
+                        method: record.method,
+                        attempts: record.attempts || 0
+                    });
                 } catch (error) {
                     const attempts = (record.attempts || 0) + 1;
                     record.attempts = attempts;
                     record.lastError = error?.message || String(error);
 
-                    if (attempts >= this.maxAttempts) {
+                    // Check if we should retry this request
+                    const shouldRetry = this.shouldRetryRequest(error, error.response);
+                    const maxRetries = this.syncManager.maxRetries;
+
+                    if (!shouldRetry || attempts >= maxRetries) {
                         await this.removeRecord(record.id);
                         dispatchSyncEvent('sommos:sync-discarded', {
                             id: record.id,
                             endpoint: record.endpoint,
                             method: record.method,
                             attempts,
-                            error: record.lastError
+                            error: record.lastError,
+                            reason: !shouldRetry ? 'non-retryable-error' : 'max-retries-exceeded'
                         });
                         continue;
                     }
@@ -408,11 +523,14 @@ export class SommOSSyncService {
                     const backoffDelay = this.computeBackoffDelay(attempts);
                     record.nextAttemptAt = Date.now() + backoffDelay;
                     await this.updateRecord(record);
-                    dispatchSyncEvent('sommos:sync-error', {
+                    
+                    dispatchSyncEvent('sommos:sync-retry-scheduled', {
                         id: record.id,
                         endpoint: record.endpoint,
                         method: record.method,
                         attempts,
+                        nextAttemptAt: record.nextAttemptAt,
+                        backoffDelay,
                         error: record.lastError
                     });
 

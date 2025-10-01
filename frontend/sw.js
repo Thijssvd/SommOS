@@ -221,6 +221,19 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  // Handle sync manager configuration updates
+  if (event.data && event.data.type === 'SYNC_CONFIG_UPDATE') {
+    // Forward sync configuration to all clients
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'SYNC_CONFIG_UPDATED',
+          config: event.data.config
+        });
+      });
+    });
+  }
 });
 
 const offlineApiResponse = () =>
@@ -294,4 +307,72 @@ self.addEventListener('fetch', (event) => {
       return applyCacheStrategy(event.request, requestType);
     })()
   );
+});
+
+// Background sync support for failed requests
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'background-sync') {
+    event.waitUntil(
+      (async () => {
+        try {
+          // Notify clients that background sync is happening
+          const clients = await self.clients.matchAll();
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'BACKGROUND_SYNC_STARTED',
+              timestamp: Date.now()
+            });
+          });
+          
+          // The actual sync processing is handled by the SommOSSyncService
+          // This event just triggers the sync process
+          console.log('Background sync triggered');
+        } catch (error) {
+          console.error('Background sync failed:', error);
+        }
+      })()
+    );
+  }
+});
+
+// Handle push notifications for sync events
+self.addEventListener('push', (event) => {
+  if (event.data) {
+    const data = event.data.json();
+    
+    if (data.type === 'sync-notification') {
+      const options = {
+        body: data.message || 'Sync operation completed',
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/badge-72x72.png',
+        tag: 'sync-notification',
+        data: data
+      };
+      
+      event.waitUntil(
+        self.registration.showNotification(data.title || 'SommOS Sync', options)
+      );
+    }
+  }
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  if (event.notification.data && event.notification.data.type === 'sync-notification') {
+    event.waitUntil(
+      self.clients.matchAll().then(clients => {
+        if (clients.length > 0) {
+          clients[0].focus();
+          clients[0].postMessage({
+            type: 'SYNC_NOTIFICATION_CLICKED',
+            data: event.notification.data
+          });
+        } else {
+          self.clients.openWindow('/');
+        }
+      })
+    );
+  }
 });
