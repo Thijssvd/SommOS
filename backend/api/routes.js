@@ -476,37 +476,42 @@ router.get(
 );
 
 // GET /api/inventory/stock
-// Get current stock levels
+// Get current stock levels with pagination
 router.get(
     '/inventory/stock',
     ...requireAuthAndRole('admin', 'crew'),
     validate(validators.inventoryStock),
     asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-        const { location, wine_type, region, available_only } = req.query;
+        const { location, wine_type, region, available_only, limit, offset } = req.query;
         const availableOnlyFlag = typeof available_only === 'string'
             ? available_only === 'true'
             : Boolean(available_only);
 
         try {
-            const stock = await inventoryManager.getCurrentStock({
+            const result = await inventoryManager.getCurrentStock({
                 location,
                 wine_type,
                 region,
                 available_only: availableOnlyFlag
-            });
+            }, { limit, offset });
 
             const role = req.user?.role === 'admin' ? 'admin' : 'crew';
-            const data = serializeInventoryItems(stock, role, {
+            const data = serializeInventoryItems(result.items, role, {
                 guidanceResolver: (item) => wineGuidanceService.getGuidance(item),
             });
 
             res.json({
                 success: true,
-                data
+                data,
+                meta: {
+                    total: result.total,
+                    limit: result.limit,
+                    offset: result.offset
+                }
             });
-    } catch (error) {
-        sendError(res, 500, 'INVENTORY_STOCK_ERROR', error.message || 'Failed to retrieve inventory stock.');
-    }
+        } catch (error) {
+            sendError(res, 500, 'INVENTORY_STOCK_ERROR', error.message || 'Failed to retrieve inventory stock.');
+        }
     }))
 );
 

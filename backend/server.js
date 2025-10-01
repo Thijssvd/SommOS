@@ -68,22 +68,7 @@ const {
     securityHeaders,
     preventSQLInjection
 } = require('./middleware/security');
-
-const formatErrorPayload = (code, message, details) => {
-    const payload = {
-        success: false,
-        error: {
-            code,
-            message
-        }
-    };
-
-    if (typeof details !== 'undefined') {
-        payload.error.details = details;
-    }
-
-    return payload;
-};
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 // Initialize Express app
 const app = express();
@@ -246,29 +231,10 @@ app.use((req, res, next) => {
 });
 
 // Global error handler
-app.use((error, req, res, next) => {
-    console.error('Server Error:', error);
-    
-    // Don't leak error details in production
-    const message = NODE_ENV === 'production'
-        ? 'Internal server error' 
-        : error.message;
-    
-    res.status(error.status || 500).json(
-        formatErrorPayload(
-            error.code || 'INTERNAL_SERVER_ERROR',
-            message,
-            error.details
-        )
-    );
-});
+app.use(errorHandler);
 
 // 404 handler
-app.use((req, res) => {
-    res
-        .status(404)
-        .json(formatErrorPayload('NOT_FOUND', 'Endpoint not found'));
-});
+app.use(notFoundHandler);
 
 // Initialize database and start server
 async function startServer() {
