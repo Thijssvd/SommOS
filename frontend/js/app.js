@@ -801,6 +801,94 @@ export class SommOS {
             });
         });
 
+        // Event delegation for dynamically generated content
+        document.addEventListener('click', (e) => {
+            // Handle wine detail buttons
+            if (e.target.matches('[data-wine-detail]')) {
+                const wineId = e.target.dataset.wineDetail;
+                this.showWineDetailModal(wineId);
+            }
+            
+            // Handle wine reserve buttons
+            if (e.target.matches('[data-wine-reserve]')) {
+                const wineId = e.target.dataset.wineReserve;
+                const wineName = e.target.dataset.wineName || 'Unknown Wine';
+                this.reserveWineModal(wineId, wineName);
+            }
+            
+            // Handle wine consume/serve buttons
+            if (e.target.matches('[data-wine-consume]')) {
+                const wineId = e.target.dataset.wineConsume;
+                const wineName = e.target.dataset.wineName || 'Unknown Wine';
+                this.consumeWineModal(wineId, wineName);
+            }
+            
+            // Handle modal close buttons
+            if (e.target.matches('[data-modal-close]')) {
+                this.ui.hideModal();
+            }
+            
+            // Handle wine card clicks
+            if (e.target.matches('[data-wine-card]') || e.target.closest('[data-wine-card]')) {
+                const wineCard = e.target.matches('[data-wine-card]') ? e.target : e.target.closest('[data-wine-card]');
+                const wineId = wineCard.dataset.wineCard;
+                this.showWineDetails(wineId);
+            }
+            
+            // Handle procurement analysis buttons
+            if (e.target.matches('[data-analyze-purchase]')) {
+                const wineId = e.target.dataset.analyzePurchase;
+                const supplierId = e.target.dataset.supplierId;
+                this.analyzePurchaseDecision(wineId, supplierId);
+            }
+            
+            // Handle add to order buttons
+            if (e.target.matches('[data-add-to-order]')) {
+                const wineId = e.target.dataset.addToOrder;
+                this.addToOrder(wineId);
+            }
+            
+            // Handle order item removal
+            if (e.target.matches('[data-remove-item]')) {
+                e.target.closest('.order-item').remove();
+            }
+            
+            // Handle add order item
+            if (e.target.matches('[data-add-order-item]')) {
+                this.addOrderItem();
+            }
+            
+            // Handle purchase order submission
+            if (e.target.matches('[data-submit-order]')) {
+                this.submitPurchaseOrder();
+            }
+            
+            // Handle purchase analysis
+            if (e.target.matches('[data-run-analysis]')) {
+                this.runPurchaseAnalysis();
+            }
+            
+            // Handle generate purchase order
+            if (e.target.matches('[data-generate-order]')) {
+                this.generatePurchaseOrder();
+            }
+            
+            // Handle navigate to pairing
+            if (e.target.matches('[data-navigate-pairing]')) {
+                this.navigateToView('pairing');
+                this.ui.hideModal();
+            }
+        });
+
+        // Handle keyboard events for wine cards
+        document.addEventListener('keydown', (e) => {
+            if (e.target.matches('[data-wine-card]') && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                const wineId = e.target.dataset.wineCard;
+                this.showWineDetails(wineId);
+            }
+        });
+
         // Pairing form
         const getPairingsBtn = document.getElementById('get-pairings-btn');
         if (getPairingsBtn) {
@@ -1623,7 +1711,7 @@ export class SommOS {
                     <textarea id="reserve-notes" rows="2" placeholder="Occasion, guest preferences, etc."></textarea>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn secondary" onclick="app.ui.hideModal()">Cancel</button>
+                    <button type="button" class="btn secondary" data-modal-close>Cancel</button>
                     <button type="submit" class="btn primary">Reserve Wine</button>
                 </div>
             </form>
@@ -1671,7 +1759,7 @@ export class SommOS {
                     <textarea id="consume-notes" rows="2" placeholder="Guest names, occasion, feedback, etc."></textarea>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn secondary" onclick="app.ui.hideModal()">Cancel</button>
+                    <button type="button" class="btn secondary" data-modal-close>Cancel</button>
                     <button type="submit" class="btn primary">Record Service</button>
                 </div>
             </form>
@@ -1959,7 +2047,7 @@ export class SommOS {
                     
                     ${wine.quantity > 0 ? `
                         <div class="pairing-actions">
-                            <button class="btn-small primary" onclick="app.reserveWineModal('${wine.vintage_id || wine.id}', '${(wine.name || "Wine").replace(/'/g, "\\'") }')">Reserve for Pairing</button>
+                            <button class="btn-small primary" data-wine-reserve="${wine.vintage_id || wine.id}" data-wine-name="${(wine.name || "Wine").replace(/"/g, "&quot;")}">Reserve for Pairing</button>
                         </div>
                     ` : ''}
                 </div>
@@ -2566,6 +2654,18 @@ export class SommOS {
             case 'check-stock':
                 this.navigateToView('inventory');
                 break;
+            case 'analyze-procurement-opportunities':
+                this.analyzeProcurementOpportunities();
+                break;
+            case 'show-purchase-decision-tool':
+                this.showPurchaseDecisionTool();
+                break;
+            case 'generate-purchase-order':
+                this.generatePurchaseOrder();
+                break;
+            case 'filter-procurement-opportunities':
+                this.filterProcurementOpportunities();
+                break;
         }
     }
 
@@ -2620,7 +2720,7 @@ export class SommOS {
                         <textarea id="service-notes" rows="3" placeholder="Food pairings, guest feedback, occasion details..."></textarea>
                     </div>
                     <div class="form-actions">
-                        <button type="button" class="btn secondary" onclick="app.ui.hideModal()">Cancel</button>
+                        <button type="button" class="btn secondary" data-modal-close>Cancel</button>
                         <button type="submit" class="btn primary">Record Service</button>
                     </div>
                 </form>
@@ -2647,7 +2747,7 @@ export class SommOS {
             console.error('Error loading consumption modal:', error);
             this.ui.showModal('Record Wine Service', `
                 <p>Error loading wine inventory. Please try again.</p>
-                <button class="btn secondary" onclick="app.ui.hideModal()">Close</button>
+                <button class="btn secondary" data-modal-close>Close</button>
             `);
         }
     }
@@ -2717,7 +2817,7 @@ export class SommOS {
                 <div class="error-content">
                     <h4>❌ Error Loading Wine Details</h4>
                     <p>Could not load detailed information for this wine.</p>
-                    <button class="btn secondary" onclick="app.ui.hideModal()">Close</button>
+                    <button class="btn secondary" data-modal-close>Close</button>
                 </div>
             `);
         }
@@ -2843,10 +2943,10 @@ export class SommOS {
                 </div>
                 
                 <div class="wine-detail-actions">
-                    <button class="btn secondary" onclick="app.ui.hideModal()">Close</button>
-                    <button class="btn primary" onclick="app.reserveWineModal('${wine.vintage_id || wine.id}', '${(wine.name || "Unknown").replace(/'/g, "\\'") }')">Reserve Wine</button>
+                    <button class="btn secondary" data-modal-close>Close</button>
+                    <button class="btn primary" data-wine-reserve="${wine.vintage_id || wine.id}" data-wine-name="${(wine.name || "Unknown").replace(/"/g, "&quot;")}">Reserve Wine</button>
                     ${wine.quantity > 0 ? `
-                        <button class="btn success" onclick="app.consumeWineModal('${wine.vintage_id || wine.id}', '${(wine.name || "Unknown").replace(/'/g, "\\'") }')">Serve Wine</button>
+                        <button class="btn success" data-wine-consume="${wine.vintage_id || wine.id}" data-wine-name="${(wine.name || "Unknown").replace(/"/g, "&quot;")}">Serve Wine</button>
                     ` : ''}
                 </div>
             </div>
@@ -2967,7 +3067,7 @@ export class SommOS {
                 ${wineListMarkup}
                 ${serviceNotesSection}
                 <div class="event-detail-actions">
-                    <button class="btn secondary" onclick="app.ui.hideModal()">Close</button>
+                    <button class="btn secondary" data-modal-close>Close</button>
                 </div>
             </div>
         `;
@@ -3445,10 +3545,10 @@ export class SommOS {
                     <p><strong>Confidence:</strong> ${(opportunity.confidence ? Math.round(opportunity.confidence * 100) : 70)}%</p>
                 </div>
                 <div class="opportunity-actions">
-                    <button class="btn primary" onclick="app.analyzePurchaseDecision('${opportunity.wine_id}', '${opportunity.supplier_id}')">
+                    <button class="btn primary" data-analyze-purchase="${opportunity.wine_id}" data-supplier-id="${opportunity.supplier_id}">
                         Analyze Purchase
                     </button>
-                    <button class="btn secondary" onclick="app.addToOrder('${opportunity.wine_id}')">
+                    <button class="btn secondary" data-add-to-order="${opportunity.wine_id}">
                         Add to Order
                     </button>
                 </div>
@@ -3489,8 +3589,8 @@ export class SommOS {
                     <textarea id="decision-context" rows="3" placeholder="Special occasion, guest preferences, etc."></textarea>
                 </div>
                 <div class="form-actions">
-                    <button class="btn secondary" onclick="app.ui.hideModal()">Cancel</button>
-                    <button class="btn primary" onclick="app.runPurchaseAnalysis()">Analyze Decision</button>
+                    <button class="btn secondary" data-modal-close>Cancel</button>
+                    <button class="btn primary" data-run-analysis>Analyze Decision</button>
                 </div>
             </div>
         `);
@@ -3561,8 +3661,8 @@ export class SommOS {
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button class="btn secondary" onclick="app.ui.hideModal()">Close</button>
-                    ${recommendation === 'proceed' ? '<button class="btn primary" onclick="app.generatePurchaseOrder()">Create Purchase Order</button>' : ''}
+                    <button class="btn secondary" data-modal-close>Close</button>
+                    ${recommendation === 'proceed' ? '<button class="btn primary" data-generate-order>Create Purchase Order</button>' : ''}
                 </div>
             </div>
         `);
@@ -3599,14 +3699,14 @@ export class SommOS {
                             <input type="text" placeholder="Wine/Vintage ID" class="item-wine-id">
                             <input type="number" placeholder="Qty" class="item-quantity" min="1" value="12">
                             <input type="number" placeholder="Unit Price" class="item-price" min="0" step="0.01">
-                            <button class="btn-small danger" onclick="this.parentNode.remove()">×</button>
+                            <button class="btn-small danger" data-remove-item>×</button>
                         </div>
                     </div>
-                    <button class="btn secondary" onclick="app.addOrderItem()">+ Add Item</button>
+                    <button class="btn secondary" data-add-order-item>+ Add Item</button>
                 </div>
                 <div class="form-actions">
-                    <button class="btn secondary" onclick="app.ui.hideModal()">Cancel</button>
-                    <button class="btn primary" onclick="app.submitPurchaseOrder()">Generate Order</button>
+                    <button class="btn secondary" data-modal-close>Cancel</button>
+                    <button class="btn primary" data-submit-order>Generate Order</button>
                 </div>
             </div>
         `);
@@ -3629,7 +3729,7 @@ export class SommOS {
             <input type="text" placeholder="Wine/Vintage ID" class="item-wine-id">
             <input type="number" placeholder="Qty" class="item-quantity" min="1" value="12">
             <input type="number" placeholder="Unit Price" class="item-price" min="0" step="0.01">
-            <button class="btn-small danger" onclick="this.parentNode.remove()">×</button>
+            <button class="btn-small danger" data-remove-item>×</button>
         `;
         itemsList.appendChild(newItem);
     }
@@ -3910,11 +4010,11 @@ export class SommOS {
         if (viewType === 'grid') {
             return `
                 <div class="wine-card catalog-card" 
-                     onclick="app.showWineDetails('${wine.id}')" 
+                     data-wine-card="${wine.id}"
                      role="button" 
                      tabindex="0"
                      aria-label="View details for ${wine.name || 'Unknown Wine'} from ${wine.producer || 'Unknown Producer'}, ${wine.year || 'N/A'}"
-                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.showWineDetails('${wine.id}')}">
+>
                     <div class="wine-card-header">
                         <div class="wine-type-badge ${wine.wine_type?.toLowerCase() || 'unknown'}" aria-label="Wine type: ${wine.wine_type || 'Wine'}">
                             <span aria-hidden="true">${this.getWineTypeIcon(wine.wine_type)}</span> ${wine.wine_type || 'Wine'}
@@ -3960,7 +4060,7 @@ export class SommOS {
             `;
         } else if (viewType === 'list') {
             return `
-                <div class="wine-list-item" onclick="app.showWineDetails('${wine.id}')">
+                <div class="wine-list-item" data-wine-card="${wine.id}">
                     <div class="wine-basic-info">
                         <h4>${wine.name || 'Unknown Wine'}</h4>
                         <span class="producer">${wine.producer || 'Unknown Producer'}</span>
@@ -3994,7 +4094,7 @@ export class SommOS {
             `;
         } else { // detail view
             return `
-                <div class="wine-detail-card" onclick="app.showWineDetails('${wine.id}')">
+                <div class="wine-detail-card" data-wine-card="${wine.id}">
                     <div class="wine-detail-header">
                         <div class="wine-title">
                             <h3>${wine.name || 'Unknown Wine'}</h3>
@@ -4276,7 +4376,7 @@ export class SommOS {
                                             })()}
                                         </div>
                                         <div class="vintage-actions">
-                                            <button class="btn-small primary" onclick="app.reserveWineModal('${vintage.id}', '${wine.name} ${vintage.year}')">
+                                            <button class="btn-small primary" data-wine-reserve="${vintage.id}" data-wine-name="${wine.name} ${vintage.year}">
                                                 Reserve
                                             </button>
                                         </div>
@@ -4297,8 +4397,8 @@ export class SommOS {
                 </div>
 
                 <div class="wine-details-actions">
-                    <button class="btn secondary" onclick="app.ui.hideModal()">Close</button>
-                    <button class="btn primary" onclick="app.navigateToView('pairing'); app.ui.hideModal();">Find Pairings</button>
+                    <button class="btn secondary" data-modal-close>Close</button>
+                    <button class="btn primary" data-navigate-pairing>Find Pairings</button>
                 </div>
             </div>
         `);

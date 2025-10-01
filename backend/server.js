@@ -243,7 +243,7 @@ async function startServer() {
 
         // Initialize database
         console.log('Initializing database...');
-        const db = Database.getInstance();
+        const db = Database.getInstance(env.database.path);
         await db.initialize();
         console.log('Database initialized successfully');
         
