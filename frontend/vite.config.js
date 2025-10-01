@@ -146,19 +146,118 @@ export default defineConfig(() => ({
   build: {
     outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV === 'development',
     manifest: true,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: process.env.NODE_ENV === 'production',
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug']
+      },
+      mangle: {
+        safari10: true
+      }
+    },
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
         pairing: resolve(__dirname, 'test-pairing.html')
+      },
+      output: {
+        manualChunks: (id) => {
+          // Vendor chunks for third-party libraries
+          if (id.includes('node_modules')) {
+            if (id.includes('chart.js')) {
+              return 'chart';
+            }
+            if (id.includes('idb')) {
+              return 'idb';
+            }
+            return 'vendor';
+          }
+          
+          // Application chunks based on functionality
+          if (id.includes('/js/api.js')) {
+            return 'api';
+          }
+          if (id.includes('/js/realtime-sync.js') || id.includes('/js/sync.js')) {
+            return 'sync';
+          }
+          if (id.includes('/js/ui.js')) {
+            return 'ui';
+          }
+          if (id.includes('/js/app.js')) {
+            return 'app';
+          }
+          if (id.includes('/js/main.js')) {
+            return 'main';
+          }
+          if (id.includes('sw-registration')) {
+            return 'sw';
+          }
+        },
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+          return `assets/js/[name]-[hash].js`;
+        },
+        entryFileNames: 'assets/js/[name]-[hash].js',
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          if (/\.(css)$/.test(assetInfo.name)) {
+            return `assets/css/[name]-[hash].${ext}`;
+          }
+          if (/\.(png|jpe?g|svg|gif|tiff|bmp|ico)$/i.test(assetInfo.name)) {
+            return `assets/images/[name]-[hash].${ext}`;
+          }
+          if (/\.(woff2?|eot|ttf|otf)$/i.test(assetInfo.name)) {
+            return `assets/fonts/[name]-[hash].${ext}`;
+          }
+          return `assets/[name]-[hash].${ext}`;
+        }
+      },
+      external: [],
+      treeshake: {
+        moduleSideEffects: false,
+        propertyReadSideEffects: false,
+        tryCatchDeoptimization: false
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+    target: 'es2015',
+    cssCodeSplit: true,
+    reportCompressedSize: false,
+    assetsInlineLimit: 4096
+  },
+  css: {
+    devSourcemap: true,
+    postcss: {
+      plugins: [
+        // Add autoprefixer for better browser compatibility
+        require('autoprefixer')({
+          overrideBrowserslist: ['> 1%', 'last 2 versions', 'not dead']
+        })
+      ]
+    }
+  },
+  optimizeDeps: {
+    include: [
+      'chart.js/auto',
+      'idb'
+    ],
+    exclude: [],
+    force: false,
+    esbuildOptions: {
+      target: 'es2015',
+      supported: {
+        'top-level-await': true
       }
     }
   },
-  css: {
-    devSourcemap: true
-  },
-  optimizeDeps: {
-    include: ['chart.js/auto']
+  esbuild: {
+    target: 'es2015',
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+    pure: process.env.NODE_ENV === 'production' ? ['console.log', 'console.info', 'console.debug'] : []
   }
 }));
