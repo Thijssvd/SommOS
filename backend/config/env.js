@@ -4,18 +4,14 @@ const { z } = require('zod');
 
 const packageJson = require('../../package.json');
 
-const ENVIRONMENT_VALUES = ['development', 'test', 'production', 'performance', 'staging'];
 
 const DEFAULT_OPEN_METEO_BASE = 'https://archive-api.open-meteo.com/v1/archive';
 
 const schema = z.object({
-    NODE_ENV: z
-        .string()
-        .default('development')
-        .transform((value) => value.toLowerCase())
-        .refine((value) => ENVIRONMENT_VALUES.includes(value), {
-            message: `NODE_ENV must be one of: ${ENVIRONMENT_VALUES.join(', ')}`,
-        }),
+    NODE_ENV: z.enum(['development', 'production', 'test'], {
+        required_error: 'NODE_ENV is required',
+        invalid_type_error: 'NODE_ENV must be one of: development, production, test'
+    }),
     PORT: z.coerce.number({ invalid_type_error: 'PORT must be a number' })
         .int('PORT must be an integer')
         .min(0, 'PORT must be greater than or equal to 0')
@@ -24,11 +20,17 @@ const schema = z.object({
     OPEN_METEO_BASE: z.string({ required_error: 'OPEN_METEO_BASE is required' })
         .trim()
         .url('OPEN_METEO_BASE must be a valid URL'),
-    OPENAI_API_KEY: z.string().trim().min(1, 'OPENAI_API_KEY cannot be empty').optional(),
+    OPENAI_API_KEY: z.string({ required_error: 'OPENAI_API_KEY is required' })
+        .trim()
+        .min(1, 'OPENAI_API_KEY cannot be empty'),
     SOMMOS_DISABLE_EXTERNAL_CALLS: z.enum(['true', 'false']).optional(),
     DATABASE_PATH: z.string().trim().min(1).optional(),
-    JWT_SECRET: z.string().trim().min(1, 'JWT_SECRET cannot be empty').optional(),
-    SESSION_SECRET: z.string().trim().min(1, 'SESSION_SECRET cannot be empty').optional(),
+    JWT_SECRET: z.string({ required_error: 'JWT_SECRET is required' })
+        .trim()
+        .min(32, 'JWT_SECRET must be at least 32 characters long'),
+    SESSION_SECRET: z.string({ required_error: 'SESSION_SECRET is required' })
+        .trim()
+        .min(32, 'SESSION_SECRET must be at least 32 characters long'),
     WEATHER_API_KEY: z.string().trim().min(1, 'WEATHER_API_KEY cannot be empty').optional(),
     PERFORMANCE_TEST_DATASET_SIZE: z
         .coerce
@@ -43,15 +45,15 @@ let cachedConfig;
 function applyDefaults(rawEnv) {
     const withDefaults = { ...rawEnv };
 
-    const normalizedNodeEnv = (withDefaults.NODE_ENV || 'development').toLowerCase();
-    withDefaults.NODE_ENV = normalizedNodeEnv;
+    // NODE_ENV is now required, so we don't set a default here
+    // The validation will catch if it's missing
 
     if (!withDefaults.PORT) {
         withDefaults.PORT = '3001';
     }
 
     if (!withDefaults.OPEN_METEO_BASE) {
-        if (normalizedNodeEnv === 'production') {
+        if (withDefaults.NODE_ENV === 'production') {
             throw new Error('OPEN_METEO_BASE is required in production environments.');
         }
 
@@ -62,25 +64,9 @@ function applyDefaults(rawEnv) {
 }
 
 function enforceRuntimeGuards(parsed) {
-    if (parsed.NODE_ENV !== 'production') {
-        return;
-    }
-
-    const missingSecrets = [];
-
-    if (!parsed.JWT_SECRET) {
-        missingSecrets.push('JWT_SECRET');
-    }
-
-    if (!parsed.SESSION_SECRET) {
-        missingSecrets.push('SESSION_SECRET');
-    }
-
-    if (missingSecrets.length > 0) {
-        throw new Error(
-            `Missing required secrets for production environment: ${missingSecrets.join(', ')}`
-        );
-    }
+    // Since JWT_SECRET and SESSION_SECRET are now required in the schema,
+    // we don't need additional runtime checks for them
+    // The schema validation will ensure they are present and meet minimum length requirements
 }
 
 function normalizeConfig(parsed) {
@@ -92,7 +78,7 @@ function normalizeConfig(parsed) {
             baseUrl: parsed.OPEN_METEO_BASE,
         },
         openAI: {
-            apiKey: parsed.OPENAI_API_KEY || null,
+            apiKey: parsed.OPENAI_API_KEY,
         },
         database: {
             path: parsed.DATABASE_PATH || null,
@@ -101,8 +87,8 @@ function normalizeConfig(parsed) {
             disableExternalCalls: parsed.SOMMOS_DISABLE_EXTERNAL_CALLS === 'true',
         },
         auth: {
-            jwtSecret: parsed.JWT_SECRET || null,
-            sessionSecret: parsed.SESSION_SECRET || null,
+            jwtSecret: parsed.JWT_SECRET,
+            sessionSecret: parsed.SESSION_SECRET,
         },
         services: {
             weather: {
@@ -131,9 +117,9 @@ function loadConfigFromEnv() {
     const validation = schema.safeParse(mergedEnv);
 
     if (!validation.success) {
-        const formattedErrors = validation.error.errors
-            .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
-            .join('\n');
+        const formattedErrors = validation.error?.issues
+            ?.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+            .join('\n') || 'Unknown validation error';
 
         throw new Error(`Invalid environment configuration:\n${formattedErrors}`);
     }
@@ -157,7 +143,9 @@ function refreshConfig() {
 }
 
 module.exports = {
-    env: getConfig(),
+    get env() {
+        return getConfig();
+    },
     getConfig,
     refreshConfig,
 };
