@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SommOS - Image Optimization Demo</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .demo-section {
+            margin: 2rem 0;
+            padding: 2rem;
+            background: var(--surface);
+            border-radius: var(--border-radius-large);
+            border: 1px solid var(--border);
+        }
+        
+        .demo-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .demo-controls button {
+            padding: 0.75rem 1.5rem;
+            background: var(--accent-color);
+            border: none;
+            border-radius: var(--border-radius-small);
+            color: white;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .demo-controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(156, 124, 255, 0.3);
+        }
+        
+        .demo-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: var(--surface-elevated);
+            padding: 1rem;
+            border-radius: var(--border-radius-medium);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .image-grid-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .virtual-scroll-demo {
+            height: 400px;
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius-medium);
+            overflow: auto;
+        }
+        
+        .compression-demo {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            margin: 2rem 0;
+        }
+        
+        .compression-demo > div {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .compression-demo img {
+            max-width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: var(--border-radius-medium);
+        }
+        
+        .compression-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--surface-elevated);
+            border-radius: var(--border-radius-small);
+        }
+        
+        .compression-info h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-primary);
+        }
+        
+        .compression-info p {
+            margin: 0.25rem 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <nav class="main-nav">
+            <div class="nav-brand">
+                <span class="brand-icon">🍷</span>
+                <span class="brand-text">SommOS</span>
+            </div>
+            <div class="nav-menu">
+                <button class="nav-item active" data-view="demo">
+                    <span class="nav-icon">🖼️</span>
+                    <span class="nav-text">Image Optimization Demo</span>
+                </button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="view active">
+                <div class="view-header">
+                    <h1>Image Optimization Demo</h1>
+                    <p class="view-subtitle">Showcasing SommOS image optimization features</p>
+                </div>
+
+                <!-- Performance Stats -->
+                <div class="demo-section">
+                    <h2>Performance Statistics</h2>
+                    <div class="demo-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-images">0</div>
+                            <div class="stat-label">Total Images</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="optimized-images">0</div>
+                            <div class="stat-label">Optimized</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="webp-supported">No</div>
+                            <div class="stat-label">WebP Support</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="avif-supported">No</div>
+                            <div class="stat-label">AVIF Support</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Demo Controls -->
+                <div class="demo-section">
+                    <h2>Demo Controls</h2>
+                    <div class="demo-controls">
+                        <button onclick="loadSampleImages()">Load Sample Images</button>
+                        <button onclick="toggleLazyLoading()">Toggle Lazy Loading</button>
+                        <button onclick="compressImages()">Compress Images</button>
+                        <button onclick="enableVirtualScroll()">Enable Virtual Scroll</button>
+                        <button onclick="showOptimizationBadges()">Show Optimization Badges</button>
+                        <button onclick="clearImages()">Clear All Images</button>
+                    </div>
+                </div>
+
+                <!-- Image Grid Demo -->
+                <div class="demo-section">
+                    <h2>Optimized Image Grid</h2>
+                    <div id="image-grid-demo" class="image-grid-demo">
+                        <!-- Images will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Image Compression Demo -->
+                <div class="demo-section">
+                    <h2>Image Compression Comparison</h2>
+                    <div class="compression-demo">
+                        <div>
+                            <h3>Original Image</h3>
+                            <img id="original-image" src="" alt="Original">
+                            <div class="compression-info">
+                                <h4>Original</h4>
+                                <p id="original-size">Size: -</p>
+                                <p id="original-format">Format: -</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3>Compressed Image</h3>
+                            <img id="compressed-image" src="" alt="Compressed">
+                            <div class="compression-info">
+                                <h4>Compressed</h4>
+                                <p id="compressed-size">Size: -</p>
+                                <p id="compressed-format">Format: -</p>
+                                <p id="compression-ratio">Savings: -</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Virtual Scroll Demo -->
+                <div class="demo-section">
+                    <h2>Virtual Scroll with Large Dataset</h2>
+                    <div id="virtual-scroll-demo" class="virtual-scroll-demo">
+                        <!-- Virtual scroll content will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Wine Cards Demo -->
+                <div class="demo-section">
+                    <h2>Optimized Wine Cards</h2>
+                    <div id="wine-cards-demo" class="image-grid-demo">
+                        <!-- Wine cards will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { ImageOptimizer, VirtualScroll, ImageCompressor } from './js/image-optimizer.js';
+        import OptimizedWineCard from './js/wine-card-optimized.js';
+
+        // Initialize demo
+        let imageOptimizer;
+        let optimizedWineCard;
+        let virtualScroll;
+        let lazyLoadingEnabled = true;
+        let badgesEnabled = false;
+
+        // Sample wine data for demo
+        const sampleWines = [
+            {
+                id: 1,
+                name: "Château Margaux 2015",
+                producer: "Château Margaux",
+                vintage: 2015,
+                region: "Bordeaux",
+                country: "France",
+                type: "Red",
+                stock: 12,
+                totalValue: 24000,
+                overallScore: 98,
+                scores: { overall: 98, vintage: 95, quality: 100 },
+                guidance: {
+                    peakWindow: "2025-2040",
+                    servingTemperature: "16-18°C"
+                }
+            },
+            {
+                id: 2,
+                name: "Dom Pérignon 2012",
+                producer: "Moët & Chandon",
+                vintage: 2012,
+                region: "Champagne",
+                country: "France",
+                type: "Sparkling",
+                stock: 8,
+                totalValue: 16000,
+                overallScore: 96,
+                scores: { overall: 96, vintage: 94, quality: 98 },
+                guidance: {
+                    peakWindow: "2020-2035",
+                    servingTemperature: "6-8°C"
+                }
+            },
+            {
+                id: 3,
+                name: "Opus One 2018",
+                producer: "Opus One",
+                vintage: 2018,
+                region: "Napa Valley",
+                country: "USA",
+                type: "Red",
+                stock: 15,
+                totalValue: 18000,
+                overallScore: 94,
+                scores: { overall: 94, vintage: 92, quality: 96 },
+                guidance: {
+                    peakWindow: "2025-2040",
+                    servingTemperature: "16-18°C"
+                }
+            }
+        ];
+
+        // Initialize the demo
+        function initDemo() {
+            // Initialize image optimizer
+            imageOptimizer = new ImageOptimizer({
+                lazyLoadThreshold: 100,
+                compressionQuality: 0.8,
+                enableWebP: ImageOptimizer.supportsWebP(),
+                enableAVIF: ImageOptimizer.supportsAVIF()
+            });
+
+            // Initialize optimized wine card system
+            optimizedWineCard = new OptimizedWineCard({
+                imageOptimizer: imageOptimizer,
+                enableVirtualScroll: false,
+                showImageOptimizationBadge: badgesEnabled
+            });
+
+            // Update stats
+            updateStats();
+            
+            // Load initial demo content
+            loadSampleImages();
+            renderWineCards();
+        }
+
+        // Update performance statistics
+        function updateStats() {
+            const totalImages = document.querySelectorAll('img').length;
+            const optimizedImages = document.querySelectorAll('img[data-optimized="true"]').length;
+            
+            document.getElementById('total-images').textContent = totalImages;
+            document.getElementById('optimized-images').textContent = optimizedImages;
+            document.getElementById('webp-supported').textContent = ImageOptimizer.supportsWebP() ? 'Yes' : 'No';
+            document.getElementById('avif-supported').textContent = ImageOptimizer.supportsAVIF() ? 'Yes' : 'No';
+        }
+
+        // Load sample images
+        window.loadSampleImages = function() {
+            const container = document.getElementById('image-grid-demo');
+            container.innerHTML = '';
+
+            const imageUrls = [
+                'https://picsum.photos/400/600?random=1',
+                'https://picsum.photos/400/600?random=2',
+                'https://picsum.photos/400/600?random=3',
+                'https://picsum.photos/400/600?random=4',
+                'https://picsum.photos/400/600?random=5',
+                'https://picsum.photos/400/600?random=6',
+                'https://picsum.photos/400/600?random=7',
+                'https://picsum.photos/400/600?random=8'
+            ];
+
+            imageUrls.forEach((url, index) => {
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'image-container aspect-3-2';
+                
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = `Sample image ${index + 1}`;
+                img.loading = lazyLoadingEnabled ? 'lazy' : 'eager';
+                img.dataset.optimized = 'true';
+                
+                if (badgesEnabled) {
+                    const badge = document.createElement('div');
+                    badge.className = 'image-optimization-badge';
+                    if (ImageOptimizer.supportsAVIF()) {
+                        badge.classList.add('avif-supported');
+                    } else if (ImageOptimizer.supportsWebP()) {
+                        badge.classList.add('webp-supported');
+                    }
+                    imageContainer.appendChild(badge);
+                }
+                
+                imageContainer.appendChild(img);
+                container.appendChild(imageContainer);
+                
+                // Optimize the image
+                imageOptimizer.optimizeImage(img, {
+                    width: 400,
+                    height: 600,
+                    lazyLoad: lazyLoadingEnabled
+                });
+            });
+
+            updateStats();
+        };
+
+        // Toggle lazy loading
+        window.toggleLazyLoading = function() {
+            lazyLoadingEnabled = !lazyLoadingEnabled;
+            const images = document.querySelectorAll('img[data-optimized="true"]');
+            images.forEach(img => {
+                img.loading = lazyLoadingEnabled ? 'lazy' : 'eager';
+                img.dataset.lazy = lazyLoadingEnabled ? 'true' : 'false';
+            });
+            
+            console.log(`Lazy loading ${lazyLoadingEnabled ? 'enabled' : 'disabled'}`);
+        };
+
+        // Compress images demo
+        window.compressImages = async function() {
+            const originalImg = document.getElementById('original-image');
+            const compressedImg = document.getElementById('compressed-image');
+            
+            // Use a sample image
+            const sampleImageUrl = 'https://picsum.photos/800/600?random=compression';
+            
+            try {
+                // Load original image
+                originalImg.src = sampleImageUrl;
+                
+                // Simulate compression (in real app, you'd use ImageCompressor)
+                const compressedUrl = `${sampleImageUrl}&q=80&f=webp`;
+                compressedImg.src = compressedUrl;
+                
+                // Update info (simulated)
+                document.getElementById('original-size').textContent = 'Size: ~500KB';
+                document.getElementById('original-format').textContent = 'Format: JPEG';
+                document.getElementById('compressed-size').textContent = 'Size: ~150KB';
+                document.getElementById('compressed-format').textContent = 'Format: WebP';
+                document.getElementById('compression-ratio').textContent = 'Savings: 70%';
+                
+            } catch (error) {
+                console.error('Compression demo failed:', error);
+            }
+        };
+
+        // Enable virtual scroll
+        window.enableVirtualScroll = function() {
+            const container = document.getElementById('virtual-scroll-demo');
+            container.innerHTML = '';
+            
+            // Create large dataset
+            const largeDataset = Array.from({ length: 1000 }, (_, i) => ({
+                id: i,
+                name: `Wine ${i + 1}`,
+                producer: `Producer ${i + 1}`,
+                vintage: 2015 + (i % 10),
+                region: ['Bordeaux', 'Burgundy', 'Champagne', 'Napa'][i % 4],
+                country: ['France', 'USA', 'Italy', 'Spain'][i % 4],
+                type: ['Red', 'White', 'Sparkling', 'Rosé'][i % 4],
+                stock: Math.floor(Math.random() * 50),
+                totalValue: Math.floor(Math.random() * 10000),
+                overallScore: 80 + Math.floor(Math.random() * 20)
+            }));
+            
+            // Create virtual scroll
+            virtualScroll = new VirtualScroll(container, largeDataset, 200, {
+                createItemElement: (item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'virtual-scroll-item';
+                    div.style.padding = '1rem';
+                    div.style.borderBottom = '1px solid var(--border)';
+                    div.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="width: 60px; height: 60px; background: var(--surface-elevated); border-radius: var(--border-radius-small);"></div>
+                            <div>
+                                <h4 style="margin: 0 0 0.25rem 0; color: var(--text-primary);">${item.name}</h4>
+                                <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">${item.producer} - ${item.vintage}</p>
+                                <p style="margin: 0.25rem 0 0 0; color: var(--accent-color); font-size: 0.8rem;">Score: ${item.overallScore}/100</p>
+                            </div>
+                        </div>
+                    `;
+                    return div;
+                }
+            });
+            
+            console.log('Virtual scroll enabled with 1000 items');
+        };
+
+        // Show optimization badges
+        window.showOptimizationBadges = function() {
+            badgesEnabled = !badgesEnabled;
+            const badges = document.querySelectorAll('.image-optimization-badge');
+            badges.forEach(badge => {
+                badge.style.display = badgesEnabled ? 'block' : 'none';
+            });
+            
+            console.log(`Optimization badges ${badgesEnabled ? 'shown' : 'hidden'}`);
+        };
+
+        // Clear all images
+        window.clearImages = function() {
+            document.getElementById('image-grid-demo').innerHTML = '';
+            document.getElementById('wine-cards-demo').innerHTML = '';
+            document.getElementById('virtual-scroll-demo').innerHTML = '';
+            
+            if (virtualScroll) {
+                virtualScroll.destroy();
+                virtualScroll = null;
+            }
+            
+            updateStats();
+        };
+
+        // Render wine cards
+        function renderWineCards() {
+            const container = document.getElementById('wine-cards-demo');
+            container.innerHTML = '';
+            
+            sampleWines.forEach(wine => {
+                const card = optimizedWineCard.createWineCard(wine, {
+                    cardType: 'grid',
+                    showImageOptimizationBadge: badgesEnabled
+                });
+                container.appendChild(card);
+            });
+            
+            updateStats();
+        }
+
+        // Initialize demo when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDemo);
+        } else {
+            initDemo();
+        }
+    </script>
+</body>
+</html>
