@@ -322,4 +322,76 @@ export class SommOSUI {
             return false;
         }
     }
+
+    // Image optimization helpers
+    optimizeImagesInContainer(container, options = {}) {
+        if (!window.imageOptimizer) {
+            console.warn('ImageOptimizer not available');
+            return;
+        }
+
+        const images = container.querySelectorAll('img:not([data-optimized="true"])');
+        images.forEach(img => {
+            window.imageOptimizer.optimizeImage(img, options);
+        });
+    }
+
+    createOptimizedImage(src, alt, options = {}) {
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = alt || '';
+        img.loading = options.lazyLoad !== false ? 'lazy' : 'eager';
+        img.dataset.optimized = 'true';
+        
+        if (window.imageOptimizer) {
+            window.imageOptimizer.optimizeImage(img, options);
+        }
+        
+        return img;
+    }
+
+    createImagePlaceholder(width, height, options = {}) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'image-placeholder';
+        placeholder.style.width = width ? `${width}px` : '100%';
+        placeholder.style.height = height ? `${height}px` : '200px';
+        
+        if (options.skeleton) {
+            const skeleton = document.createElement('div');
+            skeleton.className = 'image-skeleton';
+            placeholder.appendChild(skeleton);
+        }
+        
+        return placeholder;
+    }
+
+    // Virtual scroll helpers
+    createVirtualScrollContainer(container, items, itemHeight, options = {}) {
+        if (!window.VirtualScroll) {
+            console.warn('VirtualScroll not available');
+            return null;
+        }
+
+        return new window.VirtualScroll(container, items, itemHeight, options);
+    }
+
+    // Performance monitoring for images
+    trackImagePerformance(img) {
+        if (!img.complete) {
+            const startTime = performance.now();
+            
+            img.addEventListener('load', () => {
+                const loadTime = performance.now() - startTime;
+                console.log(`Image loaded in ${loadTime.toFixed(2)}ms:`, img.src);
+                
+                // Track in analytics if available
+                if (window.gtag) {
+                    window.gtag('event', 'image_load_time', {
+                        load_time: Math.round(loadTime),
+                        image_url: img.src
+                    });
+                }
+            });
+        }
+    }
 }

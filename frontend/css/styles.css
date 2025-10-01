@@ -1100,6 +1100,11 @@ select:focus {
     100% { box-shadow: 0 0 5px var(--accent-color); }
 }
 
+@keyframes placeholder-shift {
+    0% { background-position: 0 0; }
+    100% { background-position: 20px 20px; }
+}
+
 /* Utility Animation Classes */
 .fade-in {
     animation: fadeIn 0.6s ease-out;
@@ -3984,5 +3989,399 @@ select:focus {
     
     .wine-detail-actions .btn {
         flex: 1;
+    }
+}
+
+/* ============================================================================
+   IMAGE OPTIMIZATION STYLES
+   ============================================================================ */
+
+/* Image placeholder and loading states */
+.image-placeholder {
+    position: relative;
+    background: var(--surface);
+    border-radius: var(--border-radius-medium);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    transition: all var(--transition-medium);
+}
+
+.image-placeholder::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, 
+        rgba(255, 255, 255, 0.05) 25%, 
+        transparent 25%, 
+        transparent 75%, 
+        rgba(255, 255, 255, 0.05) 75%);
+    background-size: 20px 20px;
+    animation: placeholder-shift 2s linear infinite;
+}
+
+.image-skeleton {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 255, 255, 0.1), 
+        transparent);
+    animation: shimmer 1.5s infinite;
+}
+
+/* Optimized image styles */
+img[data-optimized="true"] {
+    transition: opacity var(--transition-medium), transform var(--transition-medium);
+    will-change: opacity, transform;
+}
+
+img[data-optimized="true"]:not([data-loaded="true"]) {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+img[data-optimized="true"][data-loaded="true"] {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Image hover effects */
+.wine-card img,
+.catalog-card img,
+.pairing-card img {
+    transition: transform var(--transition-medium), filter var(--transition-medium);
+}
+
+.wine-card:hover img,
+.catalog-card:hover img,
+.pairing-card:hover img {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+/* Responsive image containers */
+.image-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--border-radius-medium);
+    background: var(--surface);
+}
+
+.image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+/* Wine bottle image specific styles */
+.wine-bottle-image {
+    width: 100%;
+    height: 300px;
+    object-fit: contain;
+    object-position: center;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.05) 0%, 
+        rgba(255, 255, 255, 0.02) 100%);
+    border-radius: var(--border-radius-medium);
+    padding: 1rem;
+}
+
+.wine-bottle-image[data-loaded="true"] {
+    background: transparent;
+}
+
+/* Virtual scroll container */
+.virtual-scroll-container {
+    position: relative;
+    overflow: auto;
+    height: 100%;
+    scroll-behavior: smooth;
+}
+
+.virtual-scroll-content {
+    position: relative;
+    width: 100%;
+}
+
+.virtual-scroll-item {
+    position: absolute;
+    width: 100%;
+    transition: transform var(--transition-fast);
+}
+
+/* Image grid layouts */
+.image-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.image-grid.compact {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+
+.image-grid.large {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Image aspect ratio containers */
+.aspect-ratio-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    overflow: hidden;
+}
+
+.aspect-ratio-container.aspect-16-9 {
+    padding-bottom: 56.25%; /* 16:9 */
+}
+
+.aspect-ratio-container.aspect-4-3 {
+    padding-bottom: 75%; /* 4:3 */
+}
+
+.aspect-ratio-container.aspect-1-1 {
+    padding-bottom: 100%; /* 1:1 */
+}
+
+.aspect-ratio-container.aspect-3-2 {
+    padding-bottom: 66.67%; /* 3:2 */
+}
+
+.aspect-ratio-container img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Image loading states */
+.image-loading {
+    position: relative;
+    background: var(--surface);
+    border-radius: var(--border-radius-medium);
+    overflow: hidden;
+}
+
+.image-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border: 3px solid var(--border);
+    border-top: 3px solid var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Progressive image loading */
+.progressive-image {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--border-radius-medium);
+}
+
+.progressive-image .image-blur {
+    filter: blur(5px);
+    transform: scale(1.1);
+    transition: filter var(--transition-slow), transform var(--transition-slow);
+}
+
+.progressive-image .image-sharp {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transition: opacity var(--transition-slow);
+}
+
+.progressive-image.loaded .image-blur {
+    filter: blur(0);
+    transform: scale(1);
+}
+
+.progressive-image.loaded .image-sharp {
+    opacity: 1;
+}
+
+/* Image error states */
+.image-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: var(--border-radius-medium);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 2rem;
+    min-height: 200px;
+}
+
+.image-error::before {
+    content: '🍷';
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+/* Image optimization indicators */
+.image-optimization-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius-small);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.image-container:hover .image-optimization-badge {
+    opacity: 1;
+}
+
+/* WebP support indicator */
+.webp-supported::after {
+    content: 'WebP';
+    background: var(--success);
+}
+
+.avif-supported::after {
+    content: 'AVIF';
+    background: var(--accent-color);
+}
+
+/* Image compression quality indicators */
+.quality-high::after {
+    content: 'HQ';
+    background: var(--success);
+}
+
+.quality-medium::after {
+    content: 'MQ';
+    background: var(--warning);
+}
+
+.quality-low::after {
+    content: 'LQ';
+    background: var(--error);
+}
+
+/* Responsive image breakpoints */
+@media (max-width: 768px) {
+    .image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    .image-grid.large {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .wine-bottle-image {
+        height: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .wine-bottle-image {
+        height: 200px;
+    }
+    
+    .image-optimization-badge {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.4rem;
+    }
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .image-container img {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* Reduced motion support for image animations */
+@media (prefers-reduced-motion: reduce) {
+    img[data-optimized="true"],
+    .image-placeholder,
+    .image-skeleton,
+    .progressive-image .image-blur,
+    .progressive-image .image-sharp {
+        transition: none;
+        animation: none;
+    }
+    
+    .image-container:hover img {
+        transform: none;
+        filter: none;
+    }
+}
+
+/* Dark mode image optimizations */
+@media (prefers-color-scheme: dark) {
+    .image-placeholder {
+        background: var(--surface-elevated);
+    }
+    
+    .image-placeholder::before {
+        background: linear-gradient(45deg, 
+            rgba(255, 255, 255, 0.03) 25%, 
+            transparent 25%, 
+            transparent 75%, 
+            rgba(255, 255, 255, 0.03) 75%);
+    }
+    
+    .image-skeleton {
+        background: linear-gradient(90deg, 
+            transparent, 
+            rgba(255, 255, 255, 0.05), 
+            transparent);
+    }
+}
+
+/* Print styles for images */
+@media print {
+    .image-optimization-badge,
+    .image-skeleton,
+    .image-placeholder::before {
+        display: none;
+    }
+    
+    img[data-optimized="true"] {
+        opacity: 1 !important;
+        transform: none !important;
     }
 }
