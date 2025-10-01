@@ -5,9 +5,9 @@
     --secondary-color: #18243d;
     --accent-color: #9c7cff;
     --gold-color: #f2c76e;
-    --text-primary: #f8fafc;
-    --text-secondary: #c1c7d0;
-    --text-muted: #8f9bb3;
+    --text-primary: #ffffff;
+    --text-secondary: #e2e8f0;
+    --text-muted: #94a3b8;
     --background: radial-gradient(circle at top, #0b1020 0%, #050912 60%, #02040a 100%);
     --surface: rgba(19, 30, 53, 0.92);
     --surface-elevated: rgba(31, 48, 78, 0.9);
@@ -807,11 +807,14 @@ select:focus {
     transition: left var(--transition-fast);
 }
 
-.btn:hover {
+.btn:hover,
+.btn:focus {
     background: var(--surface-elevated);
     border-color: var(--border-light);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px var(--shadow);
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
 }
 
 .btn:hover::before {
@@ -978,9 +981,12 @@ select:focus {
     transition: all var(--transition-fast);
 }
 
-.modal-close:hover {
+.modal-close:hover,
+.modal-close:focus {
     color: var(--text-primary);
     background: var(--surface);
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
 }
 
 .modal-body {
@@ -1149,9 +1155,12 @@ select:focus {
     transition: all var(--transition-fast);
 }
 
-.search-btn:hover {
+.search-btn:hover,
+.search-btn:focus {
     color: var(--accent-color);
     background: var(--surface-elevated);
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
 }
 
 .filter-controls {
@@ -1190,6 +1199,9 @@ select:focus {
     overflow: hidden;
     backdrop-filter: blur(14px);
     box-shadow: 0 10px 40px rgba(7, 13, 27, 0.45);
+    color: var(--text-primary);
+    /* Ensure minimum contrast ratio of 4.5:1 for normal text */
+    background-color: rgba(19, 30, 53, 0.95);
 }
 
 .wine-card::before {
@@ -1204,10 +1216,13 @@ select:focus {
     transition: opacity var(--transition-medium);
 }
 
-.wine-card:hover {
+.wine-card:hover,
+.wine-card:focus {
     transform: translateY(-6px);
     box-shadow: 0 20px 60px var(--shadow-elevated);
     border-color: var(--accent-color);
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
 }
 
 .wine-card:hover::before {
