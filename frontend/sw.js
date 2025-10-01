@@ -2,8 +2,39 @@ const PRECACHE_VERSION = 'v1';
 const RUNTIME_VERSION = 'v1';
 const PRECACHE_CACHE_NAME = `sommos-precache-${PRECACHE_VERSION}`;
 const RUNTIME_CACHE_NAME = `sommos-runtime-${RUNTIME_VERSION}`;
+const STATIC_CACHE_NAME = `sommos-static-${RUNTIME_VERSION}`;
+const API_CACHE_NAME = `sommos-api-${RUNTIME_VERSION}`;
+const IMAGE_CACHE_NAME = `sommos-images-${RUNTIME_VERSION}`;
+
+// Implement strategic caching
+// Each resource type uses an optimized caching strategy:
+// - STATIC: Cache-first for JS/CSS/fonts (fast, versioned assets)
+// - API: Network-first for API calls (fresh data priority, offline fallback)
+// - IMAGES: Stale-while-revalidate for images (fast display, background updates)
+const CACHE_STRATEGIES = {
+  STATIC: 'cache-first',
+  API: 'network-first',
+  IMAGES: 'stale-while-revalidate'
+};
+
 const CACHEABLE_API_PATHS = new Set(['/api/system/health']);
 const APP_SHELL_PATHS = ['/index.html', '/test-pairing.html', '/manifest.json'];
+
+// Cache configuration
+const CACHE_CONFIG = {
+  STATIC: {
+    maxAge: 86400000, // 24 hours
+    maxEntries: 100
+  },
+  API: {
+    maxAge: 300000, // 5 minutes
+    maxEntries: 50
+  },
+  IMAGES: {
+    maxAge: 604800000, // 7 days
+    maxEntries: 200
+  }
+};
 
 const manifestEntriesRaw = self.__WB_MANIFEST || [];
 const manifestEntries = Array.isArray(manifestEntriesRaw) ? manifestEntriesRaw : [];
@@ -31,7 +62,11 @@ if (typeof self !== 'undefined') {
     precacheRequests,
     precachePathSet,
     precacheCacheName: PRECACHE_CACHE_NAME,
-    runtimeCacheName: RUNTIME_CACHE_NAME
+    runtimeCacheName: RUNTIME_CACHE_NAME,
+    staticCacheName: STATIC_CACHE_NAME,
+    apiCacheName: API_CACHE_NAME,
+    imageCacheName: IMAGE_CACHE_NAME,
+    cacheStrategies: CACHE_STRATEGIES
   };
 }
 
@@ -43,6 +78,108 @@ const getPrecacheFallback = async (path) => {
     return cached;
   }
   return cache.match(path);
+};
+
+// Strategic cache handlers
+const cacheFirst = async (request, cacheName) => {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  if (cached) {
+    return cached;
+  }
+  
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.ok) {
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    return Response.error();
+  }
+};
+
+const networkFirst = async (request, cacheName) => {
+  const cache = await caches.open(cacheName);
+  
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.ok) {
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    const cached = await cache.match(request);
+    if (cached) {
+      return cached;
+    }
+    return offlineApiResponse();
+  }
+};
+
+const staleWhileRevalidate = async (request, cacheName) => {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  
+  // Start network request in background
+  const networkPromise = fetch(request).then(async (networkResponse) => {
+    if (networkResponse && networkResponse.ok) {
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  }).catch(() => null);
+  
+  // Return cached version immediately if available
+  if (cached) {
+    return cached;
+  }
+  
+  // If no cache, wait for network
+  return networkPromise || Response.error();
+};
+
+// Determine request type and apply appropriate strategy
+const getRequestType = (url) => {
+  const pathname = new URL(url).pathname;
+  
+  if (pathname.startsWith('/api/')) {
+    return 'API';
+  }
+  
+  if (pathname.match(/\.(jpg|jpeg|png|gif|webp|svg|ico)$/i)) {
+    return 'IMAGES';
+  }
+  
+  if (pathname.startsWith('/assets/') || 
+      pathname.startsWith('/icons/') || 
+      pathname.match(/\.(js|css|woff|woff2|ttf|eot)$/i)) {
+    return 'STATIC';
+  }
+  
+  return 'STATIC'; // Default to static for other resources
+};
+
+const getCacheName = (requestType) => {
+  switch (requestType) {
+    case 'API': return API_CACHE_NAME;
+    case 'IMAGES': return IMAGE_CACHE_NAME;
+    case 'STATIC': return STATIC_CACHE_NAME;
+    default: return STATIC_CACHE_NAME;
+  }
+};
+
+const applyCacheStrategy = async (request, requestType) => {
+  const cacheName = getCacheName(requestType);
+  
+  switch (requestType) {
+    case 'API':
+      return networkFirst(request, cacheName);
+    case 'IMAGES':
+      return staleWhileRevalidate(request, cacheName);
+    case 'STATIC':
+    default:
+      return cacheFirst(request, cacheName);
+  }
 };
 
 self.addEventListener('install', (event) => {
@@ -59,9 +196,17 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const cacheNames = await caches.keys();
+      const validCacheNames = [
+        PRECACHE_CACHE_NAME,
+        RUNTIME_CACHE_NAME,
+        STATIC_CACHE_NAME,
+        API_CACHE_NAME,
+        IMAGE_CACHE_NAME
+      ];
+      
       await Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== PRECACHE_CACHE_NAME && cacheName !== RUNTIME_CACHE_NAME) {
+          if (!validCacheNames.includes(cacheName)) {
             return caches.delete(cacheName);
           }
           return Promise.resolve();
@@ -100,6 +245,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Handle navigation requests
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -123,50 +269,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Check if request is in precache first
+  if (precachePathSet.has(requestUrl.pathname)) {
+    event.respondWith(
+      (async () => {
+        const precache = await caches.open(PRECACHE_CACHE_NAME);
+        const cachedPrecache = await precache.match(event.request);
+        if (cachedPrecache) {
+          return cachedPrecache;
+        }
+        
+        // Fallback to strategic caching for precache items not found
+        const requestType = getRequestType(event.request.url);
+        return applyCacheStrategy(event.request, requestType);
+      })()
+    );
+    return;
+  }
+
+  // Apply strategic caching for all other requests
   event.respondWith(
     (async () => {
-      const precache = await caches.open(PRECACHE_CACHE_NAME);
-      const cachedPrecache = await precache.match(event.request);
-      if (cachedPrecache) {
-        return cachedPrecache;
-      }
-
-      const isApiRequest = requestUrl.pathname.startsWith('/api/');
-      const shouldRuntimeCache =
-        precachePathSet.has(requestUrl.pathname) ||
-        requestUrl.pathname.startsWith('/assets/') ||
-        requestUrl.pathname.startsWith('/icons/') ||
-        (!isApiRequest || CACHEABLE_API_PATHS.has(requestUrl.pathname));
-
-      try {
-        const networkResponse = await fetch(event.request);
-        if (networkResponse && networkResponse.ok && shouldRuntimeCache) {
-          const runtimeCache = await caches.open(RUNTIME_CACHE_NAME);
-          await runtimeCache.put(event.request, networkResponse.clone());
-        }
-        return networkResponse;
-      } catch (error) {
-        if (shouldRuntimeCache) {
-          const runtimeCache = await caches.open(RUNTIME_CACHE_NAME);
-          const cachedRuntime = await runtimeCache.match(event.request);
-          if (cachedRuntime) {
-            return cachedRuntime;
-          }
-        }
-
-        if (isApiRequest) {
-          return offlineApiResponse();
-        }
-
-        if (requestUrl.pathname.endsWith('.html')) {
-          const fallback = await getPrecacheFallback(requestUrl.pathname);
-          if (fallback) {
-            return fallback;
-          }
-        }
-
-        return Response.error();
-      }
+      const requestType = getRequestType(event.request.url);
+      return applyCacheStrategy(event.request, requestType);
     })()
   );
 });

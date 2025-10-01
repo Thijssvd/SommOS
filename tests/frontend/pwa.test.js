@@ -141,3 +141,30 @@ describe('Service worker asset cache keys', () => {
     expect(secondHooks.precachePathSet.has('/assets/app.abc123.js')).toBe(false);
   });
 });
+
+describe('Strategic caching implementation', () => {
+  test('exposes cache strategies configuration', async () => {
+    const hooks = await evaluateServiceWorker([]);
+
+    expect(hooks.cacheStrategies).toEqual({
+      STATIC: 'cache-first',
+      API: 'network-first',
+      IMAGES: 'stale-while-revalidate'
+    });
+  });
+
+  test('exposes separate cache names for different resource types', async () => {
+    const hooks = await evaluateServiceWorker([]);
+
+    expect(hooks.staticCacheName).toContain('sommos-static-');
+    expect(hooks.apiCacheName).toContain('sommos-api-');
+    expect(hooks.imageCacheName).toContain('sommos-images-');
+  });
+
+  test('maintains backward compatibility with existing cache names', async () => {
+    const hooks = await evaluateServiceWorker([]);
+
+    expect(hooks.precacheCacheName).toContain('sommos-precache-');
+    expect(hooks.runtimeCacheName).toContain('sommos-runtime-');
+  });
+});
