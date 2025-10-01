@@ -1,0 +1,29 @@
+services:
+  sommos:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Environment variables should be set in .env file or passed at runtime
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      OPEN_METEO_BASE: ${OPEN_METEO_BASE:-https://archive-api.open-meteo.com/v1/archive}
+      WEATHER_API_KEY: ${WEATHER_API_KEY}
+      DATABASE_PATH: /usr/src/app/data/sommos.db
+    ports:
+      - 3000:3000
+    volumes:
+      - sommos_data:/usr/src/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  sommos_data:

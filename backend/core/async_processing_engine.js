@@ -37,7 +37,7 @@ class AsyncProcessingEngine extends EventEmitter {
             processingTimes: []
         };
         
-        // Start job processor
+        // Start job processor (but don't create workers until needed)
         this.startJobProcessor();
     }
 
@@ -339,7 +339,8 @@ class WorkerPoolManager {
         this.busyWorkers = new Set();
         this.workerTasks = new Map();
         
-        this.initializeWorkers();
+        // Don't initialize workers immediately - create them on demand
+        // this.initializeWorkers();
     }
 
     /**
@@ -380,6 +381,11 @@ class WorkerPoolManager {
      * Execute task in worker
      */
     async executeTask(taskType, data) {
+        // Initialize workers on first use
+        if (this.workers.size === 0) {
+            this.initializeWorkers();
+        }
+        
         return new Promise((resolve, reject) => {
             if (this.availableWorkers.length === 0) {
                 reject(new Error('No available workers'));
@@ -438,7 +444,10 @@ class WorkerPoolManager {
      * Handle worker exit
      */
     handleWorkerExit(workerId, code) {
-        console.log(`Worker ${workerId} exited with code ${code}`);
+        // Only log in non-test environments and when there's an actual error
+        if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID && code !== 0) {
+            console.log(`Worker ${workerId} exited with code ${code}`);
+        }
         this.workers.delete(workerId);
         this.busyWorkers.delete(workerId);
         

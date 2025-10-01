@@ -4,17 +4,17 @@ This guide explains how to obtain and configure the API keys needed for SommOS.
 
 ## 🔑 Required API Keys
 
-### 1. OpenAI API Key (REQUIRED)
+### 1. DeepSeek API Key (REQUIRED)
 **Purpose**: Powers AI wine pairing recommendations
 
 **How to get it**:
-1. Visit [OpenAI Platform](https://platform.openai.com/)
+1. Visit [DeepSeek Platform](https://platform.deepseek.com/)
 2. Create an account or sign in
-3. Go to [API Keys](https://platform.openai.com/api-keys)
+3. Go to [API Keys](https://platform.deepseek.com/api_keys)
 4. Click "Create new secret key"
 5. Copy the key (starts with `sk-...`)
 
-**Cost**: Pay-per-use, typically $0.01-0.03 per recommendation
+**Cost**: Pay-per-use, typically $0.001-0.01 per recommendation (much cheaper than OpenAI)
 **Free tier**: $5 in free credits for new accounts
 
 ### 2. Open-Meteo API Key (OPTIONAL)
@@ -47,10 +47,10 @@ code .env
 
 ### Step 3: Configure API Keys
 
-#### Minimal Configuration (OpenAI only):
+#### Minimal Configuration (DeepSeek only):
 ```bash
 # Required for AI pairing
-OPENAI_API_KEY=sk-your-actual-openai-key-here
+DEEPSEEK_API_KEY=sk-your-actual-deepseek-key-here
 
 # Optional - leave empty for free tier
 OPEN_METEO_API_KEY=
@@ -59,7 +59,7 @@ OPEN_METEO_API_KEY=
 #### Full Configuration (with Open-Meteo key):
 ```bash
 # Required for AI pairing
-OPENAI_API_KEY=sk-your-actual-openai-key-here
+DEEPSEEK_API_KEY=sk-your-actual-deepseek-key-here
 
 # Optional - for higher rate limits
 OPEN_METEO_API_KEY=your-open-meteo-key-here
@@ -67,7 +67,7 @@ OPEN_METEO_API_KEY=your-open-meteo-key-here
 
 ## 🧪 Testing API Keys
 
-### Test OpenAI Connection:
+### Test DeepSeek Connection:
 ```bash
 # Start the application
 npm start
@@ -120,7 +120,7 @@ chmod 600 .env
 
 ## 🔧 Troubleshooting
 
-### "OpenAI API key not configured"
+### "DeepSeek API key not configured"
 - Check that your key starts with `sk-`
 - Verify the key is correctly set in .env
 - Restart the application after changing .env
@@ -131,31 +131,31 @@ chmod 600 .env
 - Try leaving OPEN_METEO_API_KEY empty for free tier
 
 ### "Exceeded rate limits"
-- OpenAI: Check your billing and usage limits
+- DeepSeek: Check your billing and usage limits
 - Open-Meteo: Consider getting a free account for higher limits
 
 ## 📊 Expected Usage
 
 ### Typical Daily Usage:
-- **OpenAI**: 10-50 requests (depending on pairing requests)
+- **DeepSeek**: 10-50 requests (depending on pairing requests)
 - **Open-Meteo**: 1-10 requests (weather data is cached)
 
 ### Cost Estimates:
-- **OpenAI**: $0.50-5.00/month for typical wine cellar usage
+- **DeepSeek**: $0.10-1.00/month for typical wine cellar usage (much cheaper than OpenAI)
 - **Open-Meteo**: FREE for personal/small commercial use
 
 ## 🚀 Quick Start
 
 For immediate testing with minimal setup:
 
-1. **Get OpenAI key** (required for AI features)
+1. **Get DeepSeek key** (required for AI features)
 2. **Leave Open-Meteo empty** (uses free tier)
 3. **Deploy and test**
 
 ```bash
 # Quick setup
 cp .env.production .env
-echo "OPENAI_API_KEY=sk-your-key-here" >> .env
+echo "DEEPSEEK_API_KEY=sk-your-key-here" >> .env
 echo "OPEN_METEO_API_KEY=" >> .env
 
 # Deploy

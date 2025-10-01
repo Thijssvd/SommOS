@@ -94,8 +94,9 @@ class PairingEngine {
         this.learningEngine = learningEngine;
         this.explainabilityService = explainabilityService;
         const config = getConfig();
-        this.openai = config.openAI.apiKey ? new OpenAI({
-            apiKey: config.openAI.apiKey,
+        this.deepseek = config.deepSeek.apiKey ? new OpenAI({
+            apiKey: config.deepSeek.apiKey,
+            baseURL: 'https://api.deepseek.com/v1',
         }) : null;
         this.scoringWeights = {
             style_match: 0.25,
@@ -283,9 +284,9 @@ class PairingEngine {
         const forceAI = options.forceAI === true;
 
         try {
-            // Validate OpenAI availability
-            if (!this.openai && !forceAI) {
-                console.warn('OpenAI not available, falling back to traditional pairing');
+            // Validate DeepSeek availability
+            if (!this.deepseek && !forceAI) {
+                console.warn('DeepSeek not available, falling back to traditional pairing');
                 const fallbackDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
                 return await this.generateTraditionalPairings(fallbackDish, preferences);
             }
@@ -951,8 +952,8 @@ Please respond with a JSON object containing:
             
 Respond only with valid JSON.`;
             
-            const response = await this.openai.chat.completions.create({
-                model: 'gpt-3.5-turbo',
+            const response = await this.deepseek.chat.completions.create({
+                model: 'deepseek-chat',
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.3,
                 max_tokens: 200
@@ -984,8 +985,8 @@ Respond only with valid JSON.`;
      * Call OpenAI for wine pairing recommendations
      */
     async callOpenAIForPairings(dish, context, wineInventory, preferences) {
-        if (!this.openai) {
-            throw new Error('OpenAI not configured');
+        if (!this.deepseek) {
+            throw new Error('DeepSeek not configured');
         }
         
         const inventorySummary = wineInventory.slice(0, 50).map(wine => 
@@ -1017,8 +1018,8 @@ Respond with a JSON array of recommendations in this format:
 Focus on wines that create harmony or interesting contrasts with the dish. Consider the setting (luxury yacht), occasion, and guest preferences.`;
         
         try {
-            const response = await this.openai.chat.completions.create({
-                model: 'gpt-4',
+            const response = await this.deepseek.chat.completions.create({
+                model: 'deepseek-chat',
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.4,
                 max_tokens: 1500

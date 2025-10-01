@@ -57,8 +57,8 @@ const checks = [
         sensitive: true
     },
     {
-        name: 'OPENAI_API_KEY',
-        value: envConfig.openAI.apiKey,
+        name: 'DEEPSEEK_API_KEY',
+        value: envConfig.deepSeek.apiKey,
         required: false,
         sensitive: true,
         service: 'AI-powered vintage summaries'
@@ -128,7 +128,7 @@ if (optionalFeatures.length > 0) {
 } else {
     console.log('⚪ No optional API keys configured');
     console.log('   Add API keys to .env for enhanced features:');
-    console.log('   - OPENAI_API_KEY for AI-powered summaries');
+    console.log('   - DEEPSEEK_API_KEY for AI-powered summaries');
     console.log('   - WEATHER_API_KEY for enhanced weather data');
 }
 

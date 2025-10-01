@@ -21,8 +21,9 @@ class VintageIntelligenceService {
         this.db = database || Database.getInstance();
         this.weatherAnalysis = new WeatherAnalysisService(this.db);
         const config = getConfig();
-        this.openai = config.openAI.apiKey ? new OpenAI({
-            apiKey: config.openAI.apiKey,
+        this.deepseek = config.deepSeek.apiKey ? new OpenAI({
+            apiKey: config.deepSeek.apiKey,
+            baseURL: 'https://api.deepseek.com/v1',
         }) : null;
         
         // Cache for avoiding duplicate processing
@@ -190,10 +191,10 @@ class VintageIntelligenceService {
     async generateVintageSummary(wineData, weatherAnalysis) {
         const prompt = this.buildVintageSummaryPrompt(wineData, weatherAnalysis);
         
-        if (this.openai) {
+        if (this.deepseek) {
             try {
-                const response = await this.openai.chat.completions.create({
-                    model: 'gpt-4',
+                const response = await this.deepseek.chat.completions.create({
+                    model: 'deepseek-chat',
                     messages: [
                         {
                             role: 'system',

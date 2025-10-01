@@ -1,0 +1,23 @@
+services:
+  sommos:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      # Add your environment variables here or use .env file
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-sk-your-deepseek-key-here}
+      JWT_SECRET: ${JWT_SECRET:-7de47ae8e9726949ef0c6b314e712c556c6271a58c2e198f5920cd3a129460e1c0ace5914ade153c71724f5a582185fb0033a16970c0020f250d98fe6fe851be}
+      SESSION_SECRET: ${SESSION_SECRET:-0aa65e138458e0d9d0e9112c6c1748d576eefa1712e5f7d3ffa64c45266dba5e}
+      OPEN_METEO_BASE: https://archive-api.open-meteo.com/v1/archive
+      WEATHER_API_KEY: optional
+      DATABASE_PATH: /usr/src/app/data/sommos.db
+    ports:
+      - 3000:3000
+      - 9229:9229
+    volumes:
+      - ./data:/usr/src/app/data
+      - .:/usr/src/app
+    command: ["node", "--inspect=0.0.0.0:9229", "backend/server.js"]
+    restart: unless-stopped

@@ -39,7 +39,8 @@ class ParallelProcessingEngine extends EventEmitter {
             workerUtilization: 0
         };
         
-        this.initializeWorkers();
+        // Don't initialize workers immediately - create them on demand
+        // this.initializeWorkers();
         this.startTaskProcessor();
     }
 
@@ -82,6 +83,11 @@ class ParallelProcessingEngine extends EventEmitter {
      * Execute task in parallel
      */
     async executeTask(taskType, data, options = {}) {
+        // Initialize workers on first use
+        if (this.workers.size === 0) {
+            this.initializeWorkers();
+        }
+        
         const taskId = this.generateTaskId();
         const task = {
             id: taskId,

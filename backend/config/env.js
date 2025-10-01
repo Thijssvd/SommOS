@@ -20,9 +20,9 @@ const schema = z.object({
     OPEN_METEO_BASE: z.string({ required_error: 'OPEN_METEO_BASE is required' })
         .trim()
         .url('OPEN_METEO_BASE must be a valid URL'),
-    OPENAI_API_KEY: z.string({ required_error: 'OPENAI_API_KEY is required' })
+    DEEPSEEK_API_KEY: z.string({ required_error: 'DEEPSEEK_API_KEY is required' })
         .trim()
-        .min(1, 'OPENAI_API_KEY cannot be empty'),
+        .min(1, 'DEEPSEEK_API_KEY cannot be empty'),
     SOMMOS_DISABLE_EXTERNAL_CALLS: z.enum(['true', 'false']).optional(),
     DATABASE_PATH: z.string().trim().min(1).optional(),
     JWT_SECRET: z.string({ required_error: 'JWT_SECRET is required' })
@@ -77,8 +77,8 @@ function normalizeConfig(parsed) {
         openMeteo: {
             baseUrl: parsed.OPEN_METEO_BASE,
         },
-        openAI: {
-            apiKey: parsed.OPENAI_API_KEY,
+        deepSeek: {
+            apiKey: parsed.DEEPSEEK_API_KEY,
         },
         database: {
             path: parsed.DATABASE_PATH || null,
