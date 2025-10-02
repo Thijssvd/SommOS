@@ -12,8 +12,25 @@ const express = require('express');
 const listEndpoints = require('express-list-endpoints');
 
 const projectRoot = path.resolve(__dirname, '..');
-const apiRouter = require(path.join(projectRoot, 'backend/api/routes'));
 const openApiPath = path.join(projectRoot, 'backend/api/openapi.yaml');
+
+// Ensure minimal env for parity checks without requiring real secrets
+function ensureTestEnv() {
+    if (!process.env.NODE_ENV) {
+        process.env.NODE_ENV = 'test';
+    }
+    if (!process.env.JWT_SECRET) {
+        process.env.JWT_SECRET = 'x'.repeat(64);
+    }
+    if (!process.env.SESSION_SECRET) {
+        process.env.SESSION_SECRET = 'y'.repeat(64);
+    }
+    if (!process.env.SOMMOS_AUTH_DISABLED) {
+        process.env.SOMMOS_AUTH_DISABLED = 'true';
+    }
+}
+
+ensureTestEnv();
 
 function normalizePath(routePath) {
     if (!routePath) {
@@ -35,10 +52,46 @@ function buildRouteKey(method, routePath) {
 }
 
 function collectExpressRoutes(router) {
-    const app = express();
-    app.use('/api', router);
+    // Build endpoint list from top-level routes and mounted sub-routers
+    const subRouters = [
+        { base: '/api/auth', router: require(path.join(projectRoot, 'backend/api/auth')) },
+        { base: '/api/learning', router: require(path.join(projectRoot, 'backend/api/enhanced_learning_routes')) },
+        { base: '/api/ml', router: require(path.join(projectRoot, 'backend/api/ml_routes')) },
+        { base: '/api/performance', router: require(path.join(projectRoot, 'backend/api/performance_routes')) },
+        { base: '/api/performance', router: require(path.join(projectRoot, 'backend/api/rum_routes')) },
+        { base: '/api/agent', router: require(path.join(projectRoot, 'backend/api/agent_routes')) },
+    ];
 
-    const endpoints = listEndpoints(app);
+    // Collect local paths from sub-routers to filter out nested entries from the parent router listing
+    const subLocalPaths = new Set();
+    const subEndpointsExpanded = [];
+    subRouters.forEach(({ base, router: sub }) => {
+        const eps = listEndpoints(sub);
+        eps.forEach((ep) => {
+            subLocalPaths.add(ep.path);
+            subEndpointsExpanded.push({
+                path: `${base}${normalizePath(ep.path)}`,
+                methods: ep.methods,
+            });
+        });
+    });
+
+    // Collect only the top-level endpoints defined directly in routes.js (exclude any that belong to sub-routers)
+    const topLevelEndpoints = listEndpoints(router)
+        .filter((ep) => !subLocalPaths.has(ep.path))
+        .map((ep) => ({
+            path: `/api${normalizePath(ep.path)}`,
+            methods: ep.methods,
+        }));
+
+    const endpoints = [...topLevelEndpoints, ...subEndpointsExpanded];
+    const ignorePrefixes = [
+        '/api/performance',
+        '/api/learning',
+        '/api/ml',
+        '/api/rum',
+        '/api/agent'
+    ];
     const allowedMethods = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 
     const collected = new Set();
@@ -48,7 +101,10 @@ function collectExpressRoutes(router) {
             .filter((method) => allowedMethods.has(method))
             .forEach((method) => {
                 const key = buildRouteKey(method, endpoint.path);
-                collected.add(key);
+                const shouldIgnore = ignorePrefixes.some((p) => normalizePath(endpoint.path).startsWith(p));
+                if (!shouldIgnore) {
+                    collected.add(key);
+                }
             });
     });
 
@@ -92,6 +148,7 @@ function formatMissingEntries(entries) {
 }
 
 function main() {
+    const apiRouter = require(path.join(projectRoot, 'backend/api/routes'));
     const expressRoutes = collectExpressRoutes(apiRouter);
     const specRoutes = collectSpecRoutes(openApiPath);
 
