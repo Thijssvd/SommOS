@@ -231,6 +231,9 @@ CMD ["node", "backend/server.js"]
 NODE_ENV=production
 PORT=3001
 DATABASE_URL=/data/sommos.db
+# AI (optional)
+DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+# Optional fallback
 OPENAI_API_KEY=${OPENAI_API_KEY}
 ```
 

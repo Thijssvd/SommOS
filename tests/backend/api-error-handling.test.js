@@ -48,7 +48,9 @@ describe('SommOS API error handling and edge cases', () => {
             .expect(500)
             .expect(res => {
                 expect(res.body.success).toBe(false);
-                expect(res.body.error).toBe('Pairing failure');
+                expect(res.body.error.code).toBe('PAIRING_RECOMMENDATION_FAILED');
+                expect(res.body.error.message).toBe('Pairing failure');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
@@ -57,7 +59,9 @@ describe('SommOS API error handling and edge cases', () => {
             .expect(500)
             .expect(res => {
                 expect(res.body.success).toBe(false);
-                expect(res.body.error).toBe('Quick pairing failure');
+                expect(res.body.error.code).toBe('PAIRING_QUICK_FAILED');
+                expect(res.body.error.message).toBe('Quick pairing failure');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         jest.restoreAllMocks();
@@ -171,7 +175,9 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/procurement/opportunities')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Opportunity analysis failed');
+                expect(res.body.error.code).toBe('PROCUREMENT_ANALYSIS_FAILED');
+                expect(res.body.error.message).toBe('Opportunity analysis failed');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
@@ -179,7 +185,9 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ vintage_id: 'vintage-1', supplier_id: 'supplier-1' })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Purchase decision failed');
+                expect(res.body.error.code).toBe('PROCUREMENT_DECISION_FAILED');
+                expect(res.body.error.message).toBe('Purchase decision failed');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
@@ -190,7 +198,9 @@ describe('SommOS API error handling and edge cases', () => {
             })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Purchase order failed');
+                expect(res.body.error.code).toBe('PROCUREMENT_ORDER_FAILED');
+                expect(res.body.error.message).toBe('Purchase order failed');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         jest.restoreAllMocks();
@@ -211,7 +221,9 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/wines?region=Bordeaux&producer=Test&wine_type=Red&search=Test')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Catalog query failed');
+                expect(res.body.error.code).toBe('WINES_LIST_FAILED');
+                expect(res.body.error.message).toBe('Catalog query failed');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
@@ -223,14 +235,18 @@ describe('SommOS API error handling and edge cases', () => {
             })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Inventory enrichment failed');
+                expect(res.body.error.code).toBe('VINTAGE_ENRICH_FAILED');
+                expect(res.body.error.message).toBe('Inventory enrichment failed');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
             .get('/api/wines/test-wine-1')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Wine lookup failed');
+                expect(res.body.error.code).toBe('WINE_DETAILS_FAILED');
+                expect(res.body.error.message).toBe('Wine lookup failed');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         jest.restoreAllMocks();
@@ -271,7 +287,9 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/vintage/analysis/test-wine-1')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Weather context unavailable');
+                expect(res.body.error.code).toBe('VINTAGE_ANALYSIS_FAILED');
+                expect(res.body.error.message).toBe('Weather context unavailable');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
@@ -279,14 +297,18 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ wine_id: 'test-wine-1' })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Enrichment failed');
+                expect(res.body.error.code).toBe('VINTAGE_ENRICH_FAILED');
+                expect(res.body.error.message).toBe('Enrichment failed');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
             .get('/api/vintage/procurement-recommendations')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Recommendation engine offline');
+                expect(res.body.error.code).toBe('PAIRING_ENGINE_OFFLINE');
+                expect(res.body.error.message).toBe('Recommendation engine offline');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
@@ -294,7 +316,9 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ filters: { region: 'Bordeaux' }, limit: 0 })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Batch enrichment failed');
+                expect(res.body.error.code).toBe('VINTAGE_BATCH_ENRICH_FAILED');
+                expect(res.body.error.message).toBe('Batch enrichment failed');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
@@ -302,7 +326,9 @@ describe('SommOS API error handling and edge cases', () => {
             .send({ wine_id: 'test-wine-1', dish_context: { dish: 'Steak' } })
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Insight generation failed');
+                expect(res.body.error.code).toBe('VINTAGE_INSIGHT_FAILED');
+                expect(res.body.error.message).toBe('Insight generation failed');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         jest.restoreAllMocks();
@@ -319,7 +345,9 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/system/health')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Database offline');
+                expect(res.body.error.code).toBe('DATABASE_OFFLINE');
+                expect(res.body.error.message).toBe('Database offline');
+                expect(res.body.error.timestamp).toBeDefined();
                 expect(res.body.status).toBe('unhealthy');
             });
 
@@ -327,7 +355,9 @@ describe('SommOS API error handling and edge cases', () => {
             .get('/api/system/activity')
             .expect(500)
             .expect(res => {
-                expect(res.body.error).toBe('Database offline');
+                expect(res.body.error.code).toBe('DATABASE_OFFLINE');
+                expect(res.body.error.message).toBe('Database offline');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         await request(app)
@@ -335,7 +365,9 @@ describe('SommOS API error handling and edge cases', () => {
             .expect(404)
             .expect(res => {
                 expect(res.body.success).toBe(false);
-                expect(res.body.error).toBe('Endpoint not found');
+                expect(res.body.error.code).toBe('NOT_FOUND');
+                expect(res.body.error.message).toBe('Endpoint not found');
+                expect(res.body.error.timestamp).toBeDefined();
             });
 
         jest.restoreAllMocks();

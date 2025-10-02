@@ -1,11 +1,15 @@
 const AuthService = require('../core/auth_service');
 
 const authService = new AuthService();
+const AUTH_DISABLED = Boolean(authService.config?.features?.authDisabled);
 
 const TRUTHY_ENV_VALUES = new Set(['1', 'true', 'yes', 'on']);
 const FALSY_ENV_VALUES = new Set(['0', 'false', 'no', 'off']);
 
 function shouldBypassAuth() {
+    if (AUTH_DISABLED) {
+        return true;
+    }
     const { nodeEnv } = authService.config;
 
     if (nodeEnv === 'production') {
@@ -113,6 +117,10 @@ function forbidden(res) {
 
 function requireAuth() {
     return async (req, res, next) => {
+        if (AUTH_DISABLED) {
+            req.user = req.user || { id: 'anonymous', role: 'admin', email: 'anonymous@sommos.local' };
+            return next();
+        }
         const user = await authenticateRequest(req);
 
         if (!user) {
@@ -127,6 +135,10 @@ function requireRole(...roles) {
     const allowedRoles = roles.length > 0 ? roles : AuthService.Roles;
 
     return async (req, res, next) => {
+        if (AUTH_DISABLED) {
+            req.user = req.user || { id: 'anonymous', role: 'admin', email: 'anonymous@sommos.local' };
+            return next();
+        }
         const user = await authenticateRequest(req);
 
         if (!user) {

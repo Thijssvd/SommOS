@@ -15,16 +15,24 @@ This guide walks you through setting up API keys and environment variables for S
 
 ## API Keys You Can Add
 
-### 🤖 Required for AI Features
+### 🤖 Optional AI Keys (DeepSeek primary)
 
-#### OpenAI API Key (Recommended)
-- **Purpose**: Enables AI-powered vintage summaries
-- **Without it**: System uses template-based summaries (still works great!)
-- **Get it**: [OpenAI Platform](https://platform.openai.com/api-keys)
-- **Cost**: ~$0.01-0.05 per vintage summary
+#### DeepSeek API Key (Primary)
+- **Purpose**: Enables AI-powered summaries and pairing via DeepSeek
+- **Fallback**: If not set, system will use `OPENAI_API_KEY` if available
+- **Get it**: https://platform.deepseek.com/api_keys
+- **Cost**: Low-cost, pay-per-use
 - **Add to `.env`**:
   ```bash
-  OPENAI_API_KEY=sk-your-api-key-here
+  DEEPSEEK_API_KEY=sk-your-deepseek-key-here
+  ```
+
+#### OpenAI API Key (Fallback / Legacy)
+- **Purpose**: Used only if `DEEPSEEK_API_KEY` is not set
+- **Get it**: https://platform.openai.com/api-keys
+- **Add to `.env`**:
+  ```bash
+  OPENAI_API_KEY=sk-your-openai-key-here
   ```
 
 ### 🌤️ Weather Data (Automatic - No Keys Needed!)
@@ -95,14 +103,30 @@ SESSION_SECRET=x1y2z3a4b5c6... # Paste your generated secret
 
 ### 3. Add API Keys (Optional)
 
-#### For OpenAI (Recommended):
-1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Sign in or create account
-3. Create new API key
-4. Copy it and add to `.env`:
+#### For AI Summaries (DeepSeek primary)
+1. Get DeepSeek key: https://platform.deepseek.com/api_keys
+2. Add to `.env`:
    ```bash
-   OPENAI_API_KEY=sk-your-actual-key-here
+   DEEPSEEK_API_KEY=sk-your-actual-deepseek-key-here
    ```
+3. (Optional) Add OpenAI key as fallback:
+   ```bash
+   OPENAI_API_KEY=sk-your-actual-openai-key-here
+   ```
+
+#### Disable Authentication (Development Only)
+You can run SommOS without login/roles during local development.
+
+```bash
+# Disable all auth checks (DO NOT USE IN PRODUCTION)
+SOMMOS_AUTH_DISABLED=true npm start
+```
+
+Or add to `.env` and restart:
+
+```bash
+SOMMOS_AUTH_DISABLED=true
+```
 
 #### For Weather APIs (Optional):
 1. **OpenWeatherMap**:
@@ -128,13 +152,13 @@ Check the logs for:
 
 ## What Each Key Enables
 
-### With OpenAI Key:
+### With AI Key (DeepSeek or OpenAI):
 - ✅ Professional AI-generated vintage summaries
 - ✅ Sophisticated sommelier language
 - ✅ Context-aware wine descriptions
 - ✅ All template features as fallback
 
-### Without OpenAI Key:
+### Without AI Key:
 - ✅ Template-based vintage summaries
 - ✅ Weather analysis and scoring
 - ✅ Procurement recommendations
@@ -181,9 +205,9 @@ NODE_ENV=development
 JWT_SECRET=your-generated-jwt-secret
 SESSION_SECRET=your-generated-session-secret
 
-# Vintage Intelligence
-OPENAI_API_KEY=sk-your-openai-key  # Optional but recommended
-OPENAI_MODEL=gpt-4
+# Vintage Intelligence (AI)
+DEEPSEEK_API_KEY=sk-your-deepseek-key  # Optional (primary)
+OPENAI_API_KEY=sk-your-openai-key      # Optional (fallback)
 
 # Weather APIs (optional)
 WEATHER_API_KEY=your-weather-key
@@ -210,7 +234,7 @@ curl -X POST http://localhost:3001/api/wines \
   -d '{"wine":{"name":"Test Wine","producer":"Test","region":"Bordeaux","country":"France","wine_type":"Red","grape_varieties":["Cabernet Sauvignon"]},"vintage":{"year":2020},"stock":{"location":"CELLAR","quantity":1,"cost_per_bottle":50}}'
 ```
 
-### Test AI Features (if OpenAI key added):
+### Test AI Features (if AI key added):
 Check the response includes a sophisticated vintage summary instead of template text.
 
 ### Test Weather Features (if weather API keys added):
@@ -218,7 +242,7 @@ The vintage analysis should show more detailed weather data.
 
 ## Troubleshooting
 
-### "OpenAI API key not found"
+### "AI API key not found"
 - ✅ System continues with template summaries
 - Add key to enable AI features
 
@@ -241,12 +265,16 @@ Use different API keys for different environments:
 
 **Development** (`.env`):
 ```bash
-OPENAI_API_KEY=sk-dev-key...
+DEEPSEEK_API_KEY=sk-dev-deepseek-key...
+# Optional fallback
+OPENAI_API_KEY=sk-dev-openai-key...
 ```
 
 **Production** (GitHub or server secrets):
 ```bash
-OPENAI_API_KEY=sk-prod-key...
+DEEPSEEK_API_KEY=sk-prod-deepseek-key...
+# Optional fallback
+OPENAI_API_KEY=sk-prod-openai-key...
 SESSION_SECRET=generated-session-secret
 JWT_SECRET=generated-jwt-secret
 OPEN_METEO_BASE=https://archive-api.open-meteo.com/v1/archive
@@ -271,7 +299,9 @@ For production, use proper secret management:
 
 ### Option 1: Server Environment Variables
 ```bash
-export OPENAI_API_KEY="sk-your-production-key"
+export DEEPSEEK_API_KEY="sk-your-production-deepseek-key"
+# Optional fallback
+export OPENAI_API_KEY="sk-your-production-openai-key"
 export JWT_SECRET="your-production-jwt-secret"
 ```
 
@@ -281,8 +311,10 @@ export JWT_SECRET="your-production-jwt-secret"
 services:
   sommos:
     environment:
-      - OPENAI_API_KEY_FILE=/run/secrets/openai_key
+      - DEEPSEEK_API_KEY_FILE=/run/secrets/deepseek_key
+      - OPENAI_API_KEY_FILE=/run/secrets/openai_key # optional fallback
     secrets:
+      - deepseek_key
       - openai_key
 ```
 

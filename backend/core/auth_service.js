@@ -57,6 +57,14 @@ class AuthService {
     async createUser({ email, password, role }) {
         const normalized = this.normalizeEmail(email);
 
+        if (!normalized) {
+            throw new Error('INVALID_EMAIL');
+        }
+
+        if (!password || password.length < 8) {
+            throw new Error('PASSWORD_TOO_SHORT');
+        }
+
         if (!ROLES.includes(role)) {
             throw new Error('INVALID_ROLE');
         }

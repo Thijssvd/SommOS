@@ -28,8 +28,11 @@ expect.extend({
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_PATH = ':memory:';
 process.env.PORT = '0';
-process.env.JWT_SECRET = 'test-jwt-secret';
-process.env.SESSION_SECRET = 'test-session-secret';
+// Prefer DEEPSEEK_API_KEY primary; keep OPENAI_API_KEY for legacy consumers
+process.env.DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'test-deepseek-api-key-for-testing-only';
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-openai-api-key-for-testing-only';
+process.env.JWT_SECRET = 'test-jwt-secret-key-for-ci-and-local-testing-only-not-for-production-use-at-least-32-characters';
+process.env.SESSION_SECRET = 'test-session-secret-key-for-ci-and-local-testing-only-not-for-production-use-at-least-32-characters';
 process.env.OPEN_METEO_BASE = 'https://archive-api.open-meteo.com/v1/archive';
 
 const { refreshConfig } = require('../backend/config/env');
@@ -130,16 +133,22 @@ afterEach(async () => {
 // Global cleanup for parallel processing engines
 afterAll(async () => {
   // Clean up any remaining parallel processing engines
-  const ParallelProcessingEngine = require('../backend/core/parallel_processing_engine');
-  if (global.parallelProcessingEngines) {
-    for (const engine of global.parallelProcessingEngines) {
-      try {
-        await engine.shutdown();
-      } catch (error) {
-        // Ignore shutdown errors in tests
+  try {
+    const ParallelProcessingEngine = require('../backend/core/parallel_processing_engine');
+    if (global.parallelProcessingEngines) {
+      for (const engine of global.parallelProcessingEngines) {
+        try {
+          if (engine && typeof engine.shutdown === 'function') {
+            await engine.shutdown();
+          }
+        } catch (error) {
+          // Ignore shutdown errors in tests
+        }
       }
+      global.parallelProcessingEngines = [];
     }
-    global.parallelProcessingEngines = [];
+  } catch (error) {
+    // Ignore module loading errors
   }
 });
 

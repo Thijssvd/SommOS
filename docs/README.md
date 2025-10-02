@@ -53,7 +53,7 @@ SommOS is a comprehensive wine management system designed specifically for luxur
 **Backend:**
 - Node.js with Express.js framework
 - SQLite3 database with optimized indexes
-- OpenAI GPT-4 for wine pairing intelligence
+- DeepSeek (primary) or OpenAI (fallback) for AI pairing intelligence
 - Open-Meteo API for weather data
 - Comprehensive security middleware (Helmet, CORS, Rate Limiting)
 
@@ -205,7 +205,9 @@ Create a `.env` file based on `.env.example`. The most important settings are:
 | `DATABASE_PATH` | No | Location of the SQLite database file. |
 | `SESSION_SECRET` | Yes (prod) | Secret used to sign session cookies. |
 | `JWT_SECRET` | Yes (prod) | Secret used to issue API access tokens. |
-| `OPENAI_API_KEY` | Optional | Enables AI-assisted explanations. |
+| `DEEPSEEK_API_KEY` | Optional | Enables AI features (primary). |
+| `OPENAI_API_KEY` | Optional | AI fallback if DeepSeek not set. |
+| `SOMMOS_AUTH_DISABLED` | Optional | If `true`, disables all auth (dev only). |
 | `WEATHER_API_KEY` | Optional | Unlocks premium weather insights. |
 | `SOMMOS_DISABLE_EXTERNAL_CALLS` | No | Set to `true` to run fully offline (tests/demos). |
 
@@ -238,7 +240,7 @@ For production deployment:
 
 ### Base URL
 ```
-http://localhost:3000/api
+http://localhost:3001/api
 ```
 
 ### Authentication
@@ -745,7 +747,7 @@ COPY . .
 
 RUN npm run build
 
-EXPOSE 3000
+EXPOSE 3001
 
 USER node
 
@@ -759,7 +761,7 @@ services:
   sommos:
     build: .
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/sommos.db
@@ -826,7 +828,7 @@ server {
     ssl_certificate_key /path/to/private.key;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -856,7 +858,7 @@ server {
 ```bash
 # Production Configuration
 NODE_ENV=production
-PORT=3000
+PORT=3001
 
 # Database
 DATABASE_PATH=/app/data/sommos.db
@@ -891,7 +893,7 @@ find /backups -name "sommos_*.db" -mtime +30 -delete
 **Health Check:**
 ```bash
 # Health check endpoint
-curl -f http://localhost:3000/api/system/health || exit 1
+curl -f http://localhost:3001/api/system/health || exit 1
 ```
 
 **Process Monitoring with PM2:**

@@ -191,7 +191,7 @@ class VintageIntelligenceService {
     async generateVintageSummary(wineData, weatherAnalysis) {
         const prompt = this.buildVintageSummaryPrompt(wineData, weatherAnalysis);
         
-        if (this.deepseek) {
+        if (this.deepseek && config.deepSeek.apiKey) {
             try {
                 const response = await this.deepseek.chat.completions.create({
                     model: 'deepseek-chat',

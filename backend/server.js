@@ -136,6 +136,10 @@ const { validationRules } = require('./config/security');
 
 // Input sanitization function
 function sanitizeObject(obj) {
+    if (!obj || typeof obj !== 'object') {
+        return obj;
+    }
+
     for (const key in obj) {
         if (obj.hasOwnProperty(key)) {
             if (typeof obj[key] === 'string') {
@@ -145,11 +149,12 @@ function sanitizeObject(obj) {
                     .replace(/javascript:/gi, '')
                     .replace(/on\w+\s*=/gi, '')
                     .trim();
-            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+            } else if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
                 sanitizeObject(obj[key]);
             }
         }
     }
+    return obj;
 }
 
 app.use(express.json({ 

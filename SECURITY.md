@@ -18,10 +18,15 @@ The backend fails fast at startup if critical secrets are missing in production:
 - `OPEN_METEO_BASE`
 - `SESSION_SECRET`
 - `JWT_SECRET`
-- `OPENAI_API_KEY` (when AI features are enabled)
+- `DEEPSEEK_API_KEY` or `OPENAI_API_KEY` (when AI features are enabled)
 - `WEATHER_API_KEY` (for external weather integrations)
 
 The configuration loader validates these values with Zod, providing human-readable errors and preventing the app from running with invalid input.
+
+### Authentication bypass for development
+- A development convenience flag `SOMMOS_AUTH_DISABLED=true` fully disables authentication and role checks.
+- This mode sets every request as an anonymous admin user.
+- Use only for local development and demos. Never enable in production environments.
 
 ### Rotation and incident response
 1. **Plan the change**: Identify impacted environments (local, CI, production) and notify stakeholders.

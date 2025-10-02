@@ -8,7 +8,7 @@ Create two environments in the repository settings:
 
 | Environment | Purpose | Required Secrets/Variables |
 | --- | --- | --- |
-| `staging` | Preview deployments, integration testing. | `OPENAI_API_KEY`, `SESSION_SECRET`, `JWT_SECRET`, `OPEN_METEO_BASE` (if overriding default), `WEATHER_API_KEY` (optional). |
+| `staging` | Preview deployments, integration testing. | `DEEPSEEK_API_KEY` (primary) or `OPENAI_API_KEY` (fallback), `SESSION_SECRET`, `JWT_SECRET`, `OPEN_METEO_BASE` (if overriding default), `WEATHER_API_KEY` (optional). |
 | `production` | Live deployments for vessel operations. | Same as staging plus any analytics or monitoring keys (e.g., `SENTRY_DSN`). |
 
 Tips:

@@ -130,13 +130,24 @@ class PairingEngine {
      * @returns {Array} Ranked pairing recommendations
      */
     async generatePairings(dish, context = {}, preferences = {}, options = {}) {
+        // Input validation
+        if (!dish) {
+            throw new Error('Dish information is required for pairing generation');
+        }
+
+        // Normalize dish input
+        const dishInput = typeof dish === 'string' ? dish : (dish.dish_description || dish.name || '');
+        if (!dishInput.trim()) {
+            throw new Error('Valid dish description is required');
+        }
+
         const dishContext = typeof dish === 'string'
             ? await this.parseNaturalLanguageDish(dish, context)
             : dish;
 
         await this.refreshAdaptiveWeights();
 
-        const generatedByAI = this.openai && typeof dish === 'string';
+        const generatedByAI = this.deepseek && typeof dish === 'string';
         let recommendations;
 
         if (generatedByAI) {
@@ -926,7 +937,7 @@ class PairingEngine {
      * Parse natural language dish description using AI
      */
     async parseNaturalLanguageDish(dish, context = {}) {
-        if (!this.openai) {
+        if (!this.deepseek) {
             // Fallback to basic parsing for non-AI mode
             return {
                 dish: dish,
@@ -1040,7 +1051,7 @@ Focus on wines that create harmony or interesting contrasts with the dish. Consi
     async quickPairing(dish, context = {}, ownerLikes = {}) {
         await this.refreshAdaptiveWeights();
 
-        if (!this.openai) {
+        if (!this.deepseek) {
             // Fallback to rule-based quick pairing
             const availableWines = await this.getAvailableWines();
             return availableWines.slice(0, 3).map(wine => ({

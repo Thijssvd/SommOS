@@ -57,14 +57,14 @@ The application will be available at `http://localhost` after successful deploym
    sudo chmod +x /usr/local/bin/docker-compose
    ```
 
-#### Required API Keys
-1. **OpenAI API Key** ⚠️ **REQUIRED**
-   - **Purpose**: AI-powered wine pairing recommendations
-   - **Cost**: ~$0.01-0.03 per pairing, $5 free credits for new accounts
-   - **How to get**: 
-     1. Sign up at [OpenAI Platform](https://platform.openai.com/)
-     2. Go to [API Keys](https://platform.openai.com/api-keys)
-     3. Create new secret key (starts with `sk-`)
+#### Optional AI Keys (DeepSeek primary)
+1. **DeepSeek API Key** ✅ **Recommended**
+   - **Purpose**: AI-powered pairing and summaries (primary provider)
+   - **How to get**: https://platform.deepseek.com/api_keys
+   - **Add to .env**: `DEEPSEEK_API_KEY=sk-your-deepseek-key`
+2. **OpenAI API Key** (Fallback / Legacy)
+   - **Purpose**: Used only if `DEEPSEEK_API_KEY` is not set
+   - **Add to .env**: `OPENAI_API_KEY=sk-your-openai-key`
 
 2. **Open-Meteo API Key** ✅ **OPTIONAL** 
    - **Purpose**: Historical weather data for vintage intelligence
@@ -82,7 +82,9 @@ cp .env.production .env
 
 Edit `.env` with your configuration:
 ```bash
-# REQUIRED - Get from https://platform.openai.com/api-keys
+# AI (optional)
+DEEPSEEK_API_KEY=sk-your-actual-deepseek-key-here
+# Optional fallback
 OPENAI_API_KEY=sk-your-actual-openai-key-here
 
 # OPTIONAL - Leave empty for free tier (works perfectly!)
@@ -90,7 +92,7 @@ OPEN_METEO_API_KEY=
 
 # Optional - Customize as needed
 NODE_ENV=production
-PORT=3000
+PORT=3001
 LOG_LEVEL=info
 ```
 
@@ -160,7 +162,7 @@ curl http://localhost/api/system/health
 
 #### Performance Verification
 ```bash
-# Test wine pairing endpoint (requires OpenAI key)
+# Test wine pairing endpoint (requires AI key)
 curl -X POST http://localhost/api/pairing/recommend \
   -H "Content-Type: application/json" \
   -d '{"dish": "grilled salmon", "context": {"occasion": "casual"}}'

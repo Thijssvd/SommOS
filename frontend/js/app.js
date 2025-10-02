@@ -6,6 +6,10 @@ import { SommOSUI, VirtualScroll } from './ui';
 import { SommOSSyncService } from './sync';
 import { RealTimeSync } from './realtime-sync';
 import Chart from 'chart.js/auto';
+import { DashboardModule } from './modules/dashboard.js';
+import { InventoryModule } from './modules/inventory.js';
+import { PairingModule } from './modules/pairing.js';
+import { ProcurementModule } from './modules/procurement.js';
 
 export class SommOS {
     constructor() {
@@ -24,6 +28,7 @@ export class SommOS {
         this.ui = new SommOSUI();
         this.isOnline = navigator.onLine;
         this.currentUser = null;
+        this.authDisabled = false;
         this.hasBootstrapped = false;
         this.authElements = {};
         this.sessionWarningShown = false;
@@ -38,6 +43,14 @@ export class SommOS {
         this.performanceMetrics = {
             inventory: { renderTime: 0, itemCount: 0, virtualScrollEnabled: false },
             catalog: { renderTime: 0, itemCount: 0, virtualScrollEnabled: false }
+        };
+
+        // Initialize modules
+        this.modules = {
+            dashboard: new DashboardModule(this),
+            inventory: new InventoryModule(this),
+            pairing: new PairingModule(this),
+            procurement: new ProcurementModule(this)
         };
         
         this.init();
@@ -129,6 +142,48 @@ export class SommOS {
         }
 
         window.addEventListener('sommos:auth-expired', () => this.handleSessionExpired());
+    }
+
+    showAuthDisabledBanner() {
+        try {
+            const existing = document.getElementById('auth-disabled-banner');
+            if (existing) return;
+
+            const banner = document.createElement('div');
+            banner.id = 'auth-disabled-banner';
+            banner.style.position = 'fixed';
+            banner.style.top = '0';
+            banner.style.left = '0';
+            banner.style.right = '0';
+            banner.style.zIndex = '1000';
+            banner.style.padding = '8px 12px';
+            banner.style.background = '#933';
+            banner.style.color = '#fff';
+            banner.style.fontSize = '14px';
+            banner.style.textAlign = 'center';
+            banner.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+            banner.textContent = 'Auth disabled (dev mode) — all actions allowed';
+
+            document.body.appendChild(banner);
+
+            // Push content down if there's a top header margin clash
+            const root = document.getElementById('app') || document.body;
+            if (root && !root.dataset.authBannerOffsetApplied) {
+                const currentMargin = parseInt(window.getComputedStyle(root).marginTop || '0', 10) || 0;
+                root.style.marginTop = `${currentMargin + 36}px`;
+                root.dataset.authBannerOffsetApplied = 'true';
+            }
+
+            // Hide login UI if present
+            if (this.authScreen) {
+                this.authScreen.classList.add('hidden');
+            }
+            if (this.authElements.loginForm) {
+                this.authElements.loginForm.classList.add('hidden');
+            }
+        } catch (e) {
+            console.warn('Failed to render auth-disabled banner', e);
+        }
     }
 
     getStoredUser() {
@@ -303,6 +358,20 @@ export class SommOS {
                     return true;
                 }
             }
+        }
+
+        // Detect auth-disabled mode by probing a protected endpoint without credentials
+        try {
+            const health = await this.api.getSystemHealth();
+            if (health?.success) {
+                this.authDisabled = true;
+                this.setCurrentUser({ email: 'anonymous@sommos.local', role: 'admin' });
+                this.hideAuthScreen();
+                this.showAuthDisabledBanner();
+                return true;
+            }
+        } catch (probeError) {
+            // ignore and fall through to auth screen
         }
 
         this.setCurrentUser(null);
@@ -898,16 +967,16 @@ export class SommOS {
     async loadViewData(viewName) {
         switch (viewName) {
             case 'dashboard':
-                await this.loadDashboardData();
+                await this.modules.dashboard.refresh();
                 break;
             case 'inventory':
-                await this.loadInventory();
+                await this.modules.inventory.refresh();
                 break;
             case 'pairing':
-                // Pairing view is form-based, no initial data needed
+                await this.modules.pairing.init();
                 break;
             case 'procurement':
-                await this.loadProcurementData();
+                await this.modules.procurement.refresh();
                 break;
             case 'catalog':
                 await this.loadWineCatalog();
@@ -919,103 +988,8 @@ export class SommOS {
         await this.loadDashboardData();
     }
 
-    async loadDashboardData() {
-        try {
-            // Add loading state to dashboard cards
-            this.addLoadingToStats();
-            
-            const stats = await this.api.getSystemHealth();
-            
-            if (stats.success && stats.data) {
-                document.getElementById('total-bottles').textContent = 
-                    stats.data.total_bottles?.toLocaleString() || '0';
-                document.getElementById('total-wines').textContent = 
-                    stats.data.total_wines?.toLocaleString() || '0';
-                document.getElementById('total-vintages').textContent = 
-                    stats.data.total_vintages?.toLocaleString() || '0';
-                document.getElementById('active-suppliers').textContent = 
-                    stats.data.active_suppliers?.toLocaleString() || '0';
-                    
-                // Load recent activity
-                await this.loadRecentActivity();
-                
-                // Load charts
-                await this.loadDashboardCharts();
-            } else {
-                throw new Error('Invalid response from server');
-            }
-        } catch (error) {
-            console.error('Failed to load dashboard data:', error);
-            this.ui.showToast('Failed to load dashboard data', 'error');
-            this.showEmptyStats();
-        }
-    }
     
-    addLoadingToStats() {
-        const statNumbers = document.querySelectorAll('.stat-number');
-        statNumbers.forEach(el => {
-            el.innerHTML = '<div class="loading-spinner"></div>';
-        });
-    }
     
-    showEmptyStats() {
-        const statNumbers = document.querySelectorAll('.stat-number');
-        statNumbers.forEach(el => {
-            el.textContent = '-';
-        });
-    }
-    
-    async loadRecentActivity() {
-        try {
-            const activityContainer = document.getElementById('recent-activity');
-            activityContainer.innerHTML = `
-                <div class="activity-placeholder">
-                    <div class="loading-spinner"></div>
-                    <p>Loading recent activity...</p>
-                </div>
-            `;
-            
-            // Try to load actual recent activity from API
-            try {
-                const activity = await this.api.getRecentActivity();
-                if (activity.success && activity.data && activity.data.length > 0) {
-                    this.displayRecentActivity(activity.data);
-                } else {
-                    this.displayDefaultActivity();
-                }
-            } catch (error) {
-                console.warn('Could not load recent activity from API, showing default');
-                this.displayDefaultActivity();
-            }
-        } catch (error) {
-            console.error('Failed to load recent activity:', error);
-            this.displayDefaultActivity();
-        }
-    }
-    
-    displayRecentActivity(activities) {
-        const activityContainer = document.getElementById('recent-activity');
-        if (!activities || activities.length === 0) {
-            this.displayDefaultActivity();
-            return;
-        }
-        
-        activityContainer.innerHTML = activities.map(activity => {
-            const timeAgo = this.getTimeAgo(activity.timestamp || activity.created_at);
-            const activityIcon = this.getActivityIcon(activity.type);
-            
-            return `
-                <div class="activity-item fade-in">
-                    <div class="activity-icon">${activityIcon}</div>
-                    <div class="activity-content">
-                        <div class="activity-title">${activity.title || activity.description}</div>
-                        <div class="activity-details">${activity.details || ''}</div>
-                        <div class="activity-time">${timeAgo}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
     
     displayDefaultActivity() {
         const activityContainer = document.getElementById('recent-activity');
@@ -3155,24 +3129,6 @@ export class SommOS {
         `;
     }
 
-    async loadDashboardCharts() {
-        try {
-            // Get inventory data for charts
-            const inventory = await this.api.getInventory({ available_only: false });
-            if (!inventory.success || !inventory.data) return;
-            
-            const wines = inventory.data;
-            
-            // Wine types chart
-            this.createWineTypesChart(wines);
-            
-            // Stock by location chart
-            this.createStockLocationChart(wines);
-            
-        } catch (error) {
-            console.error('Failed to load dashboard charts:', error);
-        }
-    }
     
     createWineTypesChart(wines) {
         const ctx = document.getElementById('wine-types-chart');

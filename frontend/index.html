@@ -20,10 +20,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <!-- Fonts -->
+    <!-- Luxury Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Direct CSS import for testing -->
     <link rel="stylesheet" href="/css/styles-cache-bust.css">
@@ -91,8 +91,8 @@
         <!-- Navigation -->
         <nav class="main-nav" role="navigation" aria-label="Main navigation">
             <div class="nav-brand">
-                <span class="brand-icon">🍷</span>
-                <span class="brand-text">SommOS</span>
+                <span class="brand-icon text-display">🍷</span>
+                <span class="brand-text heading-3">SommOS</span>
             </div>
             
             <div class="nav-menu" role="menubar">
@@ -145,83 +145,94 @@
             <!-- Dashboard View -->
             <div id="dashboard-view" class="view active">
                 <div class="view-header">
-                    <h1>Wine Management Dashboard</h1>
-                    <p class="view-subtitle">Overview of your yacht's wine collection</p>
+                    <h1 class="heading-1">Wine Management Dashboard</h1>
+                    <p class="view-subtitle text-lead">Comprehensive overview of your yacht's premium wine collection and service operations</p>
                 </div>
                 
-                <div class="dashboard-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">🍷</div>
-                        <div class="stat-content">
-                            <div class="stat-number" id="total-bottles">-</div>
-                            <div class="stat-label">Total Bottles</div>
+                <div class="dashboard-luxury">
+                    <div class="stat-card-luxury">
+                        <div class="stat-icon-luxury">🍷</div>
+                        <div class="stat-content-luxury">
+                            <div class="stat-number-luxury" id="total-bottles">-</div>
+                            <div class="stat-label-luxury">Total Bottles</div>
                         </div>
                     </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">🏷️</div>
-                        <div class="stat-content">
-                            <div class="stat-number" id="total-wines">-</div>
-                            <div class="stat-label">Wine Labels</div>
+
+                    <div class="stat-card-luxury">
+                        <div class="stat-icon-luxury">🏷️</div>
+                        <div class="stat-content-luxury">
+                            <div class="stat-number-luxury" id="total-wines">-</div>
+                            <div class="stat-label-luxury">Wine Labels</div>
                         </div>
                     </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">📅</div>
-                        <div class="stat-content">
-                            <div class="stat-number" id="total-vintages">-</div>
-                            <div class="stat-label">Vintages</div>
+
+                    <div class="stat-card-luxury">
+                        <div class="stat-icon-luxury">📅</div>
+                        <div class="stat-content-luxury">
+                            <div class="stat-number-luxury" id="total-vintages">-</div>
+                            <div class="stat-label-luxury">Vintages</div>
                         </div>
                     </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">🏪</div>
-                        <div class="stat-content">
-                            <div class="stat-number" id="active-suppliers">-</div>
-                            <div class="stat-label">Suppliers</div>
+
+                    <div class="stat-card-luxury">
+                        <div class="stat-icon-luxury">🏪</div>
+                        <div class="stat-content-luxury">
+                            <div class="stat-number-luxury" id="active-suppliers">-</div>
+                            <div class="stat-label-luxury">Suppliers</div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="dashboard-sections">
-                <section class="dashboard-section">
-                    <h2>Quick Actions</h2>
+                <section class="dashboard-section-luxury">
+                    <div class="dashboard-section-header-luxury">
+                        <h2 class="dashboard-section-title-luxury">Quick Actions</h2>
+                    </div>
                     <div class="quick-actions">
-                        <button class="action-btn primary" data-action="quick-pairing">
-                            <span class="btn-icon">⚡</span>
-                            Quick Pairing
-                        </button>
-                        <button class="action-btn" data-action="record-consumption" data-role-allow="admin,crew">
-                            <span class="btn-icon">📝</span>
-                            Record Service
-                        </button>
-                        <button class="action-btn" data-action="check-stock">
-                            <span class="btn-icon">📊</span>
-                            Check Stock
-                        </button>
+                        <div class="action-card-luxury" data-action="quick-pairing">
+                            <div class="action-icon-luxury">⚡</div>
+                            <h3 class="action-title-luxury">Quick Pairing</h3>
+                            <p class="action-description-luxury">Get instant wine recommendations for your dishes</p>
+                        </div>
+                        <div class="action-card-luxury" data-action="record-consumption" data-role-allow="admin,crew">
+                            <div class="action-icon-luxury">📝</div>
+                            <h3 class="action-title-luxury">Record Service</h3>
+                            <p class="action-description-luxury">Log wine consumption and service details</p>
+                        </div>
+                        <div class="action-card-luxury" data-action="check-stock">
+                            <div class="action-icon-luxury">📊</div>
+                            <h3 class="action-title-luxury">Check Stock</h3>
+                            <p class="action-description-luxury">Monitor inventory levels and availability</p>
+                        </div>
                     </div>
                 </section>
 
-                <section class="dashboard-section score-insights">
-                    <h2>Understanding SommOS Scores</h2>
+                <section class="dashboard-section-luxury score-insights">
+                    <div class="dashboard-section-header-luxury">
+                        <h2 class="dashboard-section-title-luxury">Understanding SommOS Scores</h2>
+                    </div>
                     <div class="score-grid">
-                        <article class="score-card">
-                            <div class="score-icon" aria-hidden="true">🎯</div>
-                            <div class="score-content">
-                                <h3>Pairing Confidence</h3>
+                        <article class="card-luxury score-card-luxury">
+                            <div class="card-header-luxury">
+                                <div class="score-icon-luxury" aria-hidden="true">🎯</div>
+                                <h3 class="card-title-luxury">Pairing Confidence</h3>
+                            </div>
+                            <div class="card-content-luxury">
                                 <p>Displayed in pairing recommendations, this percentage blends multiple pairing heuristics to show how certain SommOS is that a wine complements your dish.</p>
                                 <ul class="score-factors">
-                                    <li><strong>Flavor Harmony:</strong> Analyzes the match between tasting notes in your dish description and the wine&rsquo;s profile.</li>
+                                    <li><strong>Flavor Harmony:</strong> Analyzes the match between tasting notes in your dish description and the wine's profile.</li>
                                     <li><strong>Structure Balance:</strong> Considers acidity, tannin, and body so richer dishes lean toward fuller wines.</li>
                                     <li><strong>Service Readiness:</strong> Gives a boost when bottles are in stock and at optimal serving temperature or aging window.</li>
                                 </ul>
                             </div>
                         </article>
 
-                        <article class="score-card">
-                            <div class="score-icon" aria-hidden="true">💼</div>
-                            <div class="score-content">
-                                <h3>Procurement Opportunity</h3>
+                        <article class="card-luxury score-card-luxury">
+                            <div class="card-header-luxury">
+                                <div class="score-icon-luxury" aria-hidden="true">💼</div>
+                                <h3 class="card-title-luxury">Procurement Opportunity</h3>
+                            </div>
+                            <div class="card-content-luxury">
                                 <p>Used on the procurement tab, this score highlights the smartest restocking moves by weighing potential value against urgency.</p>
                                 <ul class="score-factors">
                                     <li><strong>Inventory Gap:</strong> Prioritizes wines that fill shortages or complement upcoming service plans.</li>
@@ -231,11 +242,13 @@
                             </div>
                         </article>
 
-                        <article class="score-card">
-                            <div class="score-icon" aria-hidden="true">🏅</div>
-                            <div class="score-content">
-                                <h3>Vintage Quality</h3>
-                                <p>Shown for cellared bottles, the 0&ndash;100 rating blends critic consensus with SommOS aging models to track drinking windows.</p>
+                        <article class="card-luxury score-card-luxury">
+                            <div class="card-header-luxury">
+                                <div class="score-icon-luxury" aria-hidden="true">🏅</div>
+                                <h3 class="card-title-luxury">Vintage Quality</h3>
+                            </div>
+                            <div class="card-content-luxury">
+                                <p>Shown for cellared bottles, the 0–100 rating blends critic consensus with SommOS aging models to track drinking windows.</p>
                                 <ul class="score-factors">
                                     <li><strong>Critical Reviews:</strong> Aggregates trusted publications and competitions for the vintage.</li>
                                     <li><strong>Aging Potential:</strong> Evaluates grape variety, region, and storage history to estimate peak maturity.</li>

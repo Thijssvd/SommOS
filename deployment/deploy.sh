@@ -95,8 +95,9 @@ check_environment() {
         fi
     fi
     
-    # Check required environment variables
-    required_vars=("OPENAI_API_KEY" "OPEN_METEO_API_KEY")
+    # Check required environment variables (must align with backend/config/env.js)
+    # Required: JWT_SECRET, SESSION_SECRET, OPEN_METEO_BASE (in production)
+    required_vars=("JWT_SECRET" "SESSION_SECRET" "OPEN_METEO_BASE")
     missing_vars=()
     
     for var in "${required_vars[@]}"; do
@@ -107,6 +108,11 @@ check_environment() {
     
     if [ ${#missing_vars[@]} -gt 0 ]; then
         error "Missing or unconfigured environment variables: ${missing_vars[*]}. Please configure them in .env"
+    fi
+
+    # AI key check: prefer DEEPSEEK_API_KEY, fallback to OPENAI_API_KEY
+    if ! grep -q "^DEEPSEEK_API_KEY=" .env && ! grep -q "^OPENAI_API_KEY=" .env; then
+        warning "No AI key configured (DEEPSEEK_API_KEY or OPENAI_API_KEY). AI features will be disabled."
     fi
     
     success "Environment configuration check passed"

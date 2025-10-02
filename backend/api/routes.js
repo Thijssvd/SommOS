@@ -48,6 +48,7 @@ const enhancedLearningRouter = require('./enhanced_learning_routes');
 const mlRouter = require('./ml_routes');
 const performanceRouter = require('./performance_routes');
 const rumRouter = require('./rum_routes');
+const agentRouter = require('./agent_routes');
 
 let servicesPromise = null;
 
@@ -160,6 +161,7 @@ router.use('/learning', enhancedLearningRouter);
 router.use('/ml', mlRouter);
 router.use('/performance', performanceRouter);
 router.use('/performance', rumRouter);
+router.use('/agent', agentRouter);
 
 const requireAuthAndRole = (...roles) => [requireAuth(), requireRole(...roles)];
 
@@ -939,11 +941,22 @@ router.post(
 // ============================================================================
 
 // GET /api/wines
-// Get wine catalog
+// Get wine catalog with caching for better performance
 router.get('/wines', requireRole('admin', 'crew', 'guest'), validate(validators.winesList), asyncHandler(withServices(async ({ db }, req, res) => {
     const { region, wine_type, producer, search, limit = 50, offset = 0 } = req.query;
 
     try {
+        // Create cache key based on query parameters
+        const cacheKey = `wines_${region || 'all'}_${wine_type || 'all'}_${producer || 'all'}_${search || 'all'}_${limit}_${offset}`;
+
+        // Check cache first (simple in-memory cache for this endpoint)
+        if (!req.query.nocache && global.wineCatalogCache && global.wineCatalogCache[cacheKey]) {
+            const cached = global.wineCatalogCache[cacheKey];
+            if (Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minute cache
+                return res.json(cached.data);
+            }
+        }
+
         let query = `
             SELECT w.*, v.year, v.quality_score, v.weather_score, v.critic_score,
                    v.peak_drinking_start, v.peak_drinking_end,
@@ -988,10 +1001,21 @@ router.get('/wines', requireRole('admin', 'crew', 'guest'), validate(validators.
             ['year', 'total_stock', 'avg_cost_per_bottle', 'total_value', 'peak_drinking_start', 'peak_drinking_end']
         );
 
-        res.json({
+        const response = {
             success: true,
             data
-        });
+        };
+
+        // Cache the response
+        if (!global.wineCatalogCache) {
+            global.wineCatalogCache = {};
+        }
+        global.wineCatalogCache[cacheKey] = {
+            data: response,
+            timestamp: Date.now()
+        };
+
+        res.json(response);
     } catch (error) {
         sendError(res, 500, 'WINES_LIST_FAILED', error.message || 'Failed to retrieve wines.');
     }

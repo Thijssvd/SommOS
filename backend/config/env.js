@@ -20,10 +20,12 @@ const schema = z.object({
     OPEN_METEO_BASE: z.string({ required_error: 'OPEN_METEO_BASE is required' })
         .trim()
         .url('OPEN_METEO_BASE must be a valid URL'),
-    DEEPSEEK_API_KEY: z.string({ required_error: 'DEEPSEEK_API_KEY is required' })
-        .trim()
-        .min(1, 'DEEPSEEK_API_KEY cannot be empty'),
+    // Prefer DEEPSEEK_API_KEY (primary), fallback OPENAI_API_KEY for legacy
+    DEEPSEEK_API_KEY: z.string().trim().optional(),
+    OPENAI_API_KEY: z.string().trim().optional(),
     SOMMOS_DISABLE_EXTERNAL_CALLS: z.enum(['true', 'false']).optional(),
+    // Allow disabling auth globally (use with caution in production)
+    SOMMOS_AUTH_DISABLED: z.enum(['true', 'false']).optional(),
     DATABASE_PATH: z.string().trim().min(1).optional(),
     JWT_SECRET: z.string({ required_error: 'JWT_SECRET is required' })
         .trim()
@@ -78,13 +80,14 @@ function normalizeConfig(parsed) {
             baseUrl: parsed.OPEN_METEO_BASE,
         },
         deepSeek: {
-            apiKey: parsed.DEEPSEEK_API_KEY,
+            apiKey: parsed.DEEPSEEK_API_KEY || parsed.OPENAI_API_KEY || null,
         },
         database: {
             path: parsed.DATABASE_PATH || null,
         },
         features: {
             disableExternalCalls: parsed.SOMMOS_DISABLE_EXTERNAL_CALLS === 'true',
+            authDisabled: parsed.SOMMOS_AUTH_DISABLED === 'true',
         },
         auth: {
             jwtSecret: parsed.JWT_SECRET,

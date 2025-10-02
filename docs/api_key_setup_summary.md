@@ -42,16 +42,21 @@ SommOS/
 #### 🤖 For AI-Powered Vintage Summaries
 **Status**: Optional but recommended
 
-**Get OpenAI API Key**:
-1. Go to: https://platform.openai.com/api-keys
-2. Sign in/create account
-3. Create new API key
-4. Add to `.env`:
+**Primary (Recommended): DeepSeek API Key**
+1. Go to: https://platform.deepseek.com/api_keys
+2. Create a new API key (starts with `sk-`)
+3. Add to `.env`:
    ```bash
-   OPENAI_API_KEY=sk-your-key-here
+   DEEPSEEK_API_KEY=sk-your-deepseek-key-here
    ```
 
-**Cost**: ~$0.01-0.05 per wine vintage summary
+**Fallback (Legacy): OpenAI API Key**
+1. If you prefer or already use OpenAI, add:
+   ```bash
+   OPENAI_API_KEY=sk-your-openai-key-here
+   ```
+
+The application will automatically use `DEEPSEEK_API_KEY` if present, otherwise fall back to `OPENAI_API_KEY`.
 
 #### 🌤️ For Enhanced Weather Data  
 **Status**: Optional
@@ -71,14 +76,18 @@ SommOS/
 # Open the .env file
 code .env
 
-# Add your keys
-OPENAI_API_KEY=sk-your-actual-key-here
+# Add your keys (DeepSeek primary)
+DEEPSEEK_API_KEY=sk-your-deepseek-key-here
+# Optional fallback
+OPENAI_API_KEY=sk-your-openai-key-here
 WEATHER_API_KEY=your-weather-key-here
 ```
 
 ### Method 2: Use Environment Variables (Production)
 ```bash
-export OPENAI_API_KEY="sk-your-key"
+export DEEPSEEK_API_KEY="sk-your-deepseek-key"
+# Optional fallback
+export OPENAI_API_KEY="sk-your-openai-key"
 export WEATHER_API_KEY="your-weather-key"
 npm start
 ```
@@ -99,8 +108,8 @@ curl -X POST http://localhost:3001/api/wines \
   -d '{"wine":{"name":"Test Wine","producer":"Test","region":"Bordeaux","country":"France","wine_type":"Red","grape_varieties":["Cabernet Sauvignon"]},"vintage":{"year":2020},"stock":{"location":"CELLAR","quantity":1,"cost_per_bottle":50}}'
 ```
 
-### After Adding OpenAI Key:
-The vintage summaries will change from template-based to AI-generated professional sommelier language.
+### After Adding AI Key:
+The vintage summaries will change from template-based to AI-generated professional sommelier language (DeepSeek or OpenAI).
 
 ### After Adding Weather API Key:
 Weather analysis will include more detailed and current meteorological data.
@@ -184,8 +193,8 @@ npm run verify:env
 # 2. Check server logs
 npm start
 
-# 3. Test without API keys (template mode)
-# Remove/comment out OPENAI_API_KEY in .env
+# 3. Test without AI keys (template mode)
+# Remove/comment out DEEPSEEK_API_KEY and OPENAI_API_KEY in .env
 
 # 4. Verify database
 npm run setup:db

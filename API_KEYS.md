@@ -73,7 +73,7 @@ OPEN_METEO_API_KEY=your-open-meteo-key-here
 npm start
 
 # Test AI pairing endpoint
-curl -X POST http://localhost:3000/api/pairing/recommend \
+curl -X POST http://localhost:3001/api/pairing/recommend \
   -H "Content-Type: application/json" \
   -d '{"dish": "grilled salmon", "context": {"occasion": "casual"}}'
 ```
@@ -81,7 +81,7 @@ curl -X POST http://localhost:3000/api/pairing/recommend \
 ### Test Open-Meteo Connection:
 ```bash
 # Test weather intelligence endpoint  
-curl http://localhost:3000/api/vintage/analysis/1
+curl http://localhost:3001/api/vintage/analysis/1
 ```
 
 ## ⚠️ Security Best Practices

@@ -7,7 +7,7 @@ Successfully implemented a comprehensive Vintage Intelligence Service for SommOS
 ## Completed Implementation
 
 ### ✅ Core Service (`backend/core/vintage_intelligence.js`)
-- **AI-Powered Vintage Summaries**: Using OpenAI GPT-4 for professional 3-sentence vintage narratives
+- **AI-Powered Vintage Summaries**: Using DeepSeek (primary) or OpenAI (fallback) for professional 3-sentence vintage narratives
 - **Fallback Template System**: Offline-capable template-based summaries when AI is unavailable
 - **Weather Analysis Integration**: Connects with existing WeatherAnalysisService for comprehensive vintage intelligence
 - **Procurement Recommendations**: Weather-based buy/hold/avoid recommendations with priority scoring
@@ -60,8 +60,8 @@ When new wines are added via `POST /api/wines`, the system automatically:
 7. Caches results for performance
 
 ### Professional Vintage Summaries
-**AI Mode (with OpenAI API key):**
-- Uses GPT-4 to generate sophisticated 3-sentence vintage analyses
+**AI Mode (with AI API key):**
+- Uses DeepSeek (primary) or OpenAI to generate sophisticated 3-sentence vintage analyses
 - Tailored for luxury yacht service language and context
 - Incorporates specific weather data and wine characteristics
 
@@ -115,7 +115,9 @@ InventoryManager.addWineToInventory()
 
 ### Environment Variables
 ```bash
-# Optional - enables AI-powered summaries
+# Optional - enables AI-powered summaries (DeepSeek primary)
+DEEPSEEK_API_KEY=your_deepseek_api_key
+# Optional fallback
 OPENAI_API_KEY=your_openai_api_key
 
 # Optional - for external weather data sources
@@ -123,7 +125,7 @@ WEATHER_API_KEY=your_weather_api_key
 ```
 
 ### Modes of Operation
-1. **AI Mode**: Full AI-powered summaries with OpenAI
+1. **AI Mode**: Full AI-powered summaries with DeepSeek (primary) or OpenAI (fallback)
 2. **Template Mode**: Template-based summaries (offline capable)
 3. **Hybrid Mode**: AI with template fallback (recommended)
 

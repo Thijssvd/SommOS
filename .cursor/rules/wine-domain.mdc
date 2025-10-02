@@ -1,0 +1,59 @@
+---
+description: Wine Industry Domain Rules and Business Logic for SommOS
+globs: ["backend/core/pairing_engine.js", "backend/core/vintage_intelligence.js", "backend/core/procurement_engine.js"]
+alwaysApply: true
+---
+
+# Wine Industry Domain Rules
+
+## Wine Classification Standards
+- Use proper wine type classifications: Red, White, Sparkling, Rosé, Dessert, Fortified
+- Validate wine regions against established wine-producing areas
+- Use proper grape variety names and spellings
+- Implement vintage year validation (1800-current year, no future dates)
+
+## Inventory Management
+- Track wines by vintage-specific records (not just wine names)
+- Implement location-based storage: main-cellar, service-bar, deck-storage, private-reserve
+- Maintain proper bottle quantity tracking (no fractional bottles for most operations)
+- Use proper cost tracking per bottle with currency handling
+
+## Wine Pairing Logic
+- Implement confidence scoring (0-100%) for all recommendations
+- Provide detailed reasoning for pairing suggestions
+- Consider dish preparation methods, seasonings, and cooking techniques
+- Account for guest preferences and dietary restrictions
+
+## Vintage Intelligence Patterns
+```javascript
+// Weather data integration
+const weatherAnalysis = {
+  temperature: { growing_season_avg, harvest_temp },
+  precipitation: { annual_total, growing_season },
+  quality_indicators: { heat_units, frost_days }
+};
+```
+
+## Procurement Business Rules
+- Track supplier relationships and performance
+- Implement proper purchase order workflows
+- Consider wine aging potential in procurement decisions
+- Account for seasonal availability and pricing patterns
+
+## Storage Location Logic
+- Main Cellar: Long-term storage, temperature controlled
+- Service Bar: Ready-to-serve wines, limited quantity
+- Deck Storage: Casual dining wines, weather considerations
+- Private Reserve: Special occasion wines, restricted access
+
+## Wine Service Patterns
+- Track consumption by occasion and guest preferences
+- Implement proper wine reservation system
+- Record tasting notes and guest feedback
+- Maintain service temperature recommendations
+
+## Quality Scoring
+- Use established wine scoring systems (0-100 point scale)
+- Consider vintage variation in quality assessments
+- Account for aging potential and current drinkability
+- Integrate weather data into quality predictions

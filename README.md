@@ -16,16 +16,18 @@ SommOS is a comprehensive wine management system designed for luxury yachts, fea
 
 ```
 SommOS/
-├── frontend/           # Progressive Web App
-│   └── src/
-│       ├── components/ # React components
-│       └── services/   # API and data services
-├── backend/            # Node.js API server
-│   ├── api/           # REST API endpoints
-│   ├── models/        # Data models
-│   ├── services/      # Business logic
-│   └── database/      # Database schemas and migrations
-└── data/              # Sample data and schemas
+├── frontend/           # Progressive Web App (vanilla JS)
+│   ├── js/             # Application modules (SommOS, SommOSAPI, UI, modules)
+│   ├── css/            # Stylesheets
+│   ├── sw.js           # Service worker source
+│   └── vite.config.js  # Frontend build config
+├── backend/            # Node.js API server (Express)
+│   ├── api/            # REST API endpoints (auth, inventory, pairing, procurement, vintage)
+│   ├── core/           # Business logic (engines, services)
+│   ├── database/       # Schema, migrations, setup, seed, import
+│   └── config/         # Env and security configuration
+├── scripts/            # Utility scripts (spec parity, env verification, SBOM)
+└── data/               # Runtime database directory
 ```
 
 ## Key Features
@@ -41,7 +43,7 @@ SommOS/
 - **Frontend**: Progressive Web App (PWA) with offline capabilities
 - **Backend**: Node.js with Express API
 - **Database**: SQLite for offline-first architecture
-- **AI Services**: OpenAI GPT for intelligent wine pairing
+- **AI Services**: DeepSeek (primary) or OpenAI (fallback) for intelligent wine pairing
 - **Weather Data**: Open-Meteo Historical Weather API (free tier)
 - **Deployment**: Docker containers with nginx reverse proxy
 
@@ -72,11 +74,9 @@ npm install
    nano .env  # Edit with your keys
    ```
    
-   **Required**:
-   - **OpenAI API Key**: Get from [platform.openai.com](https://platform.openai.com/api-keys) 
-     - Cost: ~$0.01-0.03 per pairing, $5 free credits
-   
-   **Optional**:
+   **Optional (for AI)**:
+   - **DeepSeek API Key (Primary)**: Get from `https://platform.deepseek.com/api_keys` (add `DEEPSEEK_API_KEY`)
+   - **OpenAI API Key (Fallback)**: Get from `https://platform.openai.com/api-keys` (add `OPENAI_API_KEY`)
    - **Open-Meteo**: FREE! Leave empty for 10,000 requests/day
 
 3. **Deploy**
@@ -109,3 +109,17 @@ Designed for deployment on yacht networks with:
 ---
 
 *Built for luxury yacht wine management with enterprise-grade reliability and yacht-specific workflows.*
+
+## AI Keys
+
+SommOS prefers DeepSeek as the AI provider, with automatic fallback to OpenAI if DeepSeek is not configured.
+
+```bash
+# .env
+# AI (optional)
+DEEPSEEK_API_KEY=sk-your-deepseek-key-here  # primary
+# Optional fallback
+OPENAI_API_KEY=sk-your-openai-key-here
+```
+
+Runtime automatically uses `DEEPSEEK_API_KEY` if present, otherwise `OPENAI_API_KEY`.

@@ -211,6 +211,8 @@ Set these in your `.env` file for full functionality:
 
 ```bash
 # Enable AI-powered summaries (optional)
+DEEPSEEK_API_KEY=your_deepseek_api_key_here  # Primary
+# Optional fallback
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Weather data sources (if integrating external APIs)
@@ -221,8 +223,8 @@ WEATHER_API_KEY=your_weather_api_key
 
 The service works in two modes:
 
-1. **AI Mode**: Uses OpenAI GPT-4 for sophisticated vintage summaries
-   - Requires `OPENAI_API_KEY` environment variable
+1. **AI Mode**: Uses DeepSeek (primary) or OpenAI for sophisticated vintage summaries
+   - Requires `DEEPSEEK_API_KEY` or `OPENAI_API_KEY` environment variable
    - Generates contextual, professional sommelier language
    
 2. **Template Mode**: Uses built-in template logic (fallback)

@@ -1,0 +1,67 @@
+---
+description: Testing Standards and Quality Assurance for SommOS
+globs: ["**/*.test.js", "tests/**/*.js", "__tests__/**/*.js"]
+alwaysApply: false
+---
+
+# Testing and Quality Assurance Rules
+
+## Test Structure
+- Follow the established test directory structure in `/tests/`
+- Use Jest for all testing with the existing configuration
+- Group tests by functionality: backend, frontend, integration, performance
+- Include both success and error scenarios in test coverage
+
+## API Testing Patterns
+```javascript
+describe('Pairing API', () => {
+  test('should return recommendations for valid dish', async () => {
+    const response = await request(app)
+      .post('/api/pairing/recommend')
+      .send({
+        dish: 'grilled salmon',
+        context: { occasion: 'casual' }
+      });
+    
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.length).toBeGreaterThan(0);
+  });
+});
+```
+
+## Database Testing
+- Use test database with sample data
+- Test both successful operations and constraint violations
+- Verify data integrity after operations
+- Test transaction rollback scenarios
+
+## Frontend Testing
+- Test offline functionality with service worker mocks
+- Verify PWA capabilities and installation
+- Test responsive design across device sizes
+- Validate accessibility compliance (WCAG AA)
+
+## Performance Testing
+- Test API response times (< 2s for most operations)
+- Verify database query performance with large datasets
+- Test concurrent request handling
+- Monitor memory usage during operations
+
+## Integration Testing
+- Test full user workflows end-to-end
+- Verify data consistency across components
+- Test error recovery and graceful degradation
+- Validate offline-to-online synchronization
+
+## Wine Domain Testing
+- Test wine classification and validation logic
+- Verify inventory operations maintain data integrity
+- Test pairing algorithm accuracy and consistency
+- Validate vintage intelligence calculations
+
+## Security Testing
+- Test authentication and authorization flows
+- Verify input validation and sanitization
+- Test rate limiting and CORS policies
+- Validate secure cookie and session handling

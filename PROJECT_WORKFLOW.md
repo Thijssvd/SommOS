@@ -59,7 +59,7 @@ npm install
 
 # Environment variables configured
 cp .env.example .env
-# Set OPENAI_API_KEY for AI features
+# Set DEEPSEEK_API_KEY for AI (optional). OPENAI_API_KEY works as fallback.
 ```
 
 ### Development Workflow
