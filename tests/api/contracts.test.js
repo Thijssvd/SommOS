@@ -13,11 +13,12 @@ const loadSpec = () => {
 
 const extractRoutes = () => {
   const source = fs.readFileSync(ROUTES_PATH, 'utf8');
-  const routeRegex = /router\.(get|post|put|delete)\('([^']+)'/g;
   const matches = [];
   let match;
 
-  while ((match = routeRegex.exec(source)) !== null) {
+  // Extract main router routes - handle multi-line definitions
+  const mainRouteRegex = /router\.(get|post|put|delete)\(\s*'([^']+)'/gs;
+  while ((match = mainRouteRegex.exec(source)) !== null) {
     const method = match[1].toLowerCase();
     const routePath = match[2];
     matches.push({
@@ -26,9 +27,25 @@ const extractRoutes = () => {
     });
   }
 
+  // Also extract routes from sub-routers (auth, learning, ml, etc.)
+  const authSource = fs.readFileSync(path.join(__dirname, '..', '..', 'backend', 'api', 'auth.js'), 'utf8');
+  const authRouteRegex = /router\.(get|post|put|delete)\(\s*'([^']+)'/gs;
+  const authRoutes = [];
+  while ((match = authRouteRegex.exec(authSource)) !== null) {
+    const authRoute = {
+      method: match[1].toLowerCase(),
+      path: '/auth' + match[2],
+    };
+    authRoutes.push(authRoute);
+    matches.push(authRoute);
+  }
+  if (process.env.DEBUG_CONTRACTS) {
+    console.log('Auth routes extracted:', authRoutes.length, authRoutes.slice(0, 3));
+  }
+
   return {
     list: matches,
-    source,
+    source: source + authSource,
   };
 };
 
@@ -70,9 +87,26 @@ describe('OpenAPI contract', () => {
   });
 
   test('does not document undeclared Express routes', () => {
-    const expressRouteIndex = new Set(
-      expressRoutes.map(({ method, path: expressPath }) => `${method} ${normalizeExpressPath(expressPath)}`)
-    );
+    // Build index of normalized Express routes
+    const expressRouteIndex = new Set();
+    expressRoutes.forEach(({ method, path: expressPath }) => {
+      // Normalize by converting :param to {param}
+      const normalized = expressPath.replace(/:([^/]+)/g, '{$1}');
+      expressRouteIndex.add(`${method} ${normalized}`);
+    });
+
+    const missingRoutes = [];
+    collectOperations(spec).forEach(({ method, path }) => {
+      const key = `${method} ${path}`;
+      if (!expressRouteIndex.has(key)) {
+        missingRoutes.push(key);
+      }
+    });
+
+    if (missingRoutes.length > 0) {
+      console.log('Routes in OpenAPI spec but not in Express:', missingRoutes);
+      console.log('\nExpress routes (sample):', Array.from(expressRouteIndex).slice(0, 10));
+    }
 
     collectOperations(spec).forEach(({ method, path }) => {
       const key = `${method} ${path}`;
@@ -82,17 +116,35 @@ describe('OpenAPI contract', () => {
 
   test('attaches validation middleware for each route', () => {
     const validatedRoutes = new Set();
-    const validationRegex = /router\.(get|post|put|delete)\('([^']+)',\s*validate\(/g;
     let match;
 
+    // Match routes that have validate() within ~500 chars after route path
+    // Using non-greedy match and reasonable limit to avoid matching too far
+    const validationRegex = /router\.(get|post|put|delete)\(\s*'([^']+)'[\s\S]{1,500}?validate\(/g;
     while ((match = validationRegex.exec(source)) !== null) {
       validatedRoutes.add(`${match[1].toLowerCase()} ${match[2]}`);
     }
 
     // Check for routes with requireAuthAndRole pattern (which includes validation)
-    const authRoleRegex = /router\.(get|post|put|delete)\('([^']+)',\s*\.\.\.requireAuthAndRole/g;
+    const authRoleRegex = /router\.(get|post|put|delete)\(\s*'([^']+)'[\s\S]{1,500}?\.\.\.requireAuthAndRole/g;
     while ((match = authRoleRegex.exec(source)) !== null) {
       validatedRoutes.add(`${match[1].toLowerCase()} ${match[2]}`);
+    }
+
+    const unvalidatedRoutes = [];
+    expressRoutes.forEach(({ method, path: expressPath }) => {
+      // Skip system routes that might not need validation
+      if (expressPath.includes('/system/') || expressPath.includes('/auth/')) {
+        return;
+      }
+      if (!validatedRoutes.has(`${method} ${expressPath}`)) {
+        unvalidatedRoutes.push(`${method} ${expressPath}`);
+      }
+    });
+
+    if (unvalidatedRoutes.length > 0 && process.env.DEBUG_CONTRACTS) {
+      console.log('Unvalidated routes:', unvalidatedRoutes.slice(0, 10));
+      console.log('Validated routes (sample):', Array.from(validatedRoutes).slice(0, 10));
     }
 
     expressRoutes.forEach(({ method, path: expressPath }) => {

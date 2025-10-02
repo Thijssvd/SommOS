@@ -7,6 +7,7 @@ jest.mock('../../backend/config/env', () => ({
     getConfig: () => ({
         nodeEnv: 'test',
         openAI: { apiKey: null },
+        deepSeek: { apiKey: null },
         database: { path: ':memory:' },
     }),
 }));

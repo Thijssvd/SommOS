@@ -3,6 +3,7 @@ jest.mock('../../backend/config/env', () => ({
         nodeEnv: 'development',
         openMeteo: { baseUrl: 'https://mock.open-meteo.test' },
         openAI: { apiKey: null },
+        deepSeek: { apiKey: null },
         database: { path: ':memory:' },
         features: { disableExternalCalls: true }
     })

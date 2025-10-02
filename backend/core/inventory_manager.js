@@ -572,7 +572,7 @@ class InventoryManager {
                 vintage_id: vintageId,
                 location: fromLocation,
                 transaction_type: 'OUT',
-                quantity: -quantity,
+                quantity: quantity,
                 notes: `Moved to ${toLocation}. ${notes}`
             });
             
@@ -647,7 +647,7 @@ class InventoryManager {
                 vintage_id: vintageId,
                 location: location,
                 transaction_type: 'OUT',
-                quantity: -quantity,
+                quantity: quantity,
                 notes: `Consumed: ${notes}`
             });
             
@@ -1015,7 +1015,7 @@ class InventoryManager {
         
         // Get current stock info for WebSocket broadcast
         const currentStock = await this.db.get(`
-            SELECT s.*, v.vintage_year, w.name as wine_name
+            SELECT s.*, v.year as vintage_year, w.name as wine_name
             FROM Stock s
             JOIN Vintages v ON s.vintage_id = v.id
             JOIN Wines w ON v.wine_id = w.id
@@ -1276,7 +1276,7 @@ class InventoryManager {
                 vintage_id,
                 location,
                 transaction_type: 'OUT',
-                quantity: -quantity,
+                quantity: quantity,
                 notes,
                 created_by
             });
@@ -1449,10 +1449,26 @@ class InventoryManager {
                 origin: syncContext.origin || 'inventory.move'
             };
 
-            await this.updateStock(vintage_id, from_location, -quantity, {
-                ...baseContext,
+            // Reduce source stock directly to avoid negative quantity issues
+            const { params } = this.getSyncValues(baseContext, {
+                updated_by: baseContext.updated_by,
                 origin: `${baseContext.origin}.from`
             });
+            
+            // Ensure the update won't violate the quantity >= 0 constraint
+            const updateResult = await this.db.run(`
+                UPDATE Stock
+                SET quantity = quantity - ?,
+                    updated_at = ?,
+                    updated_by = ?,
+                    op_id = ?,
+                    origin = ?
+                WHERE vintage_id = ? AND location = ? AND quantity >= ?
+            `, [quantity, ...params, vintage_id, from_location, quantity]);
+            
+            if (updateResult.changes === 0) {
+                throw new Error('Failed to update source stock - record may not exist or insufficient quantity');
+            }
 
             const destStock = await this.db.get(`
                 SELECT quantity
@@ -1485,7 +1501,7 @@ class InventoryManager {
                 vintage_id,
                 location: from_location,
                 transaction_type: 'MOVE',
-                quantity: -quantity,
+                quantity: quantity, // Use absolute value, transaction_type and notes indicate direction
                 notes: notes ? `Moved to ${to_location}. ${notes}` : `Moved to ${to_location}`,
                 created_by
             });
@@ -1494,7 +1510,7 @@ class InventoryManager {
                 vintage_id,
                 location: to_location,
                 transaction_type: 'MOVE',
-                quantity,
+                quantity: quantity,
                 notes: notes ? `Moved from ${from_location}. ${notes}` : `Moved from ${from_location}`,
                 created_by
             });
