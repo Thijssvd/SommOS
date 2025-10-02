@@ -113,12 +113,18 @@ async function getServices() {
     }
 }
 
+// Reset services cache (for testing purposes)
+function resetServices() {
+    servicesPromise = null;
+}
+
 const sendError = (res, status, code, message, details) => {
     const payload = {
         success: false,
         error: {
             code,
-            message
+            message,
+            timestamp: new Date().toISOString()
         }
     };
 
@@ -1629,3 +1635,4 @@ router.get('/system/spec', requireRole('admin', 'crew', 'guest'), validate(), (r
 // Defer unmatched routes and errors to the global app-level handlers
 
 module.exports = router;
+module.exports.resetServices = resetServices;

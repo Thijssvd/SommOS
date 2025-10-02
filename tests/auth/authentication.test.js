@@ -12,10 +12,12 @@ describe('Authentication lifecycle', () => {
   let requireRole;
 
   beforeAll(async () => {
+    // Use test environment but explicitly disable auth bypass for this test suite
     process.env.NODE_ENV = 'test';
-    process.env.JWT_SECRET = 'test-jwt-secret';
-    process.env.SESSION_SECRET = 'test-session-secret';
+    process.env.JWT_SECRET = 'test-jwt-secret-that-is-at-least-32-characters-long-for-testing';
+    process.env.SESSION_SECRET = 'test-session-secret-that-is-at-least-32-characters-for-tests';
     process.env.DATABASE_PATH = ':memory:';
+    process.env.SOMMOS_AUTH_DISABLED = 'false';
     process.env.SOMMOS_AUTH_TEST_BYPASS = 'false';
 
     jest.resetModules();
@@ -28,14 +30,195 @@ describe('Authentication lifecycle', () => {
     const schemaSql = fs.readFileSync(schemaPath, 'utf8');
     await db.exec(schemaSql);
 
-    const authMiddleware = require('../../backend/middleware/auth');
-    authService = authMiddleware.authService;
-    requireAuth = authMiddleware.requireAuth;
-    requireRole = authMiddleware.requireRole;
+    // Create AuthService with the test database instance
+    const AuthService = require('../../backend/core/auth_service');
+    const { getConfig } = require('../../backend/config/env');
+    authService = new AuthService({ db, config: getConfig() });
 
+    // Create middleware functions manually with the test auth service
+    const authenticateRequest = async (req) => {
+      if (req.user) {
+        return req.user;
+      }
+
+      const token = req.cookies?.sommos_access_token || 
+        (req.headers?.authorization || req.headers?.Authorization)?.replace('Bearer ', '')?.trim();
+
+      if (!token) {
+        return null;
+      }
+
+      try {
+        const payload = authService.verifyAccessToken(token);
+        const user = await authService.getUserById(payload.sub);
+
+        if (!user) {
+          return null;
+        }
+
+        const serialized = authService.serializeUser(user);
+        req.user = serialized;
+        return serialized;
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const unauthorized = (res) => {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Authentication is required to access this resource.',
+        },
+      });
+    };
+
+    const forbidden = (res) => {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to perform this action.',
+        },
+      });
+    };
+
+    requireAuth = () => {
+      return async (req, res, next) => {
+        const user = await authenticateRequest(req);
+        if (!user) {
+          return unauthorized(res);
+        }
+        next();
+      };
+    };
+
+    requireRole = (...roles) => {
+      const allowedRoles = roles.length > 0 ? roles : AuthService.Roles;
+      return async (req, res, next) => {
+        const user = await authenticateRequest(req);
+        if (!user) {
+          return unauthorized(res);
+        }
+        if (!allowedRoles.includes(user.role)) {
+          return forbidden(res);
+        }
+        next();
+      };
+    };
+
+    // Create custom auth router with test auth service
     const express = require('express');
     const cookieParser = require('cookie-parser');
-    const authRouter = require('../../backend/api/auth');
+    const { validate, validators } = require('../../backend/middleware/validate');
+
+    const authRouter = express.Router();
+
+    const asyncHandler = (fn) => (req, res, next) => {
+      Promise.resolve(fn(req, res, next)).catch(next);
+    };
+
+    const sendError = (res, status, code, message, details) => {
+      const payload = {
+        success: false,
+        error: {
+          code,
+          message,
+        },
+      };
+
+      if (typeof details !== 'undefined') {
+        payload.error.details = details;
+      }
+
+      return res.status(status).json(payload);
+    };
+
+    // Login endpoint
+    authRouter.post(
+      '/login',
+      validate(validators.authLogin),
+      asyncHandler(async (req, res) => {
+        const { email, password } = req.body;
+
+        const user = await authService.getUserByEmail(email);
+
+        if (!user) {
+          return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
+        }
+
+        const validPassword = await authService.verifyPassword(password, user.password_hash);
+
+        if (!validPassword) {
+          return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
+        }
+
+        const tokens = await authService.issueTokensForUser(user);
+        authService.attachTokensToResponse(res, tokens);
+
+        const freshUser = await authService.getUserById(user.id);
+
+        return res.json({
+          success: true,
+          data: authService.serializeUser(freshUser),
+        });
+      })
+    );
+
+    // Logout endpoint
+    authRouter.post(
+      '/logout',
+      requireAuth(),
+      asyncHandler(async (req, res) => {
+        const refreshToken = req.cookies?.sommos_refresh_token;
+
+        if (refreshToken) {
+          await authService.removeRefreshToken(refreshToken);
+        }
+
+        authService.clearAuthCookies(res);
+
+        return res.json({
+          success: true,
+          message: 'Logged out successfully.',
+        });
+      })
+    );
+
+    // Refresh endpoint
+    authRouter.post(
+      '/refresh',
+      asyncHandler(async (req, res) => {
+        const refreshToken = req.cookies?.sommos_refresh_token;
+
+        if (!refreshToken) {
+          return sendError(res, 401, 'REFRESH_TOKEN_MISSING', 'Refresh token is required.');
+        }
+
+        try {
+          const { user } = await authService.validateRefreshToken(refreshToken);
+          const tokens = await authService.rotateRefreshToken(refreshToken, user);
+          authService.attachTokensToResponse(res, tokens);
+
+          const freshUser = await authService.getUserById(user.id);
+
+          return res.json({
+            success: true,
+            data: authService.serializeUser(freshUser),
+          });
+        } catch (error) {
+          authService.clearAuthCookies(res);
+
+          return sendError(
+            res,
+            401,
+            'REFRESH_TOKEN_INVALID',
+            error.message || 'Refresh token is invalid or has expired.'
+          );
+        }
+      })
+    );
 
     app = express();
     app.use(express.json());

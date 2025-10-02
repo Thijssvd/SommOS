@@ -8,8 +8,11 @@ class Database {
     }
 
     static getInstance(customPath = null) {
-        if (!Database.instance || customPath) {
-            Database.instance = new Database(customPath);
+        // Use DATABASE_PATH from environment if available and no custom path is provided
+        const pathToUse = customPath || process.env.DATABASE_PATH || null;
+        
+        if (!Database.instance || customPath || process.env.DATABASE_PATH) {
+            Database.instance = new Database(pathToUse);
         }
         return Database.instance;
     }

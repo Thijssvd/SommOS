@@ -16,6 +16,7 @@ const sendError = (res, status, code, message, details) => {
         error: {
             code,
             message,
+            timestamp: new Date().toISOString(),
         },
     };
 

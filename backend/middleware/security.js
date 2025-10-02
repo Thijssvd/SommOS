@@ -223,7 +223,7 @@ function preventSQLInjection(req, res, next) {
     
     const checkObject = (obj) => {
         for (const key in obj) {
-            if (obj.hasOwnProperty(key)) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
                 if (typeof obj[key] === 'string') {
                     for (const pattern of sqlPatterns) {
                         if (pattern.test(obj[key])) {

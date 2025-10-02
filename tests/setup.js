@@ -150,6 +150,35 @@ afterAll(async () => {
   } catch (error) {
     // Ignore module loading errors
   }
+
+  // Additional cleanup for open handles
+  try {
+    // Clear all timers
+    jest.clearAllTimers();
+    jest.useRealTimers();
+    
+    // Close any open WebSocket servers
+    if (global.wss) {
+      await new Promise((resolve) => {
+        try {
+          global.wss.close(resolve);
+        } catch (e) {
+          resolve();
+        }
+      });
+      global.wss = null;
+    }
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+    }
+    
+    // Wait for any remaining async operations
+    await new Promise(resolve => setImmediate(resolve));
+  } catch (error) {
+    // Ignore cleanup errors
+  }
 });
 
 // Test utilities

@@ -157,17 +157,117 @@ beforeAll(async () => {
                 this.baseURL = 'http://localhost:3000/api';
                 this.timeout = 10000;
             }
-            async getInventory() { return { success: true, data: [] }; }
+            
+            async _fetch(url, options = {}) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+                
+                try {
+                    options.signal = controller.signal;
+                    const response = await global.fetch(url, options);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    return await response.json();
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+            }
+            
+            async getInventory(filters = {}) {
+                const params = new URLSearchParams();
+                Object.entries(filters).forEach(([key, value]) => {
+                    if (value !== '' && value !== undefined && value !== null) {
+                        params.append(key, value);
+                    }
+                });
+                const queryString = params.toString();
+                const url = `${this.baseURL}/inventory/stock${queryString ? '?' + queryString : ''}`;
+                return await this._fetch(url);
+            }
+            
             async getSystemHealth() { return { success: true, data: { total_bottles: 150, total_wines: 75, total_vintages: 200, active_suppliers: 5 } }; }
+            
             async getRecentActivity() { return { success: true, data: [{ type: 'system', title: 'Test Activity', timestamp: new Date().toISOString() }] }; }
-            async consumeWine() { return { success: true, data: { id: 123 } }; }
+            
+            async consumeWine(vintageId, location, quantity, notes) {
+                return await this._fetch(`${this.baseURL}/inventory/consume`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vintage_id: vintageId,
+                        location: location,
+                        quantity: quantity,
+                        notes: notes,
+                        created_by: 'SommOS'
+                    })
+                });
+            }
+            
+            async recordConsumption(payload) {
+                return await this._fetch(`${this.baseURL}/inventory/consume`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
         };
 
         global.SommOSUI = class SommOSUI {
-            showToast() {}
-            showModal() {}
-            hideModal() {}
-            setButtonLoading() {}
+            showToast(message, type = 'info') {
+                const container = document.getElementById('toast-container') || document.body;
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+                container.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            }
+            
+            showModal(title, content) {
+                const modal = document.getElementById('modal');
+                const modalTitle = document.getElementById('modal-title');
+                const modalBody = document.getElementById('modal-body');
+                
+                if (modal && modalTitle && modalBody) {
+                    modalTitle.textContent = title;
+                    modalBody.innerHTML = content;
+                    modal.classList.remove('hidden');
+                }
+            }
+            
+            hideModal() {
+                const modal = document.getElementById('modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+            }
+            
+            showLoading(buttonId) {
+                const button = document.getElementById(buttonId);
+                if (button) {
+                    button.disabled = true;
+                    button.dataset.originalText = button.textContent;
+                    button.textContent = 'Loading...';
+                }
+            }
+            
+            hideLoading(buttonId) {
+                const button = document.getElementById(buttonId);
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = button.dataset.originalText || button.textContent;
+                }
+            }
+            
+            setButtonLoading(buttonId, loading) {
+                if (loading) {
+                    this.showLoading(buttonId);
+                } else {
+                    this.hideLoading(buttonId);
+                }
+            }
         };
 
         // Mock modules
@@ -218,6 +318,7 @@ beforeAll(async () => {
                 this.api = new SommOSAPI();
                 this.ui = new SommOSUI();
                 this.isOnline = true;
+                this.fullInventory = [];
                 this.modules = {
                     dashboard: new DashboardModule(this),
                     inventory: new InventoryModule(this),
@@ -225,45 +326,231 @@ beforeAll(async () => {
                     procurement: new ProcurementModule(this)
                 };
             }
+            
             init() { this.initialized = true; }
-            navigate() {}
+            
+            navigateToView(view) {
+                this.currentView = view;
+                // Update nav items
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.toggle('active', item.dataset.view === view);
+                });
+                // Update views
+                document.querySelectorAll('.view').forEach(viewEl => {
+                    viewEl.classList.toggle('active', viewEl.id === `${view}-view`);
+                });
+            }
+            
             displayInventory(inventory) {
                 const grid = document.getElementById('inventory-grid');
-                if (grid) {
-                    grid.innerHTML = inventory.map(item =>
-                        `<div class="wine-card">${item.name}</div>`
-                    ).join('');
+                if (!grid) return;
+                
+                if (inventory.length === 0) {
+                    grid.innerHTML = '';
+                    return;
                 }
+                
+                grid.innerHTML = inventory.map(item => `
+                    <div class="wine-card">
+                        <h3>${item.name || 'Unknown Wine'}</h3>
+                        <p><strong>Producer:</strong> ${item.producer || 'Unknown'}</p>
+                        <p><strong>Year:</strong> ${item.year || 'N/A'}</p>
+                        <p><strong>Type:</strong> ${item.wine_type || 'Wine'}</p>
+                        <p><strong>Region:</strong> ${item.region || 'Unknown'}</p>
+                        ${item.cost_per_bottle ? `<p class="price">$${parseFloat(item.cost_per_bottle).toFixed(2)}</p>` : ''}
+                        <p class="quantity">${item.quantity || 0} bottles</p>
+                    </div>
+                `).join('');
             }
-            parseGrapeVarieties() { return []; }
+            
+            parseGrapeVarieties(grapeVarieties) {
+                try {
+                    if (typeof grapeVarieties === 'string' && grapeVarieties.trim()) {
+                        const parsed = JSON.parse(grapeVarieties);
+                        return Array.isArray(parsed) ? parsed : [];
+                    }
+                } catch (e) {
+                    if (typeof grapeVarieties === 'string') {
+                        return grapeVarieties.split(/[,;|&]/).map(g => g.trim()).filter(g => g);
+                    }
+                }
+                return [];
+            }
+            
             getWineTypeIcon(type) {
-                const icons = { 'Red': '🍷', 'White': '🥂', 'Rosé': '🌸', 'Sparkling': '✨' };
+                const icons = { 'Red': '🍷', 'White': '🥂', 'Rosé': '🌹', 'Sparkling': '🍾', 'Dessert': '🍯', 'Fortified': '🥃' };
                 return icons[type] || '🍷';
             }
-            displayPairings() {}
-            loadRecentActivity() {}
-            displayRecentActivity() {}
-            getTimeAgo() { return 'Just now'; }
-            getActivityIcon() { return '📝'; }
-            generateWineSummary() { return 'Test wine summary'; }
-            createWineTypesChart() {}
-            createStockLocationChart() {}
-            loadInventory() {}
-            handleSearch() {}
-            applyFilters() {}
-            updateInventoryCount() {}
-            getDisplayRegion() { return 'Bordeaux'; }
-            showWineDetails() {}
-            reserveWineModal() {}
-            consumeWineModal() {}
-            handlePairingRequest() {}
-            submitPairingFeedback() {}
-            showLoadingScreen() {}
-            hideLoadingScreen() {}
-            loadWineCatalog() {}
-            loadProcurementData() {}
-            showPurchaseDecisionTool() {}
-            generatePurchaseOrder() {}
+            
+            displayPairings(pairings) {
+                const results = document.getElementById('pairing-results');
+                const list = document.getElementById('pairing-list');
+                
+                if (!results || !list) return;
+                
+                if (pairings.length === 0) {
+                    list.innerHTML = '<p>No pairings found</p>';
+                    results.classList.remove('hidden');
+                    return;
+                }
+                
+                list.innerHTML = pairings.map(pairing => {
+                    const wine = pairing.wine;
+                    const score = Math.round((pairing.score?.total || 0) * 100);
+                    return `
+                        <div class="pairing-card">
+                            <h3>${wine.name}</h3>
+                            <p><strong>Producer:</strong> ${wine.producer}</p>
+                            <p><strong>Score:</strong> ${score}%</p>
+                            <p><strong>Reasoning:</strong> ${pairing.reasoning}</p>
+                            <p><strong>Available:</strong> ${wine.quantity} bottles available</p>
+                        </div>
+                    `;
+                }).join('');
+                results.classList.remove('hidden');
+            }
+            
+            handleSearch(searchTerm) {
+                const filtered = this.fullInventory.filter(item => {
+                    const searchLower = (searchTerm || '').toLowerCase();
+                    return (item.name || '').toLowerCase().includes(searchLower) ||
+                           (item.producer || '').toLowerCase().includes(searchLower) ||
+                           (item.region || '').toLowerCase().includes(searchLower);
+                });
+                this.displayInventory(filtered);
+            }
+            
+            applyFilters() {
+                const typeFilter = document.getElementById('type-filter')?.value;
+                const locationFilter = document.getElementById('location-filter')?.value;
+                
+                const filtered = this.fullInventory.filter(item => {
+                    if (typeFilter && item.wine_type !== typeFilter) return false;
+                    if (locationFilter && item.location !== locationFilter) return false;
+                    return true;
+                });
+                this.displayInventory(filtered);
+            }
+            
+            updateInventoryCount(count) {
+                const subtitle = document.querySelector('#inventory-view .view-subtitle');
+                if (subtitle) {
+                    subtitle.textContent = `${count} wines in cellar`;
+                }
+            }
+            
+            getDisplayRegion(wine) {
+                const placeholderRegions = ['various', 'unknown', 'multiple', 'n/a', ''];
+                const region = (wine.region || '').trim().toLowerCase();
+                
+                if (region && !placeholderRegions.includes(region)) {
+                    return wine.region;
+                }
+                
+                const name = (wine.name || '').toLowerCase();
+                if (name.includes('bordeaux')) return 'Bordeaux';
+                if (name.includes('champagne')) return 'Champagne';
+                if (name.includes('burgundy')) return 'Burgundy';
+                if (name.includes('napa')) return 'Napa Valley';
+                
+                return wine.region || wine.country || 'Unknown Region';
+            }
+            
+            generateWineSummary(wine) {
+                const type = wine.wine_type || 'wine';
+                const region = wine.region || 'unknown region';
+                const year = wine.year || 'unknown vintage';
+                const producer = wine.producer || 'Unknown producer';
+                return `A distinguished ${type.toLowerCase()} from ${region}, this ${year} vintage showcases ${producer}'s craftsmanship.`;
+            }
+            
+            createWineTypesChart(wines) {
+                const ctx = document.getElementById('wine-types-chart');
+                if (!ctx) return;
+                
+                const typeCounts = {};
+                wines.forEach(wine => {
+                    const type = wine.wine_type || 'Unknown';
+                    typeCounts[type] = (typeCounts[type] || 0) + (wine.quantity || 0);
+                });
+                
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(typeCounts),
+                        datasets: [{
+                            data: Object.values(typeCounts),
+                            backgroundColor: ['#b91c1c', '#f59e0b', '#6366f1', '#ec4899', '#d97706', '#6b7280'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+            
+            createStockLocationChart(wines) {
+                const ctx = document.getElementById('stock-location-chart');
+                if (!ctx) return;
+                
+                const locationCounts = {};
+                wines.forEach(wine => {
+                    const location = wine.location || 'Unknown';
+                    locationCounts[location] = (locationCounts[location] || 0) + (wine.quantity || 0);
+                });
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(locationCounts),
+                        datasets: [{
+                            label: 'Bottles',
+                            data: Object.values(locationCounts),
+                            backgroundColor: 'rgba(233, 69, 96, 0.8)',
+                            borderColor: '#e94560',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+            
+            async loadInventory() {
+                try {
+                    const result = await this.api.getInventory();
+                    if (result.success) {
+                        this.fullInventory = result.data;
+                        this.displayInventory(result.data);
+                    }
+                } catch (error) {
+                    this.ui.showToast('Failed to load inventory', 'error');
+                    const grid = document.getElementById('inventory-grid');
+                    if (grid) {
+                        grid.innerHTML = '<p class="error">Failed to load inventory</p>';
+                    }
+                }
+            }
+            
+            showLoadingScreen() {
+                const loadingScreen = document.getElementById('loading-screen');
+                const app = document.getElementById('app');
+                if (loadingScreen) loadingScreen.style.display = 'flex';
+                if (app) app.classList.add('hidden');
+            }
+            
+            hideLoadingScreen() {
+                setTimeout(() => {
+                    const loadingScreen = document.getElementById('loading-screen');
+                    const app = document.getElementById('app');
+                    if (loadingScreen) loadingScreen.style.display = 'none';
+                    if (app) app.classList.remove('hidden');
+                }, 1500);
+            }
         };
     }
 });

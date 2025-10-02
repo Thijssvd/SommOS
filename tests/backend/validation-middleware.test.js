@@ -125,12 +125,12 @@ describe('validate middleware', () => {
     middleware(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
         error: expect.objectContaining({
-          code: 'UNPROCESSABLE_ENTITY',
+          code: 'VALIDATION_ERROR',
           details: expect.arrayContaining([
             expect.objectContaining({
               path: 'quantity',
@@ -157,11 +157,12 @@ describe('validate middleware', () => {
     middleware(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
         error: expect.objectContaining({
+          code: 'VALIDATION_ERROR',
           details: expect.arrayContaining([
             expect.objectContaining({
               path: 'event_code',

@@ -48,7 +48,7 @@ const rateLimitConfigs = {
     general: {
         windowMs: 15 * 60 * 1000, // 15 minutes
         max: 1000, // Limit each IP to 1000 requests per windowMs
-        standardHeaders: true,
+        standardHeaders: 'draft-7', // Enable rate limit headers
         legacyHeaders: false,
         message: {
             success: false,
@@ -61,7 +61,7 @@ const rateLimitConfigs = {
     auth: {
         windowMs: 15 * 60 * 1000, // 15 minutes
         max: 5, // Limit each IP to 5 auth requests per windowMs
-        standardHeaders: true,
+        standardHeaders: 'draft-7', // Enable rate limit headers
         legacyHeaders: false,
         skipSuccessfulRequests: true,
         message: {
@@ -75,7 +75,7 @@ const rateLimitConfigs = {
     api: {
         windowMs: 15 * 60 * 1000, // 15 minutes
         max: 200, // Limit each IP to 200 API requests per windowMs
-        standardHeaders: true,
+        standardHeaders: 'draft-7', // Enable rate limit headers
         legacyHeaders: false,
         message: {
             success: false,
@@ -88,7 +88,7 @@ const rateLimitConfigs = {
     websocket: {
         windowMs: 60 * 1000, // 1 minute
         max: 100, // Limit each IP to 100 WebSocket connections per minute
-        standardHeaders: true,
+        standardHeaders: 'draft-7', // Enable rate limit headers
         legacyHeaders: false,
         message: {
             success: false,

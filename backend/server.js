@@ -141,7 +141,7 @@ function sanitizeObject(obj) {
     }
 
     for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
             if (typeof obj[key] === 'string') {
                 // Remove potentially dangerous characters
                 obj[key] = obj[key]
