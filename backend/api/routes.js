@@ -250,7 +250,7 @@ function formatInventoryItemByRole(item, role) {
 
 // POST /api/pairing/recommend
 // Generate wine pairing recommendations
-router.post('/pairing/recommend', requireRole('admin', 'crew'), validate(validators.pairingRecommend), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
+router.post('/pairing/recommend', ...requireAuthAndRole('admin', 'crew'), validate(validators.pairingRecommend), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
     const { dish, context, guestPreferences, options } = req.body;
 
     if (!dish) {
@@ -284,7 +284,7 @@ router.post('/pairing/recommend', requireRole('admin', 'crew'), validate(validat
 
 // POST /api/pairing/quick
 // Quick pairing for immediate service
-router.post('/pairing/quick', requireRole('admin', 'crew'), validate(validators.pairingQuick), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
+router.post('/pairing/quick', ...requireAuthAndRole('admin', 'crew'), validate(validators.pairingQuick), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
     const { dish, context, ownerLikes } = req.body;
 
     try {
@@ -301,7 +301,7 @@ router.post('/pairing/quick', requireRole('admin', 'crew'), validate(validators.
 
 // POST /api/pairing/feedback
 // Capture owner feedback to improve future pairings
-router.post('/pairing/feedback', requireRole('admin', 'crew'), validate(validators.pairingFeedback), asyncHandler(withServices(async ({ learningEngine }, req, res) => {
+router.post('/pairing/feedback', ...requireAuthAndRole('admin', 'crew'), validate(validators.pairingFeedback), asyncHandler(withServices(async ({ learningEngine }, req, res) => {
     const { recommendation_id, rating, notes, selected = true } = req.body || {};
 
     if (!recommendation_id || !rating) {

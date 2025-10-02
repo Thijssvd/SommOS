@@ -977,7 +977,6 @@ paths:
           schema:
             type: string
             enum: [asc, desc]
-      parameters:
         - in: query
           name: location
           schema:
@@ -1040,7 +1039,6 @@ paths:
           schema:
             type: string
             enum: [asc, desc]
-      parameters:
         - in: query
           name: location
           schema:
