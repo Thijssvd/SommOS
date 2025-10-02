@@ -212,9 +212,14 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // Apply specific rate limiters to API routes
 app.use('/api', apiLimiter);
 app.use('/api/auth', authLimiter);
+// Versioned API rate limiters
+app.use('/api/v1', apiLimiter);
+app.use('/api/v1/auth', authLimiter);
 
 // API routes
 app.use('/api', routes);
+// Versioned API routes (v1)
+app.use('/api/v1', routes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -224,6 +229,28 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         version: env.app.version
     });
+});
+
+// API documentation (Swagger UI via Redoc) served at /docs
+app.get('/docs', (req, res) => {
+    const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SommOS API Docs</title>
+    <style>
+      body { margin: 0; padding: 0; }
+      redoc { height: 100vh; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.min.js"></script>
+  </head>
+  <body>
+    <redoc spec-url="/api/system/spec"></redoc>
+  </body>
+</html>`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
 });
 
 // Serve PWA for all non-API routes
@@ -258,6 +285,8 @@ async function startServer() {
 🍷 SommOS Server running on port ${PORT}`);
             console.log(`📱 PWA available at: http://localhost:${PORT}`);
             console.log(`🔌 API available at: http://localhost:${PORT}/api`);
+            console.log(`🔌 API v1 available at: http://localhost:${PORT}/api/v1`);
+            console.log(`📘 API docs: http://localhost:${PORT}/docs`);
             console.log(`🔌 WebSocket available at: ws://localhost:${PORT}/api/ws`);
             console.log(`❤️  Health check: http://localhost:${PORT}/health`);
             console.log(`

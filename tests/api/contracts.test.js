@@ -4,6 +4,7 @@ const yaml = require('js-yaml');
 
 const SPEC_PATH = path.join(__dirname, '..', '..', 'backend', 'api', 'openapi.yaml');
 const ROUTES_PATH = path.join(__dirname, '..', '..', 'backend', 'api', 'routes.js');
+// Also ensure versioned paths are considered by normalizing with optional /v1 prefix
 
 const loadSpec = () => {
   const raw = fs.readFileSync(SPEC_PATH, 'utf8');
@@ -31,7 +32,9 @@ const extractRoutes = () => {
   };
 };
 
-const normalizeExpressPath = (pathWithParams) => pathWithParams.replace(/:([^/]+)/g, '{$1}');
+const normalizeExpressPath = (pathWithParams) => pathWithParams
+  .replace(/^\/v1\//, '/')
+  .replace(/:([^/]+)/g, '{$1}');
 
 const collectOperations = (spec) => {
   if (!spec.paths) {

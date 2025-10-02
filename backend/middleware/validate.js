@@ -44,6 +44,10 @@ const validators = {
         wine_type: optionalNonEmptyString,
         region: optionalNonEmptyString,
         available_only: booleanLike.optional(),
+        sort_by: z
+          .enum(['name', 'year', 'available', 'quantity', 'quality_score', 'region'])
+          .optional(),
+        sort_order: z.enum(['asc', 'desc']).optional(),
         limit: integerLike.optional(),
         offset: integerLike.optional(),
       })
@@ -56,6 +60,10 @@ const validators = {
         wine_type: optionalNonEmptyString,
         region: optionalNonEmptyString,
         available_only: booleanLike.optional(),
+        sort_by: z
+          .enum(['name', 'year', 'available', 'quantity', 'quality_score', 'region'])
+          .optional(),
+        sort_order: z.enum(['asc', 'desc']).optional(),
         limit: integerLike.optional(),
         offset: integerLike.optional(),
       })
@@ -137,6 +145,19 @@ const validators = {
         wine_type: optionalNonEmptyString,
         producer: optionalNonEmptyString,
         search: optionalNonEmptyString,
+        sort_by: z
+          .enum([
+            'name',
+            'region',
+            'wine_type',
+            'year',
+            'total_stock',
+            'avg_cost_per_bottle',
+            'total_value',
+            'quality_score',
+          ])
+          .optional(),
+        sort_order: z.enum(['asc', 'desc']).optional(),
         limit: integerLike.optional(),
         offset: integerLike.optional(),
       })

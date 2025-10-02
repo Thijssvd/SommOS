@@ -1,0 +1,13 @@
+{
+  "name": "SommOS - Yacht Wine Management",
+  "short_name": "SommOS",
+  "description": "AI-Powered Yacht Wine Management System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "scope": "/",
+  "icons": []
+}
+
+

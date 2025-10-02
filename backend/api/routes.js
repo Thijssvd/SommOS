@@ -446,7 +446,7 @@ router.get(
     ...requireAuthAndRole('admin', 'crew', 'guest'),
     validate(validators.inventoryList),
     asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-        const { location, wine_type, region, available_only, limit, offset } = req.query;
+        const { location, wine_type, region, available_only, sort_by, sort_order, limit, offset } = req.query;
         const availableOnlyFlag = typeof available_only === 'string'
             ? available_only === 'true'
             : Boolean(available_only);
@@ -458,7 +458,7 @@ router.get(
                 region,
                 available_only: availableOnlyFlag
             },
-            { limit, offset }
+            { sort_by, sort_order, limit, offset }
         );
 
         const role = req.user?.role || 'guest';
@@ -484,7 +484,7 @@ router.get(
     ...requireAuthAndRole('admin', 'crew'),
     validate(validators.inventoryStock),
     asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-        const { location, wine_type, region, available_only, limit, offset } = req.query;
+        const { location, wine_type, region, available_only, sort_by, sort_order, limit, offset } = req.query;
         const availableOnlyFlag = typeof available_only === 'string'
             ? available_only === 'true'
             : Boolean(available_only);
@@ -495,7 +495,7 @@ router.get(
                 wine_type,
                 region,
                 available_only: availableOnlyFlag
-            }, { limit, offset });
+            }, { sort_by, sort_order, limit, offset });
 
             const role = req.user?.role === 'admin' ? 'admin' : 'crew';
             const data = serializeInventoryItems(result.items, role, {
@@ -943,7 +943,7 @@ router.post(
 // GET /api/wines
 // Get wine catalog with caching for better performance
 router.get('/wines', requireRole('admin', 'crew', 'guest'), validate(validators.winesList), asyncHandler(withServices(async ({ db }, req, res) => {
-    const { region, wine_type, producer, search, limit = 50, offset = 0 } = req.query;
+    const { region, wine_type, producer, search, sort_by, sort_order, limit = 50, offset = 0 } = req.query;
 
     try {
         // Create cache key based on query parameters
@@ -991,7 +991,30 @@ router.get('/wines', requireRole('admin', 'crew', 'guest'), validate(validators.
             params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
-        query += ' GROUP BY w.id, v.id ORDER BY w.name LIMIT ? OFFSET ?';
+        // Sorting
+        const SORT_COLUMNS = {
+            name: 'w.name',
+            region: 'w.region',
+            wine_type: 'w.wine_type',
+            year: 'v.year',
+            total_stock: 'total_stock',
+            avg_cost_per_bottle: 'avg_cost_per_bottle',
+            total_value: 'total_value',
+            quality_score: 'v.quality_score',
+        };
+        const sortCol = SORT_COLUMNS[(sort_by || '').toString()];
+        const sortDir = ((sort_order || '').toString().toUpperCase() === 'DESC') ? 'DESC' : 'ASC';
+
+        query += ' GROUP BY w.id, v.id';
+        if (sortCol) {
+            query += ` ORDER BY ${sortCol} ${sortDir}`;
+            if (sortCol !== 'year') {
+                query += ', v.year DESC';
+            }
+        } else {
+            query += ' ORDER BY w.name';
+        }
+        query += ' LIMIT ? OFFSET ?';
         params.push(parseInt(limit), parseInt(offset));
 
         const wines = await db.all(query, params);
@@ -1603,24 +1626,6 @@ router.get('/system/spec', requireRole('admin', 'crew', 'guest'), validate(), (r
     });
 });
 
-// 404 handler for unmatched API routes
-router.use((req, res) => {
-    sendError(res, 404, 'NOT_FOUND', 'Endpoint not found.');
-});
-
-// Error handling middleware
-router.use((error, req, res, next) => {
-    console.error('API Error:', error);
-
-    if (res.headersSent) {
-        return next(error);
-    }
-
-    const status = error.status || 500;
-    const code = error.code || (status >= 500 ? 'INTERNAL_SERVER_ERROR' : 'REQUEST_FAILED');
-    const message = error.message || 'Internal server error';
-
-    sendError(res, status, code, message);
-});
+// Defer unmatched routes and errors to the global app-level handlers
 
 module.exports = router;

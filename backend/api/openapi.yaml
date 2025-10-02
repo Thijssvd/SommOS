@@ -8,6 +8,8 @@ info:
 servers:
   - url: /api
     description: Internal Express server base path
+  - url: /api/v1
+    description: Version 1 API base path
 components:
   schemas:
     Error:
@@ -966,6 +968,17 @@ paths:
       summary: Retrieve a paginated list of inventory items.
       parameters:
         - in: query
+          name: sort_by
+          schema:
+            type: string
+            enum: [name, year, available, quantity, quality_score, region]
+        - in: query
+          name: sort_order
+          schema:
+            type: string
+            enum: [asc, desc]
+      parameters:
+        - in: query
           name: location
           schema:
             type: string
@@ -1016,6 +1029,17 @@ paths:
     get:
       tags: [Inventory]
       summary: Retrieve current stock levels.
+      parameters:
+        - in: query
+          name: sort_by
+          schema:
+            type: string
+            enum: [name, year, available, quantity, quality_score, region]
+        - in: query
+          name: sort_order
+          schema:
+            type: string
+            enum: [asc, desc]
       parameters:
         - in: query
           name: location
@@ -1666,6 +1690,16 @@ paths:
           name: search
           schema:
             type: string
+        - in: query
+          name: sort_by
+          schema:
+            type: string
+            enum: [name, region, wine_type, year, total_stock, avg_cost_per_bottle, total_value, quality_score]
+        - in: query
+          name: sort_order
+          schema:
+            type: string
+            enum: [asc, desc]
         - in: query
           name: limit
           schema:

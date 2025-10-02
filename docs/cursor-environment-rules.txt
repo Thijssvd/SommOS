@@ -1,0 +1,432 @@
+Cursor Environment Rules (Consolidated)
+
+===== BEGIN: api-development.mdc =====
+---
+description: API Development Standards for SommOS Backend
+globs: ["backend/api/*.js", "backend/core/*.js"]
+alwaysApply: true
+---
+
+# API Development Rules
+
+## Authentication & Security
+- All mutation endpoints must include JWT authentication checks
+- Use the established auth middleware: `requireAuth`
+- Implement proper rate limiting for AI-powered endpoints
+- Never expose sensitive data in error messages
+
+## Request Validation
+- Validate all inputs using the schemas in `/backend/schemas/`
+- Use Zod for runtime type validation
+- Return 400 Bad Request for validation failures
+- Sanitize all user inputs before processing
+
+## Response Patterns
+Success responses:
+```javascript
+res.json({
+  success: true,
+  data: result,
+  meta: { pagination, timestamps, etc. }
+});
+```
+
+Error responses:
+```javascript
+res.status(statusCode).json({
+  success: false,
+  error: {
+    code: 'ERROR_CODE',
+    message: 'Human readable message'
+  }
+});
+```
+
+## Database Operations
+- Use parameterized queries to prevent SQL injection
+- Implement proper transaction handling for inventory operations
+- Include audit fields: created_at, updated_at, created_by
+- Never allow operations that would create negative stock
+
+## AI Integration Patterns
+- Always implement fallback logic for AI service failures
+- Use proper timeout handling for OpenAI calls (30 seconds)
+- Cache expensive AI responses when appropriate
+- Include confidence scores in AI-generated recommendations
+
+## Wine Pairing Endpoints
+- Implement both `/pairing/recommend` (full AI) and `/pairing/quick` (fallback)
+- Include learning session IDs for recommendation tracking
+- Support both string and structured dish inputs
+- Return wine availability and location information
+===== END: api-development.mdc =====
+
+===== BEGIN: architecture-patterns.mdc =====
+---
+description: SommOS Architecture and Code Organization Patterns
+globs: ["**/*.js", "**/*.mjs", "**/*.json"]
+alwaysApply: true
+---
+
+# SommOS Architecture Patterns
+
+## Modular Structure
+- API routes belong in `/backend/api/`
+- Business logic belongs in `/backend/core/`
+- Database operations belong in `/backend/database/`
+- Frontend components belong in `/frontend/js/`
+- Schemas and validation belong in `/backend/schemas/`
+
+## Error Response Format
+Always use the established error response format:
+```javascript
+{
+  success: boolean,
+  error?: string,
+  data?: any,
+  meta?: object
+}
+```
+
+## Async Patterns
+- Use async/await instead of callbacks or .then() chains
+- Always include proper error handling with try-catch blocks
+- Implement timeout handling for external API calls (30s for AI, 10s for others)
+
+## Naming Conventions
+- Use snake_case for database fields and API parameters
+- Use camelCase for JavaScript variables and functions
+- Use PascalCase for class names
+- Use UPPER_SNAKE_CASE for constants
+
+## Class Structure
+Follow the established class patterns:
+```javascript
+class SommOSAPI {
+    constructor() {
+        this.baseURL = this.determineBaseURL();
+        this.timeout = 30000;
+    }
+}
+```
+
+## Offline-First Architecture
+- Maintain PWA capabilities with service worker patterns
+- Use IndexedDB for local storage
+- Implement graceful degradation when offline
+- Cache static assets with proper versioning
+===== END: architecture-patterns.mdc =====
+
+===== BEGIN: database-patterns.mdc =====
+---
+description: Database Schema and Query Patterns for SommOS
+globs: ["backend/database/*.js", "backend/database/migrations/*.sql", "backend/core/*_manager.js"]
+alwaysApply: true
+---
+
+# Database Development Rules
+
+## Schema Patterns
+- Use proper foreign key relationships between tables
+- Include audit fields: id, created_at, updated_at, created_by
+- Use snake_case for all column names
+- Implement proper indexes for frequently queried fields
+
+## Core Tables Structure
+```sql
+-- Follow established patterns:
+Wines → Vintages → Stock → Ledger (inventory tracking)
+Suppliers ← PurchaseOrders → OrderItems (procurement)
+Users → Sessions (authentication)
+```
+
+## Query Optimization
+- Use proper indexes for common queries:
+  - `idx_stock_vintage` on Stock(vintage_id)
+  - `idx_stock_location` on Stock(location)
+  - `idx_vintage_year` on Vintages(year)
+
+## Inventory Operations
+- Maintain ACID compliance for all stock transactions
+- Use the Ledger table for audit trails
+- Never allow negative stock quantities
+- Implement proper location-based stock tracking
+
+## Migration Patterns
+- All migrations must be reversible
+- Include proper error handling and rollback logic
+- Use descriptive migration names with timestamps
+- Test migrations on sample data before production
+
+## Connection Management
+- Use connection pooling for concurrent requests
+- Implement proper connection cleanup
+- Handle database connection failures gracefully
+- Use transactions for multi-table operations
+
+## Wine Data Integrity
+- Validate vintage years (reasonable ranges, no future dates)
+- Ensure proper wine classification (regions, types, producers)
+- Maintain referential integrity between wines and vintages
+- Use proper data types for wine-specific fields (scores, prices, quantities)
+===== END: database-patterns.mdc =====
+
+===== BEGIN: frontend-pwa.mdc =====
+---
+description: Frontend PWA Development Standards for SommOS
+globs: ["frontend/**/*.js", "frontend/**/*.html", "frontend/**/*.css"]
+alwaysApply: true
+---
+
+# Frontend PWA Development Rules
+
+## Architecture Principles
+- Maintain vanilla JavaScript approach - avoid introducing frameworks
+- Use the established class structure: SommOS, SommOSAPI, SommOSUI
+- Implement progressive enhancement - core features must work without JavaScript
+- Ensure all critical features work offline
+
+## API Communication
+- Use the SommOSAPI class for all backend communication
+- Implement proper error handling with user-friendly messages
+- Include loading states for all async operations
+- Handle network failures gracefully with offline fallbacks
+
+## Offline-First Patterns
+```javascript
+// Use IndexedDB for persistent storage
+const db = await openDB('SommOSDB', 1, {
+  upgrade(db) {
+    db.createObjectStore('wines', { keyPath: 'id' });
+    db.createObjectStore('inventory', { keyPath: 'id' });
+  }
+});
+```
+
+## Service Worker Implementation
+- Cache static assets with proper versioning
+- Implement network-first strategy for API calls
+- Use cache-first strategy for static resources
+- Handle cache updates and cleanup
+
+## UI/UX Standards
+- Use the SommOSUI class for consistent interactions
+- Implement proper loading states and feedback
+- Show toast notifications for user actions
+- Handle form validation with clear error messages
+
+## Responsive Design
+- Mobile-first approach for yacht environments
+- Touch-optimized controls for mobile devices
+- Proper viewport handling for different screen sizes
+- Accessible design following WCAG AA guidelines
+
+## Performance Optimization
+- Implement lazy loading for large datasets
+- Use debounced search with 300ms delay
+- Paginate large results (50-100 items per page)
+- Optimize images and assets for yacht bandwidth constraints
+
+## Wine Industry UI Patterns
+- Use proper wine type icons and color coding
+- Display wine information in established card format
+- Implement proper filtering and search interfaces
+- Show stock levels and location information clearly
+===== END: frontend-pwa.mdc =====
+
+===== BEGIN: security-auth.mdc =====
+---
+description: Security and Authentication Standards for SommOS
+globs: ["backend/middleware/*.js", "backend/config/*.js", "**/*auth*.js"]
+alwaysApply: true
+---
+
+# Security and Authentication Rules
+
+## Environment Variables
+- Never hardcode API keys, secrets, or sensitive data in source code
+- Use environment variables for all configuration
+- Validate required environment variables at startup
+- Use different configurations for development/production
+
+## Authentication Patterns
+- Use JWT tokens with proper expiration (15 minutes for access, 7 days for refresh)
+- Store refresh tokens as HttpOnly cookies
+- Implement proper session management with cleanup
+- Use bcrypt for password hashing with proper salt rounds
+
+## API Security
+- Implement rate limiting for all endpoints (1000 requests per 15 minutes)
+- Use CORS configuration for allowed origins
+- Include security headers via Helmet middleware
+- Validate and sanitize all user inputs
+
+## Content Security Policy
+```javascript
+contentSecurityPolicy: {
+  directives: {
+    defaultSrc: ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+    fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    connectSrc: ["'self'", 'http://localhost:3001', 'http://localhost:3000'],
+  },
+}
+```
+
+## Input Validation
+- Use Zod schemas for runtime type validation
+- Sanitize all user inputs before database operations
+- Validate file uploads and limit file sizes
+- Prevent SQL injection with parameterized queries
+
+## Error Handling
+- Never expose sensitive system information in error messages
+- Log security events for audit purposes
+- Implement proper error boundaries
+- Use consistent error response formats
+
+## API Key Management
+- Store OpenAI and weather API keys securely
+- Implement proper key rotation procedures
+- Monitor API usage and rate limits
+- Use least privilege access principles
+
+## Session Security
+- Implement proper session timeout handling
+- Clear sensitive data from memory after use
+- Use secure cookie settings in production
+- Implement CSRF protection for state-changing operations
+===== END: security-auth.mdc =====
+
+===== BEGIN: testing-quality.mdc =====
+---
+description: Testing Standards and Quality Assurance for SommOS
+globs: ["**/*.test.js", "tests/**/*.js", "__tests__/**/*.js"]
+alwaysApply: false
+---
+
+# Testing and Quality Assurance Rules
+
+## Test Structure
+- Follow the established test directory structure in `/tests/`
+- Use Jest for all testing with the existing configuration
+- Group tests by functionality: backend, frontend, integration, performance
+- Include both success and error scenarios in test coverage
+
+## API Testing Patterns
+```javascript
+describe('Pairing API', () => {
+  test('should return recommendations for valid dish', async () => {
+    const response = await request(app)
+      .post('/api/pairing/recommend')
+      .send({
+        dish: 'grilled salmon',
+        context: { occasion: 'casual' }
+      });
+    
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.length).toBeGreaterThan(0);
+  });
+});
+```
+
+## Database Testing
+- Use test database with sample data
+- Test both successful operations and constraint violations
+- Verify data integrity after operations
+- Test transaction rollback scenarios
+
+## Frontend Testing
+- Test offline functionality with service worker mocks
+- Verify PWA capabilities and installation
+- Test responsive design across device sizes
+- Validate accessibility compliance (WCAG AA)
+
+## Performance Testing
+- Test API response times (< 2s for most operations)
+- Verify database query performance with large datasets
+- Test concurrent request handling
+- Monitor memory usage during operations
+
+## Integration Testing
+- Test full user workflows end-to-end
+- Verify data consistency across components
+- Test error recovery and graceful degradation
+- Validate offline-to-online synchronization
+
+## Wine Domain Testing
+- Test wine classification and validation logic
+- Verify inventory operations maintain data integrity
+- Test pairing algorithm accuracy and consistency
+- Validate vintage intelligence calculations
+
+## Security Testing
+- Test authentication and authorization flows
+- Verify input validation and sanitization
+- Test rate limiting and CORS policies
+- Validate secure cookie and session handling
+===== END: testing-quality.mdc =====
+
+===== BEGIN: wine-domain.mdc =====
+---
+description: Wine Industry Domain Rules and Business Logic for SommOS
+globs: ["backend/core/pairing_engine.js", "backend/core/vintage_intelligence.js", "backend/core/procurement_engine.js"]
+alwaysApply: true
+---
+
+# Wine Industry Domain Rules
+
+## Wine Classification Standards
+- Use proper wine type classifications: Red, White, Sparkling, Rosé, Dessert, Fortified
+- Validate wine regions against established wine-producing areas
+- Use proper grape variety names and spellings
+- Implement vintage year validation (1800-current year, no future dates)
+
+## Inventory Management
+- Track wines by vintage-specific records (not just wine names)
+- Implement location-based storage: main-cellar, service-bar, deck-storage, private-reserve
+- Maintain proper bottle quantity tracking (no fractional bottles for most operations)
+- Use proper cost tracking per bottle with currency handling
+
+## Wine Pairing Logic
+- Implement confidence scoring (0-100%) for all recommendations
+- Provide detailed reasoning for pairing suggestions
+- Consider dish preparation methods, seasonings, and cooking techniques
+- Account for guest preferences and dietary restrictions
+
+## Vintage Intelligence Patterns
+```javascript
+// Weather data integration
+const weatherAnalysis = {
+  temperature: { growing_season_avg, harvest_temp },
+  precipitation: { annual_total, growing_season },
+  quality_indicators: { heat_units, frost_days }
+};
+```
+
+## Procurement Business Rules
+- Track supplier relationships and performance
+- Implement proper purchase order workflows
+- Consider wine aging potential in procurement decisions
+- Account for seasonal availability and pricing patterns
+
+## Storage Location Logic
+- Main Cellar: Long-term storage, temperature controlled
+- Service Bar: Ready-to-serve wines, limited quantity
+- Deck Storage: Casual dining wines, weather considerations
+- Private Reserve: Special occasion wines, restricted access
+
+## Wine Service Patterns
+- Track consumption by occasion and guest preferences
+- Implement proper wine reservation system
+- Record tasting notes and guest feedback
+- Maintain service temperature recommendations
+
+## Quality Scoring
+- Use established wine scoring systems (0-100 point scale)
+- Consider vintage variation in quality assessments
+- Account for aging potential and current drinkability
+- Integrate weather data into quality predictions
+===== END: wine-domain.mdc =====

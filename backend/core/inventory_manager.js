@@ -1160,7 +1160,29 @@ class InventoryManager {
             query += ' AND s.quantity > s.reserved_quantity';
         }
         
-        query += ' ORDER BY w.name, v.year DESC';
+        // Sorting
+        const sortBy = (options.sort_by || '').toString();
+        const sortOrderRaw = (options.sort_order || '').toString().toUpperCase();
+        const sortOrder = sortOrderRaw === 'DESC' ? 'DESC' : 'ASC';
+
+        const SORT_COLUMNS = {
+            name: 'w.name',
+            region: 'w.region',
+            wine_type: 'w.wine_type',
+            year: 'v.year',
+            quantity: 's.quantity',
+            available: '(s.quantity - s.reserved_quantity)',
+            quality_score: 'v.quality_score',
+        };
+
+        if (SORT_COLUMNS[sortBy]) {
+            query += ` ORDER BY ${SORT_COLUMNS[sortBy]} ${sortOrder}`;
+            if (sortBy !== 'year') {
+                query += ', v.year DESC';
+            }
+        } else {
+            query += ' ORDER BY w.name, v.year DESC';
+        }
         
         // Add pagination
         const limitValue = Number.parseInt(options.limit, 10);
