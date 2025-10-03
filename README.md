@@ -16,11 +16,12 @@ SommOS is a comprehensive wine management system designed for luxury yachts, fea
 
 ```
 SommOS/
-├── frontend/           # Progressive Web App (vanilla JS)
+├── frontend/           # ✅ PRIMARY - Progressive Web App (vanilla JS)
 │   ├── js/             # Application modules (SommOS, SommOSAPI, UI, modules)
 │   ├── css/            # Stylesheets
 │   ├── sw.js           # Service worker source
 │   └── vite.config.js  # Frontend build config
+├── frontend-react/     # ⚠️ ARCHIVED - Incomplete React POC (see FRONTEND_COMPARISON.md)
 ├── backend/            # Node.js API server (Express)
 │   ├── api/            # REST API endpoints (auth, inventory, pairing, procurement, vintage)
 │   ├── core/           # Business logic (engines, services)
@@ -30,6 +31,17 @@ SommOS/
 └── data/               # Runtime database directory
 ```
 
+### Frontend Architecture
+
+**Production Frontend**: `frontend/` (Vanilla JavaScript + Vite)
+- ✅ Full feature set (auth, guest access, inventory, pairing, procurement)
+- ✅ Production-ready with complete testing
+- ✅ PWA with offline support
+- ✅ Real-time sync via WebSockets
+- ✅ Role-based access control
+
+**React POC** (`frontend-react/`) is archived and incomplete. See [FRONTEND_COMPARISON.md](FRONTEND_COMPARISON.md) for details.
+
 ## Key Features
 
 ### Core Functionality
@@ -38,6 +50,7 @@ SommOS/
 3. **Weather Vintage Analysis** - Historical weather impact on wine quality
 4. **Procurement Suggestions** - Automated buying recommendations
 5. **Offline Synchronization** - Works without internet, syncs when available
+6. **Guest Access** - Temporary read-only access via event codes for wine tastings and events
 
 ## Technical Stack
 - **Frontend**: Progressive Web App (PWA) with offline capabilities
@@ -123,3 +136,42 @@ OPENAI_API_KEY=sk-your-openai-key-here
 ```
 
 Runtime automatically uses `DEEPSEEK_API_KEY` if present, otherwise `OPENAI_API_KEY`.
+
+## 🎫 Guest Access
+
+SommOS supports temporary guest access for wine tastings, yacht events, and browsing:
+
+### For Guests
+1. Visit the login page and click **"Guest Access"** tab
+2. Enter your event code (provided by crew)
+3. Enter PIN if required
+4. Browse the wine collection with read-only access
+
+### For Crew/Admins
+Create guest invites via API:
+```bash
+curl -b cookies.txt -X POST http://localhost:3001/api/auth/invite \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "wine-tasting-event@local",
+    "role": "guest",
+    "expires_in_hours": 24,
+    "pin": "1234"
+  }'
+```
+
+### Testing Guest Access
+```bash
+./scripts/test-guest-access.sh
+```
+
+📚 **Full Documentation**: See `docs/GUEST_ACCESS.md` for complete guide
+
+### Guest Features
+- ✅ Browse wine collection (read-only)
+- ✅ View wine details and pairings
+- ✅ Search and filter wines
+- ✅ 4-hour session duration
+- ✅ Optional PIN protection
+- ❌ Cannot edit inventory
+- ❌ Cannot access admin functions

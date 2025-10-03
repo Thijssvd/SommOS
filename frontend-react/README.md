@@ -1,4 +1,28 @@
-# SommOS React (Vite + TypeScript)
+# ⚠️ ARCHIVED - SommOS React POC
+
+**Status**: Proof of Concept Only - Not Feature Complete
+
+> **⚠️ Important**: This React frontend is **incomplete** and missing most production features.
+> 
+> **For production use**, see the main frontend at [`../frontend/`](../frontend/)
+>
+> This directory is kept for reference purposes only.
+
+## Missing Features
+
+- ❌ No authentication system
+- ❌ No guest access
+- ❌ No procurement module  
+- ❌ No catalog view
+- ❌ No real-time sync
+- ❌ No role-based access control
+- ❌ Limited styling
+
+See [FRONTEND_COMPARISON.md](../FRONTEND_COMPARISON.md) for complete feature comparison.
+
+---
+
+## Original POC Description
 
 Minimal React app aligned with SommOS frontend conventions:
 - Port 3000, Vite proxy to backend `/api` on 3001
