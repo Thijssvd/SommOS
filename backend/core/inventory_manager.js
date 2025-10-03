@@ -1239,6 +1239,30 @@ class InventoryManager {
      */
     async consumeWine(vintage_id, location, quantity, notes = null, created_by = null, syncContext = {}) {
         try {
+            // Validate quantity
+            if (quantity < 0) {
+                throw new Error(`Invalid quantity: ${quantity}. Quantity must be positive`);
+            }
+            
+            // Handle zero quantity as no-op
+            if (quantity === 0) {
+                const currentStock = await this.db.get(`
+                    SELECT quantity, reserved_quantity
+                    FROM Stock
+                    WHERE vintage_id = ? AND location = ?
+                `, [vintage_id, location]);
+                
+                if (!currentStock) {
+                    throw new Error('Wine not found in specified location');
+                }
+                
+                return {
+                    success: true,
+                    message: 'No bottles consumed (quantity was 0)',
+                    remaining_stock: currentStock.quantity
+                };
+            }
+            
             // Check current stock
             const currentStock = await this.db.get(`
                 SELECT quantity, reserved_quantity
@@ -1308,6 +1332,11 @@ class InventoryManager {
      */
     async receiveWine(vintage_id, location, quantity, unit_cost = null, reference_id = null, notes = null, created_by = null, syncContext = {}) {
         try {
+            // Validate quantity
+            if (quantity <= 0) {
+                throw new InventoryConflictError(`Invalid quantity: ${quantity}. Quantity must be greater than 0`);
+            }
+            
             const baseContext = {
                 ...(syncContext || {}),
                 updated_by: created_by || syncContext.updated_by || 'inventory-receive',
@@ -1427,6 +1456,11 @@ class InventoryManager {
      */
     async moveWine(vintage_id, from_location, to_location, quantity, notes = null, created_by = null, syncContext = {}) {
         try {
+            // Validate quantity
+            if (quantity <= 0) {
+                throw new Error(`Invalid quantity: ${quantity}. Quantity must be greater than 0`);
+            }
+            
             // Check source stock
             const sourceStock = await this.db.get(`
                 SELECT quantity, reserved_quantity, cost_per_bottle, current_value

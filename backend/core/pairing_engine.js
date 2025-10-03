@@ -11,6 +11,8 @@
 const OpenAI = require('openai');
 const Database = require('../database/connection');
 const { getConfig } = require('../config/env');
+const CollaborativeFilteringEngine = require('./collaborative_filtering_engine');
+const EnsembleEngine = require('./ensemble_engine');
 
 /**
  * @typedef {Object} Wine
@@ -93,6 +95,11 @@ class PairingEngine {
         this.db = database || Database.getInstance();
         this.learningEngine = learningEngine;
         this.explainabilityService = explainabilityService;
+        
+        // Initialize ML engines
+        this.collaborativeFilteringEngine = new CollaborativeFilteringEngine(database || this.db);
+        this.ensembleEngine = new EnsembleEngine(database || this.db);
+        
         const config = getConfig();
         this.deepseek = config.deepSeek.apiKey ? new OpenAI({
             apiKey: config.deepSeek.apiKey,
@@ -430,32 +437,61 @@ class PairingEngine {
     }
     
     /**
-     * Traditional rule-based pairing recommendations
+     * Traditional rule-based pairing recommendations with ML enhancement
      */
     async generateTraditionalPairings(dishContext, preferences = {}) {
         const { cuisine, preparation, intensity, dominant_flavors } = dishContext;
         const { guest_preferences, dietary_restrictions, budget_range } = preferences;
+        const userId = preferences.user_id || preferences.userId;
 
         // Get available wines from stock
         const availableWines = await this.getAvailableWines();
         
-        // Score each wine against the dish
-        const scoredPairings = [];
+        // Score each wine against the dish (rule-based)
+        const ruleBasedPairings = [];
         
         for (const wine of availableWines) {
             const score = await this.calculatePairingScore(wine, dishContext, preferences);
             if (score.total > 0.3) { // Minimum threshold
-                scoredPairings.push({
+                ruleBasedPairings.push({
                     wine,
                     score,
                     reasoning: this.generateReasoning(wine, dishContext, score),
-                    ai_enhanced: false
+                    ai_enhanced: false,
+                    ml_enhanced: false
                 });
             }
         }
 
+        // Try to get ML recommendations if user_id is provided
+        let finalRecommendations = ruleBasedPairings;
+        
+        if (userId) {
+            try {
+                const mlRecommendations = await this.getMLRecommendations(
+                    userId, 
+                    dishContext, 
+                    availableWines,
+                    preferences
+                );
+                
+                if (mlRecommendations && mlRecommendations.length > 0) {
+                    // Blend ML and rule-based recommendations
+                    finalRecommendations = await this.blendRecommendations(
+                        mlRecommendations,
+                        ruleBasedPairings,
+                        userId
+                    );
+                    console.log(`Blended ${mlRecommendations.length} ML recommendations with ${ruleBasedPairings.length} rule-based`);
+                }
+            } catch (error) {
+                console.warn('ML recommendations failed, using rule-based only:', error.message);
+                // Fallback to rule-based only
+            }
+        }
+
         // Sort by total score and return top recommendations
-        return scoredPairings
+        return finalRecommendations
             .sort((a, b) => b.score.total - a.score.total)
             .slice(0, 8); // Return top 8 recommendations
     }
@@ -1341,6 +1377,207 @@ Focus on wines that create harmony or interesting contrasts with the dish. Consi
         if (tasks.length > 0) {
             await Promise.all(tasks);
         }
+    }
+    
+    /**
+     * Get ML recommendations with fallback chain
+     */
+    async getMLRecommendations(userId, dishContext, availableWines, preferences = {}) {
+        let recommendations = [];
+        
+        // Check if user has sufficient rating history
+        const userRatingCount = await this.getUserRatingCount(userId);
+        
+        if (userRatingCount < 2) {
+            console.log(`User ${userId} has insufficient ratings (${userRatingCount}), skipping ML`);
+            return [];
+        }
+        
+        try {
+            // Try ensemble engine first (combines multiple algorithms)
+            console.log(`Attempting ensemble recommendations for user ${userId}`);
+            recommendations = await this.ensembleEngine.generateEnsembleRecommendations(
+                userId,
+                dishContext,
+                {
+                    limit: 10,
+                    algorithms: ['collaborative_filtering', 'content_based', 'rule_based', 'hybrid_cf'],
+                    dynamicWeighting: true,
+                    contextAware: true
+                }
+            );
+            
+            if (recommendations && recommendations.length > 0) {
+                console.log(`Ensemble engine returned ${recommendations.length} recommendations`);
+                // Convert ensemble recommendations to pairing format
+                return await this.convertMLToPairingFormat(recommendations, availableWines, dishContext, 'ensemble');
+            }
+        } catch (error) {
+            console.warn('Ensemble engine failed:', error.message);
+        }
+        
+        // Fallback to collaborative filtering only
+        try {
+            console.log('Falling back to collaborative filtering');
+            recommendations = await this.collaborativeFilteringEngine.getUserBasedRecommendations(
+                userId,
+                dishContext,
+                { limit: 10, minRating: 3, includeContext: true }
+            );
+            
+            if (recommendations && recommendations.length > 0) {
+                console.log(`Collaborative filtering returned ${recommendations.length} recommendations`);
+                return await this.convertMLToPairingFormat(recommendations, availableWines, dishContext, 'collaborative_filtering');
+            }
+        } catch (error) {
+            console.warn('Collaborative filtering failed:', error.message);
+        }
+        
+        // No ML recommendations available
+        return [];
+    }
+    
+    /**
+     * Get user rating count from database
+     */
+    async getUserRatingCount(userId) {
+        try {
+            const result = await this.db.get(`
+                SELECT COUNT(*) as count
+                FROM LearningPairingFeedbackEnhanced
+                WHERE user_id = ? AND overall_rating IS NOT NULL
+            `, [userId]);
+            
+            return result ? result.count : 0;
+        } catch (error) {
+            console.error('Failed to get user rating count:', error.message);
+            return 0;
+        }
+    }
+    
+    /**
+     * Convert ML recommendations to pairing format
+     */
+    async convertMLToPairingFormat(mlRecommendations, availableWines, dishContext, algorithm) {
+        const pairingRecommendations = [];
+        
+        for (const mlRec of mlRecommendations) {
+            const wineId = mlRec.wine_id;
+            
+            // Find the wine in available inventory
+            const wine = availableWines.find(w => w.id === wineId && w.quantity > 0);
+            
+            if (!wine) {
+                continue; // Wine not available or out of stock
+            }
+            
+            // ML score becomes primary component
+            const mlScore = mlRec.score || mlRec.final_score || mlRec.total_score || 0;
+            const mlConfidence = mlRec.confidence || mlRec.confidenceLevel || 0.7;
+            
+            pairingRecommendations.push({
+                wine,
+                score: {
+                    total: mlScore,
+                    ml_score: mlScore,
+                    confidence: mlConfidence,
+                    algorithm: algorithm,
+                    // Include original ML scoring details if available
+                    style_match: mlRec.style_match || 0.5,
+                    flavor_harmony: mlRec.flavor_harmony || 0.5,
+                    texture_balance: mlRec.texture_balance || 0.5,
+                    regional_tradition: mlRec.regional_tradition || 0.5,
+                    seasonal_appropriateness: mlRec.seasonal_appropriateness || 0.5
+                },
+                reasoning: mlRec.reasoning || mlRec.explanation || `ML-powered recommendation (${algorithm})`,
+                ai_enhanced: false,
+                ml_enhanced: true,
+                ml_algorithm: algorithm,
+                ml_metadata: {
+                    algorithms: mlRec.algorithms || [algorithm],
+                    scores: mlRec.scores || {},
+                    diversity_bonus: mlRec.diversity_bonus || 0,
+                    novelty_bonus: mlRec.novelty_bonus || 0
+                }
+            });
+        }
+        
+        return pairingRecommendations;
+    }
+    
+    /**
+     * Blend ML and rule-based recommendations with adaptive weighting
+     */
+    async blendRecommendations(mlRecommendations, ruleBasedRecommendations, userId) {
+        const userRatingCount = await this.getUserRatingCount(userId);
+        
+        // Adaptive weighting based on user experience
+        // New users (< 5 ratings): 30% ML, 70% rule-based
+        // Experienced users (>= 10 ratings): 70% ML, 30% rule-based
+        // Mid-range: interpolate
+        let mlWeight = 0.3;
+        if (userRatingCount >= 10) {
+            mlWeight = 0.7;
+        } else if (userRatingCount >= 5) {
+            mlWeight = 0.3 + (userRatingCount - 5) * 0.08; // Gradual increase
+        }
+        const ruleWeight = 1 - mlWeight;
+        
+        console.log(`Blending with weights: ML=${mlWeight.toFixed(2)}, Rule-based=${ruleWeight.toFixed(2)} (user has ${userRatingCount} ratings)`);
+        
+        // Create a combined map to avoid duplicates
+        const wineMap = new Map();
+        
+        // Add ML recommendations with weighted score
+        for (const mlRec of mlRecommendations) {
+            const wineKey = `${mlRec.wine.id}-${mlRec.wine.name}`;
+            const weightedScore = mlRec.score.total * mlWeight;
+            
+            wineMap.set(wineKey, {
+                ...mlRec,
+                score: {
+                    ...mlRec.score,
+                    ml_contribution: weightedScore,
+                    rule_contribution: 0,
+                    total: weightedScore,
+                    blend_weight: mlWeight
+                },
+                blended: true
+            });
+        }
+        
+        // Add or merge rule-based recommendations
+        for (const ruleRec of ruleBasedRecommendations) {
+            const wineKey = `${ruleRec.wine.id}-${ruleRec.wine.name}`;
+            const weightedScore = ruleRec.score.total * ruleWeight;
+            
+            if (wineMap.has(wineKey)) {
+                // Wine exists in ML recommendations, merge scores
+                const existing = wineMap.get(wineKey);
+                existing.score.rule_contribution = weightedScore;
+                existing.score.total = existing.score.ml_contribution + weightedScore;
+                existing.reasoning += ` | Rule-based: ${ruleRec.reasoning}`;
+            } else {
+                // Only in rule-based recommendations
+                wineMap.set(wineKey, {
+                    ...ruleRec,
+                    score: {
+                        ...ruleRec.score,
+                        ml_contribution: 0,
+                        rule_contribution: weightedScore,
+                        total: weightedScore,
+                        blend_weight: ruleWeight
+                    },
+                    blended: true
+                });
+            }
+        }
+        
+        // Convert map to array and sort by blended score
+        const blendedRecommendations = Array.from(wineMap.values())
+            .sort((a, b) => b.score.total - a.score.total);
+        
+        return blendedRecommendations;
     }
 }
 

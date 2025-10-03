@@ -10,8 +10,10 @@ class CollaborativeFilteringEngine {
         this.db = database || Database.getInstance();
         this.similarityCache = new Map();
         this.cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
-        this.minCommonItems = 3; // Minimum common items for similarity calculation
-        this.minSimilarUsers = 5; // Minimum similar users for recommendations
+        this.minCommonItems = 2; // Reduced from 3 to 2 for better cold-start
+        this.minSimilarUsers = 3; // Reduced from 5 to 3 for better cold-start
+        this.popularityCache = null;
+        this.popularityCacheTimestamp = null;
     }
 
     /**
@@ -29,25 +31,57 @@ class CollaborativeFilteringEngine {
         try {
             // Get user's rating history
             const userRatings = await this.getUserRatings(userId);
-            if (userRatings.length < 3) {
-                return []; // Not enough data for collaborative filtering
+            
+            // Cold-start: Use popularity-based for very new users
+            if (userRatings.length === 0) {
+                console.log(`Cold-start user ${userId}, using popularity-based recommendations`);
+                return await this.getPopularityBasedRecommendations(dishContext, { limit, excludeWines });
+            }
+            
+            // Semi-cold-start: Use Bayesian averaging for users with 1-2 ratings
+            if (userRatings.length < 2) {
+                console.log(`Semi-cold-start user ${userId}, using hybrid popularity + limited CF`);
+                const popularRecs = await this.getPopularityBasedRecommendations(dishContext, { limit: limit * 2, excludeWines });
+                return popularRecs.map(rec => ({
+                    ...rec,
+                    confidence: 0.3 + (userRatings.length * 0.1), // Low confidence
+                    algorithm: 'cold_start_hybrid'
+                }));
             }
 
             // Find similar users
             const similarUsers = await this.findSimilarUsers(userId, userRatings);
+            
             if (similarUsers.length < this.minSimilarUsers) {
-                return [];
+                // Not enough similar users, blend with popularity
+                console.log(`User ${userId} has insufficient similar users, blending with popularity`);
+                const cfRecs = await this.getRecommendationsFromSimilarUsers(
+                    similarUsers,
+                    userRatings,
+                    dishContext,
+                    { limit: Math.floor(limit / 2), minRating, excludeWines, includeContext }
+                );
+                const popRecs = await this.getPopularityBasedRecommendations(
+                    dishContext, 
+                    { limit: Math.ceil(limit / 2), excludeWines }
+                );
+                
+                return [...cfRecs, ...popRecs].slice(0, limit);
             }
 
-            // Get recommendations from similar users
+            // Normal collaborative filtering with confidence scores
             const recommendations = await this.getRecommendationsFromSimilarUsers(
                 similarUsers,
                 userRatings,
                 dishContext,
                 { limit, minRating, excludeWines, includeContext }
             );
-
-            return recommendations;
+            
+            // Add confidence scores based on data availability
+            return recommendations.map(rec => ({
+                ...rec,
+                confidence: this.calculateConfidence(userRatings.length, similarUsers.length, rec.rating_count)
+            }));
         } catch (error) {
             console.error('User-based collaborative filtering failed:', error.message);
             return [];
@@ -68,25 +102,33 @@ class CollaborativeFilteringEngine {
         try {
             // Get wine's rating history
             const wineRatings = await this.getWineRatings(wineId);
-            if (wineRatings.length < 3) {
-                return []; // Not enough data for collaborative filtering
+            
+            // Cold-start for new wines: use content-based similarity
+            if (wineRatings.length < 2) {
+                console.log(`Cold-start wine ${wineId}, using content-based fallback`);
+                return await this.getContentBasedSimilarWines(wineId, dishContext, { limit, excludeWines });
             }
 
             // Find similar wines
             const similarWines = await this.findSimilarWines(wineId, wineRatings);
             if (similarWines.length === 0) {
-                return [];
+                // No similar wines found, use content-based
+                return await this.getContentBasedSimilarWines(wineId, dishContext, { limit, excludeWines });
             }
 
-            // Get recommendations based on similar wines
+            // Get recommendations based on similar wines with confidence
             const recommendations = await this.getRecommendationsFromSimilarWines(
                 similarWines,
                 wineRatings,
                 dishContext,
                 { limit, minRating, excludeWines }
             );
-
-            return recommendations;
+            
+            // Add confidence scores
+            return recommendations.map(rec => ({
+                ...rec,
+                confidence: this.calculateConfidence(wineRatings.length, similarWines.length, rec.rating_count)
+            }));
         } catch (error) {
             console.error('Item-based collaborative filtering failed:', error.message);
             return [];
@@ -602,6 +644,225 @@ class CollaborativeFilteringEngine {
         } catch (error) {
             console.error('Failed to update similarity matrices:', error.message);
         }
+    }
+    
+    /**
+     * Get popularity-based recommendations for cold-start users
+     */
+    async getPopularityBasedRecommendations(dishContext, options = {}) {
+        const { limit = 10, excludeWines = [] } = options;
+        
+        // Check cache first
+        if (this.popularityCache && 
+            this.popularityCacheTimestamp && 
+            Date.now() - this.popularityCacheTimestamp < this.cacheExpiry) {
+            const filtered = this.popularityCache
+                .filter(rec => !excludeWines.includes(rec.wine_id))
+                .slice(0, limit);
+            if (filtered.length > 0) {
+                return filtered;
+            }
+        }
+        
+        try {
+            const popularWines = await this.db.all(`
+                SELECT 
+                    r.wine_id,
+                    AVG(f.overall_rating) as avg_rating,
+                    COUNT(*) as rating_count,
+                    w.quality_score,
+                    w.wine_type,
+                    s.quantity
+                FROM LearningPairingRecommendations r
+                JOIN LearningPairingFeedbackEnhanced f ON f.recommendation_id = r.id
+                JOIN Wines w ON r.wine_id = w.id
+                LEFT JOIN Vintages v ON w.id = v.wine_id
+                LEFT JOIN Stock s ON v.id = s.vintage_id
+                WHERE f.overall_rating IS NOT NULL
+                GROUP BY r.wine_id
+                HAVING rating_count >= 5 AND avg_rating >= 3.5
+                ORDER BY 
+                    (avg_rating * LOG(rating_count + 1) * 0.7 + 
+                     COALESCE(w.quality_score, 70) / 100 * 0.3) DESC
+                LIMIT ?
+            `, [limit * 3]);
+            
+            const recommendations = popularWines
+                .filter(wine => !excludeWines.includes(wine.wine_id))
+                .map(wine => ({
+                    wine_id: wine.wine_id,
+                    score: wine.avg_rating * Math.log(wine.rating_count + 1) / 10,
+                    avg_rating: wine.avg_rating,
+                    rating_count: wine.rating_count,
+                    confidence: 0.6, // Medium confidence for popularity
+                    algorithm: 'popularity_based',
+                    // Enhanced weighting factors
+                    quality_bonus: wine.quality_score ? (wine.quality_score / 100) * 0.1 : 0,
+                    stock_available: wine.quantity > 0
+                }))
+                .slice(0, limit);
+            
+            // Cache the results
+            this.popularityCache = recommendations;
+            this.popularityCacheTimestamp = Date.now();
+            
+            return recommendations;
+        } catch (error) {
+            console.error('Popularity-based recommendations failed:', error.message);
+            return [];
+        }
+    }
+    
+    /**
+     * Get content-based similar wines for cold-start items
+     */
+    async getContentBasedSimilarWines(wineId, dishContext, options = {}) {
+        const { limit = 10, excludeWines = [] } = options;
+        
+        try {
+            // Get features for the target wine
+            const targetWine = await this.db.get(`
+                SELECT wf.*, w.wine_type, w.region, w.grape_varieties
+                FROM WineFeatures wf
+                JOIN Wines w ON wf.wine_id = w.id
+                WHERE wf.wine_id = ?
+            `, [wineId]);
+            
+            if (!targetWine) {
+                console.warn(`No features found for wine ${wineId}`);
+                return [];
+            }
+            
+            // Find similar wines based on content features
+            const similarWines = await this.db.all(`
+                SELECT 
+                    wf.wine_id,
+                    w.wine_type,
+                    w.region,
+                    w.grape_varieties,
+                    wf.body_score,
+                    wf.acidity_score,
+                    wf.tannin_score,
+                    wf.complexity_score,
+                    wf.quality_score,
+                    s.quantity
+                FROM WineFeatures wf
+                JOIN Wines w ON wf.wine_id = w.id
+                LEFT JOIN Vintages v ON w.id = v.wine_id
+                LEFT JOIN Stock s ON v.id = s.vintage_id
+                WHERE wf.wine_id != ?
+                AND w.wine_type = ?
+                LIMIT 50
+            `, [wineId, targetWine.wine_type]);
+            
+            // Calculate similarity scores
+            const scoredWines = similarWines.map(wine => {
+                const similarity = this.calculateContentSimilarity(targetWine, wine);
+                const stockBonus = wine.quantity > 0 ? 0.2 : 0;
+                const qualityBonus = wine.quality_score ? (wine.quality_score / 100) * 0.1 : 0;
+                
+                return {
+                    wine_id: wine.wine_id,
+                    score: similarity + stockBonus + qualityBonus,
+                    similarity,
+                    rating_count: 0, // No ratings yet (cold-start)
+                    confidence: 0.5, // Medium-low confidence for content-based
+                    algorithm: 'content_based_cf',
+                    stock_available: wine.quantity > 0
+                };
+            });
+            
+            return scoredWines
+                .filter(w => !excludeWines.includes(w.wine_id))
+                .sort((a, b) => b.score - a.score)
+                .slice(0, limit);
+        } catch (error) {
+            console.error('Content-based wine similarity failed:', error.message);
+            return [];
+        }
+    }
+    
+    /**
+     * Calculate confidence score based on data availability
+     */
+    calculateConfidence(userRatingCount, similarCount, recRatingCount) {
+        // Base confidence from user experience
+        const userConfidence = Math.min(1.0, userRatingCount / 10);
+        
+        // Similarity confidence (enough similar users/items)
+        const similarityConfidence = Math.min(1.0, similarCount / 10);
+        
+        // Recommendation rating count confidence
+        const ratingConfidence = Math.min(1.0, recRatingCount / 5);
+        
+        // Weighted average
+        const confidence = (userConfidence * 0.4) + 
+                          (similarityConfidence * 0.3) + 
+                          (ratingConfidence * 0.3);
+        
+        return Math.round(confidence * 100) / 100;
+    }
+    
+    /**
+     * Calculate content-based similarity between wines
+     */
+    calculateContentSimilarity(wine1, wine2) {
+        let similarity = 0;
+        let factors = 0;
+        
+        // Wine type match (most important)
+        if (wine1.wine_type === wine2.wine_type) {
+            similarity += 0.4;
+        }
+        factors++;
+        
+        // Region similarity (same region or country)
+        if (wine1.region && wine2.region) {
+            if (wine1.region === wine2.region) {
+                similarity += 0.2;
+            } else if (wine1.region.split(',')[0] === wine2.region.split(',')[0]) {
+                similarity += 0.1; // Same country
+            }
+            factors++;
+        }
+        
+        // Grape variety similarity
+        if (wine1.grape_varieties && wine2.grape_varieties) {
+            try {
+                const grapes1 = JSON.parse(wine1.grape_varieties).map(g => g.toLowerCase());
+                const grapes2 = JSON.parse(wine2.grape_varieties).map(g => g.toLowerCase());
+                const commonGrapes = grapes1.filter(g => grapes2.includes(g));
+                if (commonGrapes.length > 0) {
+                    similarity += 0.2 * (commonGrapes.length / Math.max(grapes1.length, grapes2.length));
+                }
+                factors++;
+            } catch (e) {
+                // Skip if grape varieties not parseable
+            }
+        }
+        
+        // Feature similarities (body, acidity, tannin, complexity)
+        const featureSims = [
+            this.featureSimilarity(wine1.body_score, wine2.body_score),
+            this.featureSimilarity(wine1.acidity_score, wine2.acidity_score),
+            this.featureSimilarity(wine1.tannin_score, wine2.tannin_score),
+            this.featureSimilarity(wine1.complexity_score, wine2.complexity_score)
+        ];
+        
+        const avgFeatureSim = featureSims.reduce((a, b) => a + b, 0) / featureSims.length;
+        similarity += avgFeatureSim * 0.2;
+        factors++;
+        
+        return similarity / factors;
+    }
+    
+    /**
+     * Calculate similarity between two feature values (1-5 scale)
+     */
+    featureSimilarity(val1, val2) {
+        if (!val1 || !val2) return 0.5; // Default similarity
+        const diff = Math.abs(val1 - val2);
+        return Math.max(0, 1 - (diff / 4)); // Normalize to 0-1
     }
 }
 
