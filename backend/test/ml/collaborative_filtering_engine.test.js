@@ -15,12 +15,9 @@ async function runTests() {
         const db = new MockDatabase(testData);
         const engine = new CollaborativeFilteringEngine(db);
         
-        // Initialize with training data
-        await engine.initialize(testData.ratings);
-        
-        // Get recommendations for first user
+        // Get recommendations for first user (engine works directly with DB)
         const userId = testData.users[0].id;
-        const recommendations = await engine.getUserBasedRecommendations(userId, 10);
+        const recommendations = await engine.getUserBasedRecommendations(userId, null, { limit: 10 });
         
         if (!Array.isArray(recommendations)) {
             throw new Error('Recommendations should be an array');

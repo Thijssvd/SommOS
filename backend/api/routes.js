@@ -638,6 +638,11 @@ router.post(
                 data: serializeInventoryAction(result)
             });
         } catch (error) {
+            const conflict = typeof InventoryManager.isConflictError === 'function'
+                && InventoryManager.isConflictError(error);
+            if (conflict) {
+                return sendError(res, 409, 'INVENTORY_CONFLICT', error.message || 'Inventory change conflicts with current stock.');
+            }
             sendError(res, 500, 'INVENTORY_RECEIVE_FAILED', error.message || 'Failed to record receipt.');
         }
     }))

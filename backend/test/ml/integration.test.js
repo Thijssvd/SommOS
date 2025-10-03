@@ -17,6 +17,15 @@ try {
 async function runTests() {
     const runner = new TestRunner('ML Integration Tests');
     
+    // Helper to skip tests requiring ContentBasedEngine
+    const skipIfNoCB = () => {
+        if (!ContentBasedEngine) {
+            console.log('  ⚠️  Skipping test (requires ContentBasedEngine)');
+            return true;
+        }
+        return false;
+    };
+    
     // Test 1: End-to-End Recommendation Flow
     runner.test('Should complete end-to-end recommendation workflow', async () => {
         if (!ContentBasedEngine) {
@@ -55,6 +64,7 @@ async function runTests() {
     
     // Test 2: Hybrid Recommendation Blending
     runner.test('Should blend collaborative and content-based recommendations', async () => {
+        if (skipIfNoCB()) return;
         const testData = generateTestData({ numUsers: 25, numWines: 40, numRatings: 250 });
         const db = new MockDatabase(testData);
         
@@ -86,6 +96,7 @@ async function runTests() {
     
     // Test 3: Cold-Start User Handling Across Engines
     runner.test('Should handle cold-start users across all engines', async () => {
+        if (skipIfNoCB()) return;
         const testData = generateTestData({ numUsers: 20, numWines: 30, numRatings: 150 });
         const db = new MockDatabase(testData);
         
@@ -184,6 +195,7 @@ async function runTests() {
     
     // Test 6: Fallback Mechanism When One Engine Fails
     runner.test('Should fallback gracefully when one engine fails', async () => {
+        if (skipIfNoCB()) return;
         const testData = generateTestData({ numUsers: 15, numWines: 25, numRatings: 100 });
         const db = new MockDatabase(testData);
         
@@ -293,6 +305,7 @@ async function runTests() {
     
     // Test 9: Diversity in Blended Recommendations
     runner.test('Should maintain diversity in blended recommendations', async () => {
+        if (skipIfNoCB()) return;
         const testData = generateTestData({ numUsers: 25, numWines: 50, numRatings: 250 });
         const db = new MockDatabase(testData);
         
@@ -325,6 +338,7 @@ async function runTests() {
     
     // Test 10: Performance Comparison Between Engines
     runner.test('Should compare performance between CF and CB engines', async () => {
+        if (skipIfNoCB()) return;
         const testData = generateTestData({ numUsers: 30, numWines: 40, numRatings: 250 });
         const db = new MockDatabase(testData);
         

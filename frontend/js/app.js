@@ -2794,7 +2794,7 @@ export class SommOS {
                     </div>
                     <div class="form-group">
                         <label for="bottles-consumed">Bottles Consumed</label>
-                        <input type="number" id="bottles-consumed" min="1" max="1" required>
+                        <input type="number" id="bottles-consumed" min="1" max="1" step="1" required>
                         <small class="form-help">Maximum bottles available will be shown based on selection</small>
                     </div>
                     <div class="form-group">
@@ -2810,7 +2810,7 @@ export class SommOS {
                     </div>
                     <div class="form-group">
                         <label for="guest-count">Number of Guests</label>
-                        <input type="number" id="guest-count" min="1" placeholder="Optional">
+                        <input type="number" id="guest-count" min="1" step="1" placeholder="Optional">
                     </div>
                     <div class="form-group">
                         <label for="service-notes">Service Notes</label>
@@ -2829,9 +2829,19 @@ export class SommOS {
             
             wineSelect.addEventListener('change', (e) => {
                 const selectedOption = e.target.selectedOptions[0];
-                const maxQuantity = selectedOption ? selectedOption.dataset.max : 1;
+                const maxQuantity = parseInt(selectedOption ? selectedOption.dataset.max : 1, 10);
                 quantityInput.max = maxQuantity;
-                quantityInput.value = Math.min(quantityInput.value || 1, maxQuantity);
+                quantityInput.value = Math.min(parseInt(quantityInput.value, 10) || 1, maxQuantity);
+            });
+            
+            // Prevent negative and non-integer values
+            quantityInput.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value, 10);
+                if (isNaN(value) || value < 1) {
+                    e.target.value = 1;
+                } else if (value > parseInt(e.target.max, 10)) {
+                    e.target.value = e.target.max;
+                }
             });
             
             // Handle form submission
@@ -2858,8 +2868,14 @@ export class SommOS {
             const guestCount = document.getElementById('guest-count').value;
             const notes = document.getElementById('service-notes').value;
             
+            // Validate inputs
             if (!wineId || !quantity) {
                 this.ui.showToast('Please select a wine and quantity', 'error');
+                return;
+            }
+            
+            if (quantity < 1 || !Number.isInteger(quantity)) {
+                this.ui.showToast('Quantity must be a positive whole number', 'error');
                 return;
             }
             
@@ -3341,7 +3357,7 @@ export class SommOS {
                 </div>
                 <div class="form-group">
                     <label for="bottles-consumed">Bottles Consumed</label>
-                    <input type="number" id="bottles-consumed" min="1" required>
+                    <input type="number" id="bottles-consumed" min="1" step="1" required>
                 </div>
                 <div class="form-group">
                     <label for="service-notes">Notes</label>

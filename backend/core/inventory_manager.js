@@ -38,6 +38,31 @@ class InventoryManager {
         return `op_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     }
 
+    /**
+     * Validate quantity for inventory operations
+     * @param {number} quantity - The quantity to validate
+     * @param {boolean} allowZero - Whether to allow zero quantities (default: false)
+     * @param {string} operation - The operation name for error messages
+     * @throws {Error} If quantity is invalid
+     */
+    validateQuantity(quantity, allowZero = false, operation = 'operation') {
+        if (typeof quantity !== 'number' || isNaN(quantity)) {
+            throw new Error(`Invalid quantity for ${operation}: must be a number`);
+        }
+
+        if (!allowZero && quantity <= 0) {
+            throw new Error(`Invalid quantity for ${operation}: ${quantity}. Quantity must be greater than 0`);
+        }
+
+        if (allowZero && quantity < 0) {
+            throw new Error(`Invalid quantity for ${operation}: ${quantity}. Quantity must be non-negative`);
+        }
+
+        if (!Number.isInteger(quantity)) {
+            throw new Error(`Invalid quantity for ${operation}: ${quantity}. Quantity must be a whole number`);
+        }
+    }
+
     buildSyncContext(context = {}, fallback = {}) {
         const now = Math.floor(Date.now() / 1000);
         const normalized = {
@@ -555,43 +580,6 @@ class InventoryManager {
         }
     }
 
-    /**
-     * Move wine between locations
-     */
-    async moveWine(vintageId, fromLocation, toLocation, quantity, notes = '') {
-        try {
-            // Check availability
-            const available = await this.checkAvailability(vintageId, fromLocation);
-            if (available < quantity) {
-                throw new Error(`Insufficient stock. Available: ${available}, Requested: ${quantity}`);
-            }
-            
-            // Remove from source location
-            await this.updateStock(vintageId, fromLocation, -quantity);
-            await this.recordTransaction({
-                vintage_id: vintageId,
-                location: fromLocation,
-                transaction_type: 'OUT',
-                quantity: quantity,
-                notes: `Moved to ${toLocation}. ${notes}`
-            });
-            
-            // Add to destination location
-            await this.updateStock(vintageId, toLocation, quantity);
-            await this.recordTransaction({
-                vintage_id: vintageId,
-                location: toLocation,
-                transaction_type: 'IN',
-                quantity: quantity,
-                notes: `Moved from ${fromLocation}. ${notes}`
-            });
-            
-            return { success: true };
-            
-        } catch (error) {
-            throw error;
-        }
-    }
 
     /**
      * Reserve wine for service
@@ -662,35 +650,49 @@ class InventoryManager {
      * Perform inventory adjustment
      */
     async adjustInventory(vintageId, location, newQuantity, reason) {
-        const currentStock = await this.db.all(`
-            SELECT quantity FROM Stock 
-            WHERE vintage_id = ? AND location = ?
-        `, [vintageId, location]);
-        
-        if (!currentStock.length) {
-            throw new Error('Stock record not found');
-        }
-        
-        const currentQuantity = currentStock[0].quantity;
-        const adjustment = newQuantity - currentQuantity;
-        
-        if (adjustment !== 0) {
-            await this.db.run(`
-                UPDATE Stock 
-                SET quantity = ?, last_inventory_date = CURRENT_DATE
-                WHERE vintage_id = ? AND location = ?
-            `, [newQuantity, vintageId, location]);
+        try {
+            // Validate new quantity
+            this.validateQuantity(newQuantity, true, 'inventory adjustment');
             
-            await this.recordTransaction({
-                vintage_id: vintageId,
-                location: location,
-                transaction_type: 'ADJUST',
-                quantity: adjustment,
-                notes: `Inventory adjustment: ${reason}`
-            });
+            if (newQuantity < 0) {
+                throw new InventoryConflictError(`Invalid adjustment: new quantity cannot be negative (${newQuantity})`);
+            }
+            
+            const currentStock = await this.db.all(`
+                SELECT quantity FROM Stock 
+                WHERE vintage_id = ? AND location = ?
+            `, [vintageId, location]);
+            
+            if (!currentStock.length) {
+                throw new Error('Stock record not found');
+            }
+            
+            const currentQuantity = currentStock[0].quantity;
+            const adjustment = newQuantity - currentQuantity;
+            
+            if (adjustment !== 0) {
+                await this.db.run(`
+                    UPDATE Stock 
+                    SET quantity = ?, last_inventory_date = CURRENT_DATE
+                    WHERE vintage_id = ? AND location = ?
+                `, [newQuantity, vintageId, location]);
+                
+                await this.recordTransaction({
+                    vintage_id: vintageId,
+                    location: location,
+                    transaction_type: 'ADJUST',
+                    quantity: adjustment,
+                    notes: `Inventory adjustment: ${reason}`
+                });
+            }
+            
+            return { success: true, adjustment };
+        } catch (error) {
+            if (error instanceof InventoryConflictError) {
+                throw error;
+            }
+            throw new Error(`Failed to adjust inventory: ${error.message}`);
         }
-        
-        return { success: true, adjustment };
     }
 
     /**

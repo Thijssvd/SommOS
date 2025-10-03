@@ -1139,6 +1139,9 @@ paths:
     post:
       tags: [Inventory]
       summary: Record wine consumption.
+      description: |
+        Records the consumption of wine from inventory. The quantity must be a positive integer
+        and cannot exceed available stock (total quantity minus reserved quantity).
       security:
         - accessTokenCookie: []
       requestBody:
@@ -1151,17 +1154,23 @@ paths:
               properties:
                 vintage_id:
                   type: integer
+                  description: The vintage identifier to consume from.
                 location:
                   type: string
+                  description: The storage location (e.g., 'main-cellar', 'service-bar').
                 quantity:
-                  type: number
+                  type: integer
+                  minimum: 1
+                  description: Number of bottles to consume. Must be a positive integer and cannot exceed available stock.
                 notes:
                   type: string
+                  description: Optional notes about the consumption (e.g., occasion, guest feedback).
                 created_by:
                   type: string
+                  description: User identifier recording the consumption.
       responses:
         '200':
-          description: Consumption recorded.
+          description: Consumption recorded successfully.
           content:
             application/json:
               schema:
@@ -1174,13 +1183,22 @@ paths:
                     type: object
                     additionalProperties: true
         '400':
-          description: Missing required fields.
+          description: Missing required fields or invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Inventory conflict - insufficient stock available or invalid quantity.
+            This occurs when the requested quantity exceeds available stock or when
+            quantity is zero or negative.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Unable to record consumption.
+          description: Internal server error while recording consumption.
           content:
             application/json:
               schema:
@@ -1189,6 +1207,9 @@ paths:
     post:
       tags: [Inventory]
       summary: Record incoming wine.
+      description: |
+        Records the receipt of wine into inventory. The quantity must be a positive integer.
+        This operation adds to existing stock or creates a new stock record if none exists.
       security:
         - accessTokenCookie: []
       requestBody:
@@ -1201,21 +1222,30 @@ paths:
               properties:
                 vintage_id:
                   type: integer
+                  description: The vintage identifier to receive.
                 location:
                   type: string
+                  description: The storage location for the received wine.
                 quantity:
-                  type: number
+                  type: integer
+                  minimum: 1
+                  description: Number of bottles received. Must be a positive integer.
                 unit_cost:
                   type: number
+                  minimum: 0
+                  description: Cost per bottle (optional).
                 reference_id:
                   type: string
+                  description: External reference (e.g., purchase order number).
                 notes:
                   type: string
+                  description: Optional notes about the receipt.
                 created_by:
                   type: string
+                  description: User identifier recording the receipt.
       responses:
         '200':
-          description: Receipt recorded.
+          description: Receipt recorded successfully.
           content:
             application/json:
               schema:
@@ -1228,13 +1258,20 @@ paths:
                     type: object
                     additionalProperties: true
         '400':
-          description: Missing required fields.
+          description: Missing required fields or invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Inventory conflict - invalid quantity provided (zero or negative).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Unable to record receipt.
+          description: Internal server error while recording receipt.
           content:
             application/json:
               schema:
@@ -1373,6 +1410,9 @@ paths:
     post:
       tags: [Inventory]
       summary: Move wine between locations.
+      description: |
+        Moves wine from one storage location to another. The quantity must be a positive integer
+        and cannot exceed available stock in the source location (total quantity minus reserved quantity).
       security:
         - accessTokenCookie: []
       requestBody:
@@ -1385,19 +1425,26 @@ paths:
               properties:
                 vintage_id:
                   type: integer
+                  description: The vintage identifier to move.
                 from_location:
                   type: string
+                  description: Source storage location.
                 to_location:
                   type: string
+                  description: Destination storage location.
                 quantity:
-                  type: number
+                  type: integer
+                  minimum: 1
+                  description: Number of bottles to move. Must be a positive integer and cannot exceed available stock in source location.
                 notes:
                   type: string
+                  description: Optional notes about the movement.
                 created_by:
                   type: string
+                  description: User identifier recording the movement.
       responses:
         '200':
-          description: Movement recorded.
+          description: Movement recorded successfully.
           content:
             application/json:
               schema:
@@ -1410,13 +1457,22 @@ paths:
                     type: object
                     additionalProperties: true
         '400':
-          description: Missing required fields.
+          description: Missing required fields or invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Inventory conflict - insufficient stock in source location or invalid quantity.
+            This occurs when the requested quantity exceeds available stock in the source location
+            or when quantity is zero or negative.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Unable to record movement.
+          description: Internal server error while recording movement.
           content:
             application/json:
               schema:
@@ -1425,6 +1481,10 @@ paths:
     post:
       tags: [Inventory]
       summary: Reserve wine for future service.
+      description: |
+        Reserves wine for a future event or service. The quantity must be a positive integer
+        and cannot exceed available stock (total quantity minus currently reserved quantity).
+        Reserved wine remains in inventory but is marked as unavailable for general consumption.
       security:
         - accessTokenCookie: []
       requestBody:
@@ -1437,17 +1497,23 @@ paths:
               properties:
                 vintage_id:
                   type: integer
+                  description: The vintage identifier to reserve.
                 location:
                   type: string
+                  description: The storage location containing the wine to reserve.
                 quantity:
-                  type: number
+                  type: integer
+                  minimum: 1
+                  description: Number of bottles to reserve. Must be a positive integer and cannot exceed available (unreserved) stock.
                 notes:
                   type: string
+                  description: Optional notes about the reservation (e.g., event name, date).
                 created_by:
                   type: string
+                  description: User identifier creating the reservation.
       responses:
         '200':
-          description: Reservation recorded.
+          description: Reservation recorded successfully.
           content:
             application/json:
               schema:
@@ -1460,13 +1526,22 @@ paths:
                     type: object
                     additionalProperties: true
         '400':
-          description: Missing required fields.
+          description: Missing required fields or invalid parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Inventory conflict - insufficient available stock for reservation or invalid quantity.
+            This occurs when the requested quantity exceeds available (unreserved) stock
+            or when quantity is zero or negative.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Unable to reserve inventory.
+          description: Internal server error while creating reservation.
           content:
             application/json:
               schema:
