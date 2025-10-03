@@ -45,7 +45,7 @@ SommOS/
 ## Key Features
 
 ### Core Functionality
-1. **Wine Inventory Management** - Track wines by location, vintage, and availability
+1. **Wine Inventory Management** - Track wines by location, vintage, and availability with multi-layer validation
 2. **Quick Pairing Engine** - 4-line AI recommendations for dish pairings
 3. **Weather Vintage Analysis** - Historical weather impact on wine quality
 4. **Procurement Suggestions** - Automated buying recommendations

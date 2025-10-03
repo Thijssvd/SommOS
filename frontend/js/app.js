@@ -1,15 +1,16 @@
 // SommOS Main Application JavaScript
 // Handles app initialization, navigation, and core functionality
 
-import { SommOSAPI } from './api';
-import { SommOSUI, VirtualScroll } from './ui';
-import { SommOSSyncService } from './sync';
-import { RealTimeSync } from './realtime-sync';
+import { SommOSAPI } from './api.js';
+import { SommOSUI, VirtualScroll } from './ui.js';
+import { SommOSSyncService } from './sync.js';
+import { RealTimeSync } from './realtime-sync.js';
 import Chart from 'chart.js/auto';
 import { DashboardModule } from './modules/dashboard.js';
 import { InventoryModule } from './modules/inventory.js';
 import { PairingModule } from './modules/pairing.js';
 import { ProcurementModule } from './modules/procurement.js';
+import { glossaryData, searchGlossary, getCategories } from './glossary-data.js';
 
 export class SommOS {
     constructor() {
@@ -34,6 +35,10 @@ export class SommOS {
         this.sessionWarningShown = false;
         this.explanationsCache = new Map();
         this.memoriesCache = new Map();
+        
+        // Glossary state
+        this.currentGlossaryCategory = 'all';
+        this.glossarySearchQuery = '';
         
         // Virtual scroll instances for performance optimization
         this.inventoryVirtualScroll = null;
@@ -1204,15 +1209,141 @@ export class SommOS {
             case 'catalog':
                 await this.loadWineCatalog();
                 break;
+            case 'glossary':
+                this.renderGlossaryPage();
+                break;
         }
     }
 
     async loadInitialData() {
         await this.loadDashboardData();
     }
-
     
+    async loadDashboardData() {
+        await this.modules.dashboard.refresh();
+    }
     
+    async showStatDetailModal(statType) {
+        const inventory = this.fullInventory || [];
+        
+        let title = '';
+        let content = '';
+        
+        switch (statType) {
+            case 'total-bottles':
+                title = '🍷 Total Bottles Breakdown';
+                const byType = {};
+                const byLocation = {};
+                inventory.forEach(wine => {
+                    const type = wine.wine_type || 'Other';
+                    const location = wine.location || 'Unknown';
+                    const qty = wine.quantity || 0;
+                    byType[type] = (byType[type] || 0) + qty;
+                    byLocation[location] = (byLocation[location] || 0) + qty;
+                });
+                
+                content = `
+                    <div class="stat-detail-modal">
+                        <div class="stat-detail-section">
+                            <h4>By Wine Type</h4>
+                            <ul class="stat-detail-list">
+                                ${Object.entries(byType).map(([type, count]) => 
+                                    `<li><strong>${type}:</strong> ${count} bottles</li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                        <div class="stat-detail-section">
+                            <h4>By Location</h4>
+                            <ul class="stat-detail-list">
+                                ${Object.entries(byLocation).map(([loc, count]) => 
+                                    `<li><strong>${loc}:</strong> ${count} bottles</li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                break;
+                
+            case 'total-wines':
+                title = '🏷️ Wine Labels';
+                const uniqueWines = {};
+                inventory.forEach(wine => {
+                    const key = `${wine.name}_${wine.producer}`;
+                    if (!uniqueWines[key]) {
+                        uniqueWines[key] = {
+                            name: wine.name || 'Unknown',
+                            producer: wine.producer || 'Unknown',
+                            count: 0
+                        };
+                    }
+                    uniqueWines[key].count += (wine.quantity || 0);
+                });
+                
+                const winesList = Object.values(uniqueWines).sort((a, b) => b.count - a.count);
+                content = `
+                    <div class="stat-detail-modal">
+                        <p class="stat-summary">You have ${winesList.length} unique wine labels in your collection.</p>
+                        <div class="stat-detail-section">
+                            <h4>Top Wines by Quantity</h4>
+                            <ul class="stat-detail-list">
+                                ${winesList.slice(0, 15).map(wine => 
+                                    `<li><strong>${wine.name}</strong> (${wine.producer}) — ${wine.count} bottles</li>`
+                                ).join('')}
+                                ${winesList.length > 15 ? `<li><em>...and ${winesList.length - 15} more</em></li>` : ''}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                break;
+                
+            case 'total-vintages':
+                title = '📅 Vintage Distribution';
+                const vintageYears = {};
+                inventory.forEach(wine => {
+                    if (wine.year && wine.year > 1900) {
+                        vintageYears[wine.year] = (vintageYears[wine.year] || 0) + (wine.quantity || 0);
+                    }
+                });
+                
+                const sortedVintages = Object.entries(vintageYears).sort((a, b) => b[0] - a[0]);
+                const currentYear = new Date().getFullYear();
+                const avgAge = sortedVintages.length > 0 
+                    ? (sortedVintages.reduce((sum, [year, count]) => sum + (currentYear - parseInt(year)) * count, 0) / 
+                       sortedVintages.reduce((sum, [, count]) => sum + count, 0)).toFixed(1)
+                    : 0;
+                
+                content = `
+                    <div class="stat-detail-modal">
+                        <p class="stat-summary">Your collection spans ${sortedVintages.length} different vintage years with an average age of ${avgAge} years.</p>
+                        <div class="stat-detail-section">
+                            <h4>Vintages (Most Recent)</h4>
+                            <ul class="stat-detail-list">
+                                ${sortedVintages.slice(0, 20).map(([year, count]) => 
+                                    `<li><strong>${year}:</strong> ${count} bottles</li>`
+                                ).join('')}
+                                ${sortedVintages.length > 20 ? `<li><em>...and ${sortedVintages.length - 20} more vintages</em></li>` : ''}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                break;
+                
+            case 'active-suppliers':
+                title = '🏪 Active Suppliers';
+                content = `
+                    <div class="stat-detail-modal">
+                        <p class="stat-summary">Supplier details require procurement data from the API.</p>
+                        <p>Navigate to the Procurement view to see detailed supplier information and order history.</p>
+                        <div class="modal-actions">
+                            <button class="btn primary" onclick="app.navigateToView('procurement'); app.ui.hideModal();">Go to Procurement</button>
+                        </div>
+                    </div>
+                `;
+                break;
+        }
+        
+        this.ui.showModal(title, content);
+    }
     
     displayDefaultActivity() {
         const activityContainer = document.getElementById('recent-activity');
@@ -1833,6 +1964,23 @@ export class SommOS {
             const notes = document.getElementById('reserve-notes').value;
             
             try {
+                // Confirm large quantity reservations
+                if (quantity > 5) {
+                    try {
+                        await this.confirmAction(
+                            'Confirm Large Quantity Reservation',
+                            `You are about to reserve <strong>${quantity} bottles</strong> of ${wineName}. This is a significant reservation. Are you sure?`,
+                            'Yes, Reserve Wine',
+                            'Cancel',
+                            false
+                        );
+                    } catch (err) {
+                        // User cancelled, show the original modal again
+                        this.reserveWineModal(vintageId, wineName);
+                        return;
+                    }
+                }
+                
                 await this.api.reserveWine(vintageId, location, quantity, notes);
                 this.ui.showToast(`Reserved ${quantity} bottle(s) of ${wineName}`, 'success');
                 this.ui.hideModal();
@@ -1881,6 +2029,23 @@ export class SommOS {
             const notes = document.getElementById('consume-notes').value;
             
             try {
+                // Confirm large quantity actions
+                if (quantity > 3) {
+                    try {
+                        await this.confirmAction(
+                            'Confirm Large Quantity Service',
+                            `You are about to serve <strong>${quantity} bottles</strong> of ${wineName}. This is a large quantity. Are you sure you want to proceed?`,
+                            'Yes, Serve Wine',
+                            'Cancel',
+                            true
+                        );
+                    } catch (err) {
+                        // User cancelled, show the original modal again
+                        this.consumeWineModal(vintageId, wineName);
+                        return;
+                    }
+                }
+                
                 await this.api.consumeWine(vintageId, location, quantity, notes, 'Sommelier');
                 this.ui.showToast(`Served ${quantity} bottle(s) of ${wineName}`, 'success');
                 this.ui.hideModal();
@@ -1892,8 +2057,51 @@ export class SommOS {
     }
     
     viewWineDetails(vintageId) {
-        // For now, show a placeholder. In a full implementation, this would show detailed wine information
-        this.ui.showToast('Wine details view coming soon!', 'info');
+        // Show comprehensive wine details in a modal
+        this.showWineDetailModal(vintageId);
+    }
+    
+    confirmAction(title, message, confirmText = 'Confirm', cancelText = 'Cancel', isDestructive = false) {
+        return new Promise((resolve, reject) => {
+            const confirmBtnClass = isDestructive ? 'btn danger' : 'btn primary';
+            const modalContent = `
+                <div class="confirm-dialog">
+                    <div class="confirm-message">
+                        <p>${message}</p>
+                    </div>
+                    <div class="confirm-actions">
+                        <button class="btn secondary" id="confirm-cancel">${cancelText}</button>
+                        <button class="${confirmBtnClass}" id="confirm-proceed">${confirmText}</button>
+                    </div>
+                </div>
+            `;
+            
+            this.ui.showModal(title, modalContent);
+            
+            // Add event listeners
+            const cancelBtn = document.getElementById('confirm-cancel');
+            const proceedBtn = document.getElementById('confirm-proceed');
+            
+            const handleCancel = () => {
+                this.ui.hideModal();
+                reject(new Error('User cancelled action'));
+                cleanup();
+            };
+            
+            const handleConfirm = () => {
+                this.ui.hideModal();
+                resolve(true);
+                cleanup();
+            };
+            
+            const cleanup = () => {
+                if (cancelBtn) cancelBtn.removeEventListener('click', handleCancel);
+                if (proceedBtn) proceedBtn.removeEventListener('click', handleConfirm);
+            };
+            
+            if (cancelBtn) cancelBtn.addEventListener('click', handleCancel);
+            if (proceedBtn) proceedBtn.addEventListener('click', handleConfirm);
+        });
     }
     
     updateInventoryCount(count) {
@@ -2946,11 +3154,22 @@ export class SommOS {
         const wineAge = wine.year ? currentYear - wine.year : null;
         const isVintage = wine.year && wine.year > 1900;
 
+        // Get wine scores
+        const wineScores = this.getWineScoreData(wine);
+        
+        // Get storage and serving guidance
+        const storageRange = this.formatStorageRange(wine);
+        const decantingSummary = this.formatDecantingSummary(wine);
+        const peakDrinkingWindow = this.getPeakDrinkingWindow(wine);
+        const storageRecommendation = this.getStorageRecommendation(wine);
+        const decantingRecommendation = this.getDecantingRecommendation(wine);
+
         // Generate vintage intelligence
         const vintageIntelligence = this.generateVintageIntelligence(wine, wineAge);
         const memorySubjectType = wine.vintage_id ? 'vintage' : 'wine';
         const memorySubjectId = wine.vintage_id || wine.id || wine.wine_id || '';
         const encodedSubjectLabel = encodeURIComponent(wine.name || 'Wine');
+        const isGuest = this.isGuestUser();
 
         const modalContent = `
             <div class="wine-detail-modal">
@@ -2973,28 +3192,83 @@ export class SommOS {
                             <div class="stat-value">${wine.quantity || 0}</div>
                             <div class="stat-label">Bottles</div>
                         </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${wine.cost_per_bottle ? '$' + parseFloat(wine.cost_per_bottle).toFixed(2) : 'N/A'}</div>
-                            <div class="stat-label">Per Bottle</div>
-                        </div>
+                        ${!isGuest && wine.cost_per_bottle ? `
+                            <div class="stat-item">
+                                <div class="stat-value">$${parseFloat(wine.cost_per_bottle).toFixed(2)}</div>
+                                <div class="stat-label">Per Bottle</div>
+                            </div>
+                        ` : ''}
                         ${wineAge ? `
                             <div class="stat-item">
                                 <div class="stat-value">${wineAge}</div>
                                 <div class="stat-label">Years Old</div>
                             </div>
                         ` : ''}
+                        ${wineScores.hasScores && wineScores.overallScore ? `
+                            <div class="stat-item">
+                                <div class="stat-value">${Math.round(wineScores.overallScore)}</div>
+                                <div class="stat-label">Score</div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 
                 <div class="wine-detail-content">
-                    <div class="wine-detail-section">
-                        <h4>📍 Location & Stock</h4>
-                        <div class="location-info">
-                            <p><strong>Storage Location:</strong> ${wine.location || 'Unknown'}</p>
-                            <p><strong>Available Quantity:</strong> ${wine.quantity || 0} bottles</p>
-                            ${wine.reserved_quantity ? `<p><strong>Reserved:</strong> ${wine.reserved_quantity} bottles</p>` : ''}
+                    ${!isGuest ? `
+                        <div class="wine-detail-section">
+                            <h4>📍 Location & Stock</h4>
+                            <div class="location-info">
+                                <p><strong>Storage Location:</strong> ${wine.location || 'Unknown'}</p>
+                                <p><strong>Available Quantity:</strong> ${wine.quantity || 0} bottles</p>
+                                ${wine.reserved_quantity ? `<p><strong>Reserved:</strong> ${wine.reserved_quantity} bottles</p>` : ''}
+                            </div>
                         </div>
-                    </div>
+                    ` : ''}
+                    
+                    ${wineScores.hasScores ? `
+                        <div class="wine-detail-section">
+                            <h4>⭐ Wine Scores</h4>
+                            <div class="wine-scores-detail">
+                                ${wineScores.overallScore ? `
+                                    <div class="score-item-detail">
+                                        <span class="score-label-detail">Overall Score:</span>
+                                        <span class="score-value-detail">${Math.round(wineScores.overallScore)} / 100</span>
+                                    </div>
+                                ` : ''}
+                                ${wineScores.qualityScore ? `
+                                    <div class="score-item-detail">
+                                        <span class="score-label-detail">Quality:</span>
+                                        <span class="score-value-detail">${Math.round(wineScores.qualityScore)} pts</span>
+                                    </div>
+                                ` : ''}
+                                ${wineScores.criticScore ? `
+                                    <div class="score-item-detail">
+                                        <span class="score-label-detail">Critic Score:</span>
+                                        <span class="score-value-detail">${Math.round(wineScores.criticScore)} pts</span>
+                                    </div>
+                                ` : ''}
+                                ${wineScores.weatherScore ? `
+                                    <div class="score-item-detail">
+                                        <span class="score-label-detail">Vintage Weather:</span>
+                                        <span class="score-value-detail">${Math.round(wineScores.weatherScore)} pts</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${storageRange !== '—' || storageRecommendation ? `
+                        <div class="wine-detail-section">
+                            <h4>🌡️ Storage & Serving</h4>
+                            <div class="storage-guidance">
+                                ${storageRange !== '—' ? `<p><strong>Storage Temperature:</strong> ${storageRange}</p>` : ''}
+                                ${storageRecommendation ? `<p class="guidance-text">${storageRecommendation}</p>` : ''}
+                                ${decantingSummary ? `<p><strong>Decanting:</strong> ${decantingSummary}</p>` : ''}
+                                ${decantingRecommendation && decantingSummary !== 'No decanting needed' ? `<p class="guidance-text">${decantingRecommendation}</p>` : ''}
+                                ${peakDrinkingWindow ? `<p><strong>Peak Drinking Window:</strong> ${peakDrinkingWindow}</p>` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
                     
                     ${grapeVarieties.length > 0 ? `
                         <div class="wine-detail-section">
@@ -3057,9 +3331,14 @@ export class SommOS {
                 
                 <div class="wine-detail-actions">
                     <button class="btn secondary" onclick="app.ui.hideModal()">Close</button>
-                    <button class="btn primary" onclick="app.reserveWineModal('${wine.vintage_id || wine.id}', '${(wine.name || "Unknown").replace(/'/g, "\\'") }')">Reserve Wine</button>
-                    ${wine.quantity > 0 ? `
-                        <button class="btn success" onclick="app.consumeWineModal('${wine.vintage_id || wine.id}', '${(wine.name || "Unknown").replace(/'/g, "\\'") }')">Serve Wine</button>
+                    ${!isGuest && wine.quantity > 0 ? `
+                        <button class="btn primary" onclick="app.reserveWineModal('${wine.vintage_id || wine.id}', '${(wine.name || "Unknown").replace(/'/g, "\\'") }')">🍷 Reserve Wine</button>
+                        <button class="btn success" onclick="app.consumeWineModal('${wine.vintage_id || wine.id}', '${(wine.name || "Unknown").replace(/'/g, "\\'") }')">🥂 Serve Wine</button>
+                    ` : ''}
+                    ${isGuest ? `
+                        <div class="guest-notice-modal">
+                            <span>🔒 Reserve and serve actions require crew access</span>
+                        </div>
                     ` : ''}
                 </div>
             </div>
@@ -4497,6 +4776,265 @@ export class SommOS {
                 </div>
             </div>
         `);
+    }
+
+    // Glossary Functions
+    showGlossaryModal() {
+        const searchHtml = `
+            <div class="glossary-search-container">
+                <input type="text" id="glossary-modal-search" 
+                       class="glossary-search-input" 
+                       placeholder="Search terms, definitions, and features..." 
+                       aria-label="Search glossary">
+            </div>
+        `;
+        
+        const contentHtml = this.generateGlossaryContent();
+        const modalContent = searchHtml + contentHtml;
+        
+        this.ui.showModal('Wine & System Glossary', modalContent);
+        
+        // Setup search functionality
+        const searchInput = document.getElementById('glossary-modal-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filterGlossaryModal(e.target.value);
+            });
+        }
+    }
+
+    generateGlossaryContent() {
+        const categories = getCategories();
+        let html = '<div class="glossary-modal-content">';
+        
+        categories.forEach(category => {
+            html += this.renderGlossaryCategory(category, glossaryData[category]);
+        });
+        
+        html += '</div>';
+        return html;
+    }
+
+    renderGlossaryCategory(categoryName, terms) {
+        let html = `
+            <div class="glossary-category" data-category="${categoryName}">
+                <h3 class="glossary-category-title">${categoryName}</h3>
+                <dl class="glossary-terms">
+        `;
+        
+        Object.entries(terms).forEach(([term, content]) => {
+            html += this.renderGlossaryTerm(term, content);
+        });
+        
+        html += '</dl></div>';
+        return html;
+    }
+
+    renderGlossaryTerm(term, content) {
+        const definition = typeof content === 'object' ? content.definition : content;
+        
+        let html = `
+            <div class="glossary-term" data-term="${term.toLowerCase()}">
+                <dt class="glossary-term-name">${term}</dt>
+                <dd class="glossary-term-definition">${definition}</dd>
+        `;
+        
+        // Add additional content sections if available
+        if (typeof content === 'object') {
+            if (content.examples && content.examples.length > 0) {
+                html += `
+                    <dd class="glossary-term-examples">
+                        <strong>Examples:</strong>
+                        <ul>
+                            ${content.examples.map(ex => `<li>${ex}</li>`).join('')}
+                        </ul>
+                    </dd>
+                `;
+            }
+            
+            if (content.factors && content.factors.length > 0) {
+                html += `
+                    <dd class="glossary-term-factors">
+                        <strong>Key Factors:</strong>
+                        <ul>
+                            ${content.factors.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                    </dd>
+                `;
+            }
+            
+            if (content.usage) {
+                html += `<dd class="glossary-term-usage"><strong>Usage:</strong> ${content.usage}</dd>`;
+            }
+            
+            if (content.permissions && content.permissions.length > 0) {
+                html += `
+                    <dd class="glossary-term-permissions">
+                        <strong>Permissions:</strong>
+                        <ul>
+                            ${content.permissions.map(p => `<li>${p}</li>`).join('')}
+                        </ul>
+                    </dd>
+                `;
+            }
+            
+            if (content.restrictions && content.restrictions.length > 0) {
+                html += `
+                    <dd class="glossary-term-restrictions">
+                        <strong>Restrictions:</strong>
+                        <ul>
+                            ${content.restrictions.map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    </dd>
+                `;
+            }
+            
+            if (content.best_practices && content.best_practices.length > 0) {
+                html += `
+                    <dd class="glossary-term-best-practices">
+                        <strong>Best Practices:</strong>
+                        <ul>
+                            ${content.best_practices.map(bp => `<li>${bp}</li>`).join('')}
+                        </ul>
+                    </dd>
+                `;
+            }
+            
+            if (content.crew_only) {
+                html += `<dd class="glossary-term-badge"><span class="badge crew-only">Crew Only</span></dd>`;
+            }
+        }
+        
+        html += '</div>';
+        return html;
+    }
+
+    filterGlossaryModal(query) {
+        const terms = document.querySelectorAll('.glossary-term');
+        const categories = document.querySelectorAll('.glossary-category');
+        const lowerQuery = query.toLowerCase().trim();
+        
+        if (!lowerQuery) {
+            // Show all
+            terms.forEach(term => term.style.display = '');
+            categories.forEach(cat => cat.style.display = '');
+            return;
+        }
+        
+        categories.forEach(category => {
+            let hasVisibleTerms = false;
+            const categoryTerms = category.querySelectorAll('.glossary-term');
+            
+            categoryTerms.forEach(term => {
+                const termName = term.dataset.term || '';
+                const termText = term.textContent.toLowerCase();
+                
+                if (termName.includes(lowerQuery) || termText.includes(lowerQuery)) {
+                    term.style.display = '';
+                    hasVisibleTerms = true;
+                } else {
+                    term.style.display = 'none';
+                }
+            });
+            
+            category.style.display = hasVisibleTerms ? '' : 'none';
+        });
+    }
+
+    renderGlossaryPage() {
+        const categoriesContainer = document.getElementById('glossary-categories');
+        const contentContainer = document.getElementById('glossary-content');
+        const searchInput = document.getElementById('glossary-page-search');
+        
+        if (!categoriesContainer || !contentContainer) {
+            console.error('Glossary containers not found');
+            return;
+        }
+        
+        // Render category tabs
+        const categories = getCategories();
+        let tabsHtml = `
+            <button class="glossary-category-tab active" data-category="all" aria-label="Show all categories">
+                All
+            </button>
+        `;
+        
+        categories.forEach(category => {
+            tabsHtml += `
+                <button class="glossary-category-tab" data-category="${category}" aria-label="Show ${category}">
+                    ${category}
+                </button>
+            `;
+        });
+        
+        categoriesContainer.innerHTML = tabsHtml;
+        
+        // Render content
+        this.renderGlossaryContent('all');
+        
+        // Setup category tab listeners
+        const tabs = categoriesContainer.querySelectorAll('.glossary-category-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const category = tab.dataset.category;
+                this.currentGlossaryCategory = category;
+                this.renderGlossaryContent(category);
+            });
+        });
+        
+        // Setup search listener
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.glossarySearchQuery = e.target.value;
+                this.renderGlossaryContent(this.currentGlossaryCategory);
+            });
+        }
+    }
+
+    renderGlossaryContent(category) {
+        const contentContainer = document.getElementById('glossary-content');
+        if (!contentContainer) return;
+        
+        let html = '';
+        
+        if (this.glossarySearchQuery.trim()) {
+            // Search mode
+            const results = searchGlossary(this.glossarySearchQuery);
+            
+            if (results.length === 0) {
+                html = `
+                    <div class="glossary-no-results">
+                        <p>No results found for "${this.glossarySearchQuery}"</p>
+                        <p>Try different keywords or browse by category.</p>
+                    </div>
+                `;
+            } else {
+                html = '<div class="glossary-search-results">';
+                results.forEach(result => {
+                    html += `
+                        <div class="glossary-search-result">
+                            <span class="result-category">${result.category}</span>
+                            ${this.renderGlossaryTerm(result.term, result.content)}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+        } else if (category === 'all') {
+            // Show all categories
+            const categories = getCategories();
+            categories.forEach(cat => {
+                html += this.renderGlossaryCategory(cat, glossaryData[cat]);
+            });
+        } else {
+            // Show specific category
+            html = this.renderGlossaryCategory(category, glossaryData[category]);
+        }
+        
+        contentContainer.innerHTML = html;
     }
 }
 

@@ -179,6 +179,10 @@
                     <span class="nav-icon" aria-hidden="true">📚</span>
                     <span class="nav-text">Catalog</span>
                 </button>
+                <button class="nav-item" data-view="glossary" role="menuitem" aria-label="Navigate to Glossary - Learn wine terminology and system features">
+                    <span class="nav-icon" aria-hidden="true">📖</span>
+                    <span class="nav-text">Glossary</span>
+                </button>
             </div>
             
             <div class="nav-actions">
@@ -190,6 +194,9 @@
                     Guest browsing is read-only. Contact the crew for upgrade.
                 </div>
                 <div class="nav-action-buttons">
+                    <button class="nav-action" id="help-btn" title="Help & Glossary" onclick="app.showGlossaryModal()">
+                        <span>❓</span>
+                    </button>
                     <button class="nav-action" id="sync-btn" title="Sync Data" data-role-allow="admin,crew">
                         <span class="sync-icon">🔄</span>
                     </button>
@@ -714,6 +721,31 @@
                         <button id="prev-page" class="btn secondary" disabled>← Previous</button>
                         <span id="page-info">Page 1 of 1</span>
                         <button id="next-page" class="btn secondary" disabled>Next →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Glossary View -->
+            <div id="glossary-view" class="view">
+                <div class="view-header">
+                    <h1>Wine & System Glossary</h1>
+                    <p class="view-subtitle">Understanding wine terminology and SommOS features</p>
+                </div>
+                
+                <div class="glossary-container">
+                    <div class="glossary-search-container">
+                        <input type="text" id="glossary-page-search" placeholder="Search terms, definitions, and features..." class="glossary-search-input">
+                        <button class="search-btn" aria-label="Search glossary">🔍</button>
+                    </div>
+                    
+                    <div class="glossary-categories" id="glossary-categories">
+                        <!-- Category tabs will be populated here -->
+                    </div>
+                    
+                    <div class="glossary-content" id="glossary-content">
+                        <div class="glossary-placeholder">
+                            <p>Loading glossary...</p>
+                        </div>
                     </div>
                 </div>
             </div>

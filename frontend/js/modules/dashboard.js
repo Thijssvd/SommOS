@@ -27,13 +27,20 @@ export class DashboardModule {
             // Add loading state to dashboard cards
             this.addLoadingToStats();
 
-            const [stats, activity] = await Promise.all([
+            const [stats, activity, inventory] = await Promise.all([
                 this.app.api.getSystemHealth(),
-                this.app.api.getRecentActivity()
+                this.app.api.getRecentActivity(),
+                this.app.api.getInventory({ available_only: false })
             ]);
 
             this.displayStats(stats.data);
             this.displayRecentActivity(activity.data);
+            
+            // Initialize charts with inventory data
+            if (inventory && inventory.success) {
+                this.inventoryData = inventory.data || [];
+                this.initializeCharts();
+            }
         } catch (error) {
             console.warn('Could not load dashboard data:', error);
             this.displayError('Failed to load dashboard data');
@@ -176,9 +183,178 @@ export class DashboardModule {
                 this.loadDashboardData();
             });
         }
+        
+        // Make stat cards clickable
+        const statCards = document.querySelectorAll('.stat-card-luxury');
+        statCards.forEach((card, index) => {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', () => {
+                const statTypes = ['total-bottles', 'total-wines', 'total-vintages', 'active-suppliers'];
+                if (statTypes[index]) {
+                    this.app.showStatDetailModal(statTypes[index]);
+                }
+            });
+        });
     }
 
     async refresh() {
         await this.loadDashboardData();
+    }
+    
+    initializeCharts() {
+        // Check if Chart.js is available
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js not loaded, skipping chart initialization');
+            return;
+        }
+        
+        try {
+            this.initWineTypesChart();
+            this.initStockLocationChart();
+        } catch (error) {
+            console.error('Error initializing charts:', error);
+        }
+    }
+    
+    initWineTypesChart() {
+        const canvas = document.getElementById('wine-types-chart');
+        if (!canvas || !this.inventoryData) return;
+        
+        // Destroy existing chart if it exists
+        if (this.wineTypesChart) {
+            this.wineTypesChart.destroy();
+        }
+        
+        // Calculate wine type distribution
+        const typeCounts = {};
+        this.inventoryData.forEach(wine => {
+            const type = wine.wine_type || 'Other';
+            typeCounts[type] = (typeCounts[type] || 0) + (wine.quantity || 0);
+        });
+        
+        const labels = Object.keys(typeCounts);
+        const data = Object.values(typeCounts);
+        
+        // Define colors for wine types
+        const colorMap = {
+            'Red': '#8B1538',
+            'White': '#F4E5C2',
+            'Rosé': '#FFB3BA',
+            'Sparkling': '#FFE5B4',
+            'Dessert': '#D4A574',
+            'Fortified': '#8B6F47',
+            'Other': '#CCCCCC'
+        };
+        
+        const backgroundColors = labels.map(label => colorMap[label] || colorMap['Other']);
+        
+        const ctx = canvas.getContext('2d');
+        this.wineTypesChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} bottles (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    initStockLocationChart() {
+        const canvas = document.getElementById('stock-location-chart');
+        if (!canvas || !this.inventoryData) return;
+        
+        // Destroy existing chart if it exists
+        if (this.stockLocationChart) {
+            this.stockLocationChart.destroy();
+        }
+        
+        // Calculate stock by location
+        const locationCounts = {};
+        this.inventoryData.forEach(wine => {
+            const location = wine.location || 'Unknown';
+            locationCounts[location] = (locationCounts[location] || 0) + (wine.quantity || 0);
+        });
+        
+        const labels = Object.keys(locationCounts);
+        const data = Object.values(locationCounts);
+        
+        const ctx = canvas.getContext('2d');
+        this.stockLocationChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Bottles',
+                    data: data,
+                    backgroundColor: 'rgba(139, 21, 56, 0.7)',
+                    borderColor: 'rgba(139, 21, 56, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        },
+                        title: {
+                            display: true,
+                            text: 'Number of Bottles'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Storage Location'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.parsed.y} bottles`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 }

@@ -10,6 +10,10 @@
     "dev:frontend": "cd frontend && npm start",
     "build": "cd frontend && npm run build",
     "test": "jest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
     "migrate": "node backend/database/migrate.js migrate",
     "migrate:status": "node backend/database/migrate.js status",
     "setup:db": "node backend/database/setup.js",
@@ -56,6 +60,7 @@
   },
   "devDependencies": {
     "@cyclonedx/cyclonedx-npm": "^4.0.3",
+    "@playwright/test": "^1.55.1",
     "concurrently": "^9.2.1",
     "express-list-endpoints": "^7.1.1",
     "fast-check": "^4.3.0",

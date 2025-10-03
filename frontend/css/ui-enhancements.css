@@ -1,0 +1,552 @@
+/* UI Enhancements CSS - Modals, Dashboard, and Responsive Design */
+
+/* ====================
+   MODAL ENHANCEMENTS
+   ==================== */
+
+/* Modal Base Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.modal-content {
+    background: white;
+    max-width: 90vw;
+    max-width: min(90vw, 800px);
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+/* Confirmation Dialog Styles */
+.confirm-dialog {
+    text-align: center;
+    padding: 1rem;
+}
+
+.confirm-message {
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #333;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.btn.danger {
+    background: #c93434;
+    color: white;
+    border: none;
+}
+
+.btn.danger:hover {
+    background: #a82828;
+}
+
+/* Wine Detail Modal Styles */
+.wine-detail-modal {
+    max-width: 900px;
+}
+
+.wine-detail-header {
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: 1.5rem;
+}
+
+.wine-stats-summary {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #8B1538;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+.wine-detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.wine-detail-section {
+    padding: 1rem;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.wine-detail-section h4 {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+    color: #8B1538;
+}
+
+/* Wine Scores Detail Display */
+.wine-scores-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.score-item-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 4px;
+}
+
+.score-label-detail {
+    font-weight: 500;
+    color: #666;
+}
+
+.score-value-detail {
+    font-weight: 700;
+    color: #8B1538;
+}
+
+/* Storage Guidance Styles */
+.storage-guidance p {
+    margin: 0.5rem 0;
+}
+
+.guidance-text {
+    font-size: 0.9rem;
+    color: #666;
+    font-style: italic;
+}
+
+/* Guest Notice in Modal */
+.guest-notice-modal {
+    text-align: center;
+    padding: 1rem;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    color: #856404;
+    font-size: 0.95rem;
+}
+
+.wine-detail-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding-top: 1.5rem;
+    border-top: 2px solid #f0f0f0;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+/* ====================
+   STAT DETAIL MODAL
+   ==================== */
+
+.stat-detail-modal {
+    min-width: 500px;
+}
+
+.stat-summary {
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f0f7ff;
+    border-left: 4px solid #8B1538;
+    border-radius: 4px;
+}
+
+.stat-detail-section {
+    margin-bottom: 1.5rem;
+}
+
+.stat-detail-section h4 {
+    margin: 0 0 1rem;
+    color: #8B1538;
+    font-size: 1.1rem;
+}
+
+.stat-detail-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.stat-detail-list li {
+    padding: 0.75rem;
+    background: #f9f9f9;
+    border-bottom: 1px solid #e0e0e0;
+    transition: background 0.2s;
+}
+
+.stat-detail-list li:last-child {
+    border-bottom: none;
+}
+
+.stat-detail-list li:hover {
+    background: #f0f0f0;
+}
+
+.stat-detail-list li strong {
+    color: #8B1538;
+}
+
+.stat-detail-list li em {
+    color: #999;
+}
+
+/* ====================
+   DASHBOARD ENHANCEMENTS
+   ==================== */
+
+/* Clickable Stat Cards */
+.stat-card-luxury {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card-luxury:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(139, 21, 56, 0.15);
+}
+
+.stat-card-luxury:active {
+    transform: translateY(-1px);
+}
+
+/* Chart Container */
+.charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.chart-wrapper {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chart-wrapper h3 {
+    margin: 0 0 1rem;
+    color: #8B1538;
+    font-size: 1.1rem;
+}
+
+.chart-wrapper canvas {
+    max-height: 300px;
+}
+
+/* Activity Feed Enhancements */
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.activity-item:hover {
+    border-color: #8B1538;
+    box-shadow: 0 2px 8px rgba(139, 21, 56, 0.1);
+    cursor: pointer;
+}
+
+.activity-icon {
+    font-size: 1.5rem;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.activity-details {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.activity-time {
+    font-size: 0.85rem;
+    color: #999;
+}
+
+/* ====================
+   ANIMATIONS
+   ==================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #8B1538;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.loading-spinner.small {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ====================
+   RESPONSIVE DESIGN
+   ==================== */
+
+@media (max-width: 768px) {
+    /* Modal Responsiveness */
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        max-height: 100vh;
+        margin: 0;
+        border-radius: 0;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.3rem;
+    }
+    
+    /* Button Touch Targets */
+    .btn {
+        min-height: 44px;
+        font-size: 16px;
+        padding: 0.75rem 1.25rem;
+    }
+    
+    /* Wine Detail Modal Mobile */
+    .wine-stats-summary {
+        gap: 1rem;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .wine-detail-actions {
+        flex-direction: column;
+    }
+    
+    .wine-detail-actions .btn {
+        width: 100%;
+    }
+    
+    /* Stat Detail Modal Mobile */
+    .stat-detail-modal {
+        min-width: auto;
+    }
+    
+    /* Confirmation Dialog Mobile */
+    .confirm-actions {
+        flex-direction: column;
+    }
+    
+    .confirm-actions .btn {
+        width: 100%;
+    }
+    
+    /* Charts Responsive */
+    .charts-container {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .chart-wrapper {
+        padding: 1rem;
+    }
+    
+    /* Dashboard Stats Mobile */
+    .dashboard-luxury {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    /* Activity Items Mobile */
+    .activity-item {
+        padding: 0.75rem;
+    }
+    
+    .activity-icon {
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Extra Small Devices */
+    .dashboard-luxury {
+        grid-template-columns: 1fr;
+    }
+    
+    .wine-stats-summary {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .stat-item {
+        text-align: left;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        background: #f9f9f9;
+        border-radius: 6px;
+    }
+}
+
+@media (min-width: 1200px) {
+    /* Large Screens */
+    .charts-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .modal-content {
+        max-width: 1000px;
+    }
+}
+
+/* ====================
+   ACCESSIBILITY
+   ==================== */
+
+/* Focus States */
+.btn:focus,
+.stat-card-luxury:focus,
+.activity-item:focus {
+    outline: 2px solid #8B1538;
+    outline-offset: 2px;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .btn {
+        border: 2px solid currentColor;
+    }
+    
+    .wine-detail-section,
+    .stat-detail-list li {
+        border: 1px solid currentColor;
+    }
+}
+
+/* ====================
+   PRINT STYLES
+   ==================== */
+
+@media print {
+    .modal-overlay {
+        position: static;
+        background: none;
+    }
+    
+    .modal-content {
+        box-shadow: none;
+        max-width: 100%;
+        max-height: none;
+    }
+    
+    .wine-detail-actions,
+    .confirm-actions {
+        display: none;
+    }
+}
