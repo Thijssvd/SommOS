@@ -40,8 +40,25 @@ async function loginAsGuest(page, eventCode = null, pin = null) {
     ? { eventCode, pin } 
     : getTestCredentials(pin ? 'guestWithPin' : 'guest');
 
+  // Set up console listener to capture errors
+  page.on('console', msg => {
+    const type = msg.type();
+    if (type === 'error' || type === 'warning') {
+      console.log(`[Browser ${type}]:`, msg.text());
+    }
+  });
+
+  page.on('pageerror', error => {
+    console.log('[Browser JavaScript Error]:', error.message);
+  });
+
   // Navigate to the application
   await page.goto('/');
+  
+  //Wait longer for the page to fully load
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {
+    console.log('Network did not become idle within timeout');
+  });
   
   // Wait for auth screen to be visible
   await page.waitForSelector('#auth-screen:not(.hidden)', { timeout: 10000 });
@@ -164,22 +181,12 @@ async function verifyCrewSession(page, expectedRole = 'CREW') {
  * @returns {Promise<void>}
  */
 async function clearSession(page) {
-  // Check if we're already on the auth screen
-  const authScreen = page.locator('#auth-screen');
-  const isAuthScreenVisible = await authScreen.evaluate(el => !el.classList.contains('hidden'));
-  
-  if (!isAuthScreenVisible) {
-    // We're logged in, so logout
-    await page.click('#logout-btn');
-    
-    // Wait for auth screen to become visible
-    await page.waitForSelector('#auth-screen:not(.hidden)', { timeout: 5000 });
-  }
-  
   // Clear any stored session data
   await page.evaluate(() => {
     localStorage.clear();
     sessionStorage.clear();
+  }).catch(() => {
+    // Page might not be loaded yet, that's ok
   });
   
   // Clear cookies

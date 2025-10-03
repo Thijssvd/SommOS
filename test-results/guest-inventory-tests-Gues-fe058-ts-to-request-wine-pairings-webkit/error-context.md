@@ -1,0 +1,150 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2]:
+    - /url: "#main-content"
+  - generic [ref=e4]:
+    - generic [ref=e5]: 🍷
+    - heading "SommOS" [level=1] [ref=e6]
+    - paragraph [ref=e7]: Initializing yacht wine management...
+  - generic [ref=e10]:
+    - navigation "Main navigation" [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: 🍷
+        - generic [ref=e14]: SommOS
+      - menubar [ref=e15]:
+        - menuitem "Navigate to Dashboard - View wine inventory overview and key metrics" [ref=e16] [cursor=pointer]:
+          - generic [ref=e17] [cursor=pointer]: 📊
+          - generic [ref=e18] [cursor=pointer]: Dashboard
+        - menuitem "Navigate to Wine Pairing - Get AI-powered wine recommendations for dishes" [ref=e19] [cursor=pointer]:
+          - generic [ref=e20] [cursor=pointer]: 🍽️
+          - generic [ref=e21] [cursor=pointer]: Pairing
+        - menuitem "Navigate to Inventory Management" [ref=e22] [cursor=pointer]:
+          - generic [ref=e23] [cursor=pointer]: 📦
+          - generic [ref=e24] [cursor=pointer]: Inventory
+        - menuitem "Navigate to Procurement" [ref=e25] [cursor=pointer]:
+          - generic [ref=e26] [cursor=pointer]: 🛒
+          - generic [ref=e27] [cursor=pointer]: Procurement
+        - menuitem "Navigate to Wine Catalog" [ref=e28] [cursor=pointer]:
+          - generic [ref=e29] [cursor=pointer]: 📚
+          - generic [ref=e30] [cursor=pointer]: Catalog
+        - menuitem "Navigate to Glossary - Learn wine terminology and system features" [ref=e31] [cursor=pointer]:
+          - generic [ref=e32] [cursor=pointer]: 📖
+          - generic [ref=e33] [cursor=pointer]: Glossary
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e36]: ADMIN
+          - generic [ref=e37]: anonymous@sommos.local
+        - generic [ref=e38]:
+          - button "❓" [ref=e39] [cursor=pointer]:
+            - generic [ref=e40] [cursor=pointer]: ❓
+          - button "🔄" [ref=e41] [cursor=pointer]:
+            - generic [ref=e42] [cursor=pointer]: 🔄
+          - button "⚙️" [ref=e43] [cursor=pointer]:
+            - generic [ref=e44] [cursor=pointer]: ⚙️
+          - button "🚪" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46] [cursor=pointer]: 🚪
+    - main "Main content area" [ref=e47]:
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - heading "Wine Management Dashboard" [level=1] [ref=e50]
+          - paragraph [ref=e51]: Comprehensive overview of your yacht's premium wine collection and service operations
+        - generic [ref=e52]:
+          - generic [ref=e53] [cursor=pointer]:
+            - generic [ref=e54] [cursor=pointer]: 🍷
+            - generic [ref=e55] [cursor=pointer]:
+              - generic [ref=e56] [cursor=pointer]: "-"
+              - generic [ref=e57] [cursor=pointer]: Total Bottles
+          - generic [ref=e58] [cursor=pointer]:
+            - generic [ref=e59] [cursor=pointer]: 🏷️
+            - generic [ref=e60] [cursor=pointer]:
+              - generic [ref=e61] [cursor=pointer]: "-"
+              - generic [ref=e62] [cursor=pointer]: Wine Labels
+          - generic [ref=e63] [cursor=pointer]:
+            - generic [ref=e64] [cursor=pointer]: 📅
+            - generic [ref=e65] [cursor=pointer]:
+              - generic [ref=e66] [cursor=pointer]: "-"
+              - generic [ref=e67] [cursor=pointer]: Vintages
+          - generic [ref=e68] [cursor=pointer]:
+            - generic [ref=e69] [cursor=pointer]: 🏪
+            - generic [ref=e70] [cursor=pointer]:
+              - generic [ref=e71] [cursor=pointer]: "-"
+              - generic [ref=e72] [cursor=pointer]: Suppliers
+        - generic [ref=e73]:
+          - generic [ref=e74]:
+            - heading "Quick Actions" [level=2] [ref=e76]
+            - generic [ref=e77]:
+              - generic [ref=e78] [cursor=pointer]:
+                - generic [ref=e79] [cursor=pointer]: ⚡
+                - heading "Quick Pairing" [level=3] [ref=e80] [cursor=pointer]
+                - paragraph [ref=e81] [cursor=pointer]: Get instant wine recommendations for your dishes
+              - generic [ref=e82] [cursor=pointer]:
+                - generic [ref=e83] [cursor=pointer]: 📝
+                - heading "Record Service" [level=3] [ref=e84] [cursor=pointer]
+                - paragraph [ref=e85] [cursor=pointer]: Log wine consumption and service details
+              - generic [ref=e86] [cursor=pointer]:
+                - generic [ref=e87] [cursor=pointer]: 📊
+                - heading "Check Stock" [level=3] [ref=e88] [cursor=pointer]
+                - paragraph [ref=e89] [cursor=pointer]: Monitor inventory levels and availability
+          - generic [ref=e90]:
+            - heading "Understanding SommOS Scores" [level=2] [ref=e92]
+            - generic [ref=e93]:
+              - article [ref=e94]:
+                - generic [ref=e95]:
+                  - generic [ref=e96]: 🎯
+                  - heading "Pairing Confidence" [level=3] [ref=e97]
+                - generic [ref=e98]:
+                  - paragraph [ref=e99]: Displayed in pairing recommendations, this percentage blends multiple pairing heuristics to show how certain SommOS is that a wine complements your dish.
+                  - list [ref=e100]:
+                    - listitem [ref=e101]:
+                      - strong [ref=e102]: "Flavor Harmony:"
+                      - text: Analyzes the match between tasting notes in your dish description and the wine's profile.
+                    - listitem [ref=e103]:
+                      - strong [ref=e104]: "Structure Balance:"
+                      - text: Considers acidity, tannin, and body so richer dishes lean toward fuller wines.
+                    - listitem [ref=e105]:
+                      - strong [ref=e106]: "Service Readiness:"
+                      - text: Gives a boost when bottles are in stock and at optimal serving temperature or aging window.
+              - article [ref=e107]:
+                - generic [ref=e108]:
+                  - generic [ref=e109]: 💼
+                  - heading "Procurement Opportunity" [level=3] [ref=e110]
+                - generic [ref=e111]:
+                  - paragraph [ref=e112]: Used on the procurement tab, this score highlights the smartest restocking moves by weighing potential value against urgency.
+                  - list [ref=e113]:
+                    - listitem [ref=e114]:
+                      - strong [ref=e115]: "Inventory Gap:"
+                      - text: Prioritizes wines that fill shortages or complement upcoming service plans.
+                    - listitem [ref=e116]:
+                      - strong [ref=e117]: "Supplier Signal:"
+                      - text: Accounts for supplier reliability, available allocations, and delivery windows.
+                    - listitem [ref=e118]:
+                      - strong [ref=e119]: "Cost Efficiency:"
+                      - text: Rewards offers that achieve better price-to-value or long-term appreciation.
+              - article [ref=e120]:
+                - generic [ref=e121]:
+                  - generic [ref=e122]: 🏅
+                  - heading "Vintage Quality" [level=3] [ref=e123]
+                - generic [ref=e124]:
+                  - paragraph [ref=e125]: Shown for cellared bottles, the 0–100 rating blends critic consensus with SommOS aging models to track drinking windows.
+                  - list [ref=e126]:
+                    - listitem [ref=e127]:
+                      - strong [ref=e128]: "Critical Reviews:"
+                      - text: Aggregates trusted publications and competitions for the vintage.
+                    - listitem [ref=e129]:
+                      - strong [ref=e130]: "Aging Potential:"
+                      - text: Evaluates grape variety, region, and storage history to estimate peak maturity.
+                    - listitem [ref=e131]:
+                      - strong [ref=e132]: "Cellar Readiness:"
+                      - text: Adjusts for bottle condition and serving notes entered by your crew.
+          - generic [ref=e133]:
+            - heading "Wine Collection Analytics" [level=2] [ref=e134]
+            - generic [ref=e135]:
+              - heading "Wine Types Distribution" [level=3] [ref=e137]
+              - heading "Stock by Location" [level=3] [ref=e140]
+          - generic [ref=e142]:
+            - heading "Recent Activity" [level=2] [ref=e143]
+            - paragraph [ref=e146]: Loading recent activity...
+  - generic [ref=e147]: Auth disabled (dev mode) — all actions allowed
+```

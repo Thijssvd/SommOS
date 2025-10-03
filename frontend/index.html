@@ -68,11 +68,11 @@
 
             <!-- Login Mode Tabs -->
             <div class="auth-tabs" role="tablist" aria-label="Login options">
-                <button class="auth-tab active" id="member-login-tab" role="tab" aria-selected="true" aria-controls="member-login-panel" data-mode="member">
+                <button class="auth-tab active" id="member-login-tab" role="tab" aria-selected="true" aria-controls="member-login-panel" data-mode="member" data-testid="auth-tab-member">
                     <span class="tab-icon" aria-hidden="true">🔐</span>
                     <span>Member Login</span>
                 </button>
-                <button class="auth-tab" id="guest-login-tab" role="tab" aria-selected="false" aria-controls="guest-login-panel" data-mode="guest">
+                <button class="auth-tab" id="guest-login-tab" role="tab" aria-selected="false" aria-controls="guest-login-panel" data-mode="guest" data-testid="auth-tab-guest">
                     <span class="tab-icon" aria-hidden="true">👤</span>
                     <span>Guest Access</span>
                 </button>
@@ -80,16 +80,16 @@
 
             <!-- Member Login Panel -->
             <div id="member-login-panel" class="auth-panel active" role="tabpanel" aria-labelledby="member-login-tab">
-            <form id="login-form" novalidate>
+            <form id="login-form" novalidate data-testid="auth-form-member">
                 <div class="form-group">
                     <label for="login-email">Email</label>
-                    <input type="email" id="login-email" name="email" autocomplete="username" placeholder="crew@yacht.com" required>
+                    <input type="email" id="login-email" name="email" autocomplete="username" placeholder="crew@yacht.com" required data-testid="auth-input-email">
                 </div>
                 <div class="form-group">
                     <label for="login-password">Password</label>
-                    <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Enter your password" required>
+                    <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Enter your password" required data-testid="auth-input-password">
                 </div>
-                <button type="submit" class="btn primary full-width" id="login-submit">Sign In</button>
+                <button type="submit" class="btn primary full-width" id="login-submit" data-testid="auth-button-login">Sign In</button>
             </form>
 
             <p id="login-error" class="form-error" role="alert" aria-live="assertive"></p>
@@ -104,21 +104,21 @@
                 
                 <div class="form-group">
                     <label for="guest-event-code">Event Code</label>
-                    <input type="text" id="guest-event-code" name="event_code" placeholder="Enter your event code" autocomplete="off" aria-describedby="guest-code-help">
+                    <input type="text" id="guest-event-code" name="event_code" placeholder="Enter your event code" autocomplete="off" aria-describedby="guest-code-help" data-testid="auth-input-guest-code">
                     <small id="guest-code-help" class="form-help">Event codes are provided by the yacht crew</small>
                 </div>
                 
                 <div class="form-group" id="guest-pin-group" style="display: none;">
                     <label for="guest-pin">PIN (if required)</label>
-                    <input type="password" id="guest-pin" name="pin" placeholder="Enter PIN" autocomplete="off" maxlength="6">
+                    <input type="password" id="guest-pin" name="pin" placeholder="Enter PIN" autocomplete="off" maxlength="6" data-testid="auth-input-guest-pin">
                 </div>
                 
                 <div class="form-check" style="margin-bottom: 1rem;">
-                    <input type="checkbox" id="guest-pin-toggle" class="form-check-input">
+                    <input type="checkbox" id="guest-pin-toggle" class="form-check-input" data-testid="auth-checkbox-guest-pin-toggle">
                     <label for="guest-pin-toggle" class="form-check-label">This code requires a PIN</label>
                 </div>
                 
-                <button type="button" class="btn secondary full-width" id="guest-login-btn">
+                <button type="button" class="btn secondary full-width" id="guest-login-btn" data-testid="auth-button-guest-login">
                     <span class="btn-icon" aria-hidden="true">👤</span>
                     Join as Guest
                 </button>
@@ -160,27 +160,27 @@
             </div>
             
             <div class="nav-menu" role="menubar">
-                <button class="nav-item active" data-view="dashboard" role="menuitem" aria-label="Navigate to Dashboard - View wine inventory overview and key metrics">
+                <button class="nav-item active" data-view="dashboard" role="menuitem" aria-label="Navigate to Dashboard - View wine inventory overview and key metrics" data-testid="nav-dashboard">
                     <span class="nav-icon" aria-hidden="true">📊</span>
                     <span class="nav-text">Dashboard</span>
                 </button>
-                <button class="nav-item" data-view="pairing" role="menuitem" aria-label="Navigate to Wine Pairing - Get AI-powered wine recommendations for dishes">
+                <button class="nav-item" data-view="pairing" role="menuitem" aria-label="Navigate to Wine Pairing - Get AI-powered wine recommendations for dishes" data-testid="nav-pairing">
                     <span class="nav-icon" aria-hidden="true">🍽️</span>
                     <span class="nav-text">Pairing</span>
                 </button>
-                <button class="nav-item" data-view="inventory" role="menuitem" aria-label="Navigate to Inventory Management">
+                <button class="nav-item" data-view="inventory" role="menuitem" aria-label="Navigate to Inventory Management" data-testid="nav-inventory">
                     <span class="nav-icon" aria-hidden="true">📦</span>
                     <span class="nav-text">Inventory</span>
                 </button>
-                <button class="nav-item" data-view="procurement" role="menuitem" aria-label="Navigate to Procurement" data-role-allow="admin,crew">
+                <button class="nav-item" data-view="procurement" role="menuitem" aria-label="Navigate to Procurement" data-role-allow="admin,crew" data-testid="nav-procurement">
                     <span class="nav-icon" aria-hidden="true">🛒</span>
                     <span class="nav-text">Procurement</span>
                 </button>
-                <button class="nav-item" data-view="catalog" role="menuitem" aria-label="Navigate to Wine Catalog">
+                <button class="nav-item" data-view="catalog" role="menuitem" aria-label="Navigate to Wine Catalog" data-testid="nav-catalog">
                     <span class="nav-icon" aria-hidden="true">📚</span>
                     <span class="nav-text">Catalog</span>
                 </button>
-                <button class="nav-item" data-view="glossary" role="menuitem" aria-label="Navigate to Glossary - Learn wine terminology and system features">
+                <button class="nav-item" data-view="glossary" role="menuitem" aria-label="Navigate to Glossary - Learn wine terminology and system features" data-testid="nav-glossary">
                     <span class="nav-icon" aria-hidden="true">📖</span>
                     <span class="nav-text">Glossary</span>
                 </button>
@@ -195,16 +195,16 @@
                     Guest browsing is read-only. Contact the crew for upgrade.
                 </div>
                 <div class="nav-action-buttons">
-                    <button class="nav-action" id="help-btn" title="Help & Glossary" onclick="app.showGlossaryModal()">
+                    <button class="nav-action" id="help-btn" title="Help & Glossary" onclick="app.showGlossaryModal()" data-testid="nav-action-help">
                         <span>❓</span>
                     </button>
-                    <button class="nav-action" id="sync-btn" title="Sync Data" data-role-allow="admin,crew">
+                    <button class="nav-action" id="sync-btn" title="Sync Data" data-role-allow="admin,crew" data-testid="nav-action-sync">
                         <span class="sync-icon">🔄</span>
                     </button>
-                    <button class="nav-action" id="settings-btn" title="Settings">
+                    <button class="nav-action" id="settings-btn" title="Settings" data-testid="nav-action-settings">
                         <span>⚙️</span>
                     </button>
-                    <button class="nav-action" id="logout-btn" title="Sign out">
+                    <button class="nav-action" id="logout-btn" title="Sign out" data-testid="nav-action-logout">
                         <span>🚪</span>
                     </button>
                 </div>
@@ -260,12 +260,12 @@
                         <h2 class="dashboard-section-title-luxury">Quick Actions</h2>
                     </div>
                     <div class="quick-actions">
-                        <div class="action-card-luxury" data-action="quick-pairing">
+                        <div class="action-card-luxury" data-action="quick-pairing" data-testid="dashboard-action-pairing">
                             <div class="action-icon-luxury">⚡</div>
                             <h3 class="action-title-luxury">Quick Pairing</h3>
                             <p class="action-description-luxury">Get instant wine recommendations for your dishes</p>
                         </div>
-                        <div class="action-card-luxury" data-action="record-consumption" data-role-allow="admin,crew">
+                        <div class="action-card-luxury" data-action="record-consumption" data-role-allow="admin,crew" data-testid="dashboard-action-record">
                             <div class="action-icon-luxury">📝</div>
                             <h3 class="action-title-luxury">Record Service</h3>
                             <p class="action-description-luxury">Log wine consumption and service details</p>
