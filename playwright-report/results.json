@@ -1,0 +1,613 @@
+{
+  "config": {
+    "configFile": "/Users/thijs/Documents/SommOS/playwright.config.ts",
+    "rootDir": "/Users/thijs/Documents/SommOS/tests/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 2,
+    "metadata": {
+      "actualWorkers": 3
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-report/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/thijs/Documents/SommOS/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/thijs/Documents/SommOS/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/thijs/Documents/SommOS/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/Users/thijs/Documents/SommOS/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/thijs/Documents/SommOS/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/Users/thijs/Documents/SommOS/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/thijs/Documents/SommOS/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "/Users/thijs/Documents/SommOS/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/thijs/Documents/SommOS/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "/Users/thijs/Documents/SommOS/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/thijs/Documents/SommOS/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "iPad Pro",
+        "name": "iPad Pro",
+        "testDir": "/Users/thijs/Documents/SommOS/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.55.1",
+    "workers": 3,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "smoke.spec.ts",
+      "file": "smoke.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Smoke Tests - Basic App Functionality",
+          "file": "smoke.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should load application without errors",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5662,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:56:41.823Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-b5b8ab25633b2edf36fb",
+              "file": "smoke.spec.ts",
+              "line": 6,
+              "column": 7
+            },
+            {
+              "title": "should display auth screen on first visit",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "failed",
+                      "duration": 16123,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('#auth-screen')\nExpected: visible\nReceived: hidden\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#auth-screen')\u001b[22m\n\u001b[2m    13 × locator resolved to <div role=\"dialog\" id=\"auth-screen\" aria-modal=\"true\" class=\"auth-screen hidden\" aria-labelledby=\"auth-title\">…</div>\u001b[22m\n\u001b[2m       - unexpected value \"hidden\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('#auth-screen')\nExpected: visible\nReceived: hidden\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#auth-screen')\u001b[22m\n\u001b[2m    13 × locator resolved to <div role=\"dialog\" id=\"auth-screen\" aria-modal=\"true\" class=\"auth-screen hidden\" aria-labelledby=\"auth-title\">…</div>\u001b[22m\n\u001b[2m       - unexpected value \"hidden\"\u001b[22m\n\n    at /Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts:28:55",
+                        "location": {
+                          "file": "/Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts",
+                          "column": 55,
+                          "line": 28
+                        },
+                        "snippet": "  26 |     \n  27 |     // Auth screen should be visible\n> 28 |     await expect(page.locator(Selectors.auth.screen)).toBeVisible({ timeout: 10000 });\n     |                                                       ^\n  29 |     \n  30 |     // Member login tab should be visible\n  31 |     await expect(page.locator(Selectors.auth.memberLoginTab)).toBeVisible();"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts",
+                            "column": 55,
+                            "line": 28
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('#auth-screen')\nExpected: visible\nReceived: hidden\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#auth-screen')\u001b[22m\n\u001b[2m    13 × locator resolved to <div role=\"dialog\" id=\"auth-screen\" aria-modal=\"true\" class=\"auth-screen hidden\" aria-labelledby=\"auth-title\">…</div>\u001b[22m\n\u001b[2m       - unexpected value \"hidden\"\u001b[22m\n\n\n  26 |     \n  27 |     // Auth screen should be visible\n> 28 |     await expect(page.locator(Selectors.auth.screen)).toBeVisible({ timeout: 10000 });\n     |                                                       ^\n  29 |     \n  30 |     // Member login tab should be visible\n  31 |     await expect(page.locator(Selectors.auth.memberLoginTab)).toBeVisible();\n    at /Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts:28:55"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:56:41.797Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/thijs/Documents/SommOS/test-results/smoke-Smoke-Tests---Basic--c8183--auth-screen-on-first-visit-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/thijs/Documents/SommOS/test-results/smoke-Smoke-Tests---Basic--c8183--auth-screen-on-first-visit-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/thijs/Documents/SommOS/test-results/smoke-Smoke-Tests---Basic--c8183--auth-screen-on-first-visit-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts",
+                        "column": 55,
+                        "line": 28
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-93b0d590431251d75595",
+              "file": "smoke.spec.ts",
+              "line": 24,
+              "column": 7
+            },
+            {
+              "title": "should load all critical resources (no 404s)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 7954,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:56:41.656Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-4a4f3f6e82709f467503",
+              "file": "smoke.spec.ts",
+              "line": 37,
+              "column": 7
+            },
+            {
+              "title": "should have correct page title",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3422,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:56:48.319Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-975ace6c238591054388",
+              "file": "smoke.spec.ts",
+              "line": 59,
+              "column": 7
+            },
+            {
+              "title": "should have SommOS branding visible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "interrupted",
+                      "duration": 22587,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:56:50.481Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/thijs/Documents/SommOS/test-results/smoke-Smoke-Tests---Basic--e94bb-ave-SommOS-branding-visible-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/thijs/Documents/SommOS/test-results/smoke-Smoke-Tests---Basic--e94bb-ave-SommOS-branding-visible-chromium/video.webm"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-f4eb5eabb46dba7b615e",
+              "file": "smoke.spec.ts",
+              "line": 64,
+              "column": 7
+            },
+            {
+              "title": "should register service worker (PWA)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5191,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Service Worker registered: false\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:56:51.834Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-ad7db42451f70f9461e8",
+              "file": "smoke.spec.ts",
+              "line": 75,
+              "column": 7
+            },
+            {
+              "title": "should have responsive viewport meta tag",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1964,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:56:57.185Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-7113fa5414b70aad2450",
+              "file": "smoke.spec.ts",
+              "line": 95,
+              "column": 7
+            },
+            {
+              "title": "should have manifest link for PWA",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1784,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:56:59.200Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-a9c6817aebbc63170db2",
+              "file": "smoke.spec.ts",
+              "line": 102,
+              "column": 7
+            },
+            {
+              "title": "should not have accessibility violations on auth screen",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 11317,
+                      "error": {
+                        "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#auth-screen') to be visible\u001b[22m\n\u001b[2m    24 × locator resolved to hidden <div role=\"dialog\" id=\"auth-screen\" aria-modal=\"true\" class=\"auth-screen hidden\" aria-labelledby=\"auth-title\">…</div>\u001b[22m\n",
+                        "stack": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#auth-screen') to be visible\u001b[22m\n\u001b[2m    24 × locator resolved to hidden <div role=\"dialog\" id=\"auth-screen\" aria-modal=\"true\" class=\"auth-screen hidden\" aria-labelledby=\"auth-title\">…</div>\u001b[22m\n\n    at /Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts:113:16",
+                        "location": {
+                          "file": "/Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts",
+                          "column": 16,
+                          "line": 113
+                        },
+                        "snippet": "  111 |     \n  112 |     // Wait for auth screen\n> 113 |     await page.waitForSelector(Selectors.auth.screen, { state: 'visible', timeout: 10000 });\n      |                ^\n  114 |     \n  115 |     // Basic accessibility checks\n  116 |     // Check for proper heading structure"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts",
+                            "column": 16,
+                            "line": 113
+                          },
+                          "message": "TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#auth-screen') to be visible\u001b[22m\n\u001b[2m    24 × locator resolved to hidden <div role=\"dialog\" id=\"auth-screen\" aria-modal=\"true\" class=\"auth-screen hidden\" aria-labelledby=\"auth-title\">…</div>\u001b[22m\n\n\n  111 |     \n  112 |     // Wait for auth screen\n> 113 |     await page.waitForSelector(Selectors.auth.screen, { state: 'visible', timeout: 10000 });\n      |                ^\n  114 |     \n  115 |     // Basic accessibility checks\n  116 |     // Check for proper heading structure\n    at /Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts:113:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:57:01.025Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/thijs/Documents/SommOS/test-results/smoke-Smoke-Tests---Basic--66c7e-y-violations-on-auth-screen-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/thijs/Documents/SommOS/test-results/smoke-Smoke-Tests---Basic--66c7e-y-violations-on-auth-screen-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/thijs/Documents/SommOS/test-results/smoke-Smoke-Tests---Basic--66c7e-y-violations-on-auth-screen-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/thijs/Documents/SommOS/tests/e2e/smoke.spec.ts",
+                        "column": 16,
+                        "line": 113
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-30163eec1b86ac16687f",
+              "file": "smoke.spec.ts",
+              "line": 109,
+              "column": 7
+            },
+            {
+              "title": "should have skip link for keyboard navigation",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 2332,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-03T18:57:05.220Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4219922fea2e2bd3c691-331992b7eb660e065333",
+              "file": "smoke.spec.ts",
+              "line": 130,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "message": "\u001b[31mTesting stopped early after 2 maximum allowed failures.\u001b[39m"
+    }
+  ],
+  "stats": {
+    "startTime": "2025-10-03T18:56:33.190Z",
+    "duration": 40014.051999999996,
+    "expected": 7,
+    "skipped": 1,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}
