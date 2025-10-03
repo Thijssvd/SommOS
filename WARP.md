@@ -27,9 +27,6 @@ npm run dev:backend
 
 # Run vanilla JS frontend only (port 3000, with Vite)
 npm run dev:frontend
-
-# Run React/TypeScript frontend (alternative implementation)
-cd frontend-react && npm run dev
 ```
 
 ### Testing
@@ -73,8 +70,8 @@ npm run summary
 # Build vanilla JS frontend for production
 cd frontend && npm run build
 
-# Build React frontend for production
-cd frontend-react && npm run build
+# Note: frontend-react is an archived/incomplete React POC
+# See FRONTEND_COMPARISON.md for details - not actively developed
 
 # Build backend (runs in place, no build step needed)
 npm start
@@ -175,11 +172,10 @@ npm run test:weather
 - **`sw.js`**: Service worker for offline functionality
 - **`vite.config.js`**: Vite build configuration with code splitting
 
-**React/TypeScript PWA** (`/frontend-react`): Alternative implementation, **Port 3000**
-- **`src/`**: React components and TypeScript code
-- **`src/lib/SommOSAPI.ts`**: Typed API client
-- **`public/sw.js`**: Custom service worker
-- **`vite.config.ts`**: Vite + React configuration
+**React/TypeScript POC** (`/frontend-react`): ⚠️ **ARCHIVED** - Incomplete alternative implementation
+- This is an incomplete proof-of-concept and is NOT actively developed
+- Production frontend is the vanilla JavaScript PWA in `/frontend`
+- See `FRONTEND_COMPARISON.md` for full details on feature parity
 
 ### Key Architectural Patterns
 
@@ -236,7 +232,7 @@ npm run test:weather
 ```bash
 npm install
 cd frontend && npm install
-cd ../frontend-react && npm install  # Optional
+# Note: frontend-react is archived and not required
 ```
 
 2. **Configure environment**:

@@ -1,6 +1,30 @@
 // SommOS Glossary Data
 // Comprehensive definitions for wine terminology, system metrics, user roles, and features
 
+/**
+ * Glossary Data Maintenance Guide
+ * ================================
+ * 
+ * Updating the Glossary:
+ * - To add new terms: Add entries to the appropriate category in the glossaryData object below
+ * - Structure for each term: { "Term Name": { definition: "...", examples: [...] } }
+ * - Available categories: "Wine Terminology", "System Metrics", "User Roles", "Features & Actions"
+ * 
+ * When to Update:
+ * - When adding new system features or metrics that users should understand
+ * - When introducing new wine domain terminology in the UI
+ * - When user feedback indicates confusion about existing terms
+ * 
+ * Best Practices:
+ * - Keep definitions concise but comprehensive (2-3 sentences ideal)
+ * - Provide 1-3 practical examples for each term
+ * - Use consistent terminology across all glossary entries
+ * - Update relevant documentation (WARP.md, README.md) when adding system-related terms
+ * 
+ * Note: This is a static data file. Changes require code deployment.
+ * For dynamic glossary management, consider implementing an admin UI in the future.
+ */
+
 export const glossaryData = {
     "Wine Terminology": {
         "Tannin": {

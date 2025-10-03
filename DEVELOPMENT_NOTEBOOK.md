@@ -268,6 +268,30 @@ app.get('/api/system/health', async (req, res) => {
 - API versioning strategy for backward compatibility  
 - Microservices decomposition for enterprise features
 
+### Performance Enhancements (Future)
+
+**Dashboard Data Aggregation Endpoint**
+- **Current Implementation**: Dashboard fetches full inventory via `getInventory()` for chart generation
+- **Performance Impact**: Works well for yacht-scale inventories (typically 100-500 wines)
+- **Future Optimization**: Create dedicated `/api/inventory/summary` endpoint
+  ```javascript
+  // Proposed endpoint structure
+  GET /api/inventory/summary
+  Response: {
+    success: true,
+    data: {
+      totalBottles: 1247,
+      byType: { Red: 523, White: 412, Sparkling: 156, ... },
+      byLocation: { 'main-cellar': 892, 'service-bar': 234, ... },
+      lowStockCount: 12,
+      vintageDistribution: { ... }
+    }
+  }
+  ```
+- **Benefits**: Reduces data transfer and client-side processing for large inventories
+- **Priority**: Low - only implement if performance issues are observed with large datasets (1000+ wines)
+- **Note**: Current implementation is fully cached client-side and performs well in practice
+
 ### Integration Readiness
 - Webhook endpoints for supplier integrations
 - API rate limiting and authentication for external access

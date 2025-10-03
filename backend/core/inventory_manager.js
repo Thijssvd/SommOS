@@ -1400,6 +1400,14 @@ class InventoryManager {
      */
     async reserveWine(vintage_id, location, quantity, notes = null, created_by = null, syncContext = {}) {
         try {
+            // Handle zero quantity as no-op
+            if (quantity === 0) {
+                return {
+                    success: true,
+                    message: 'No bottles reserved (quantity is 0)'
+                };
+            }
+            
             // Check current stock
             const currentStock = await this.db.get(`
                 SELECT quantity, reserved_quantity
@@ -1460,7 +1468,7 @@ class InventoryManager {
         try {
             // Validate quantity
             if (quantity <= 0) {
-                throw new Error(`Invalid quantity: ${quantity}. Quantity must be greater than 0`);
+                throw new InventoryConflictError(`Invalid quantity: ${quantity}. Quantity must be greater than 0`);
             }
             
             // Check source stock

@@ -371,12 +371,15 @@ describe('SommOS API error handling and edge cases', () => {
         jest.restoreAllMocks();
     });
 
-    // TODO: Fix this test - Database.getInstance() mock causes auth middleware to fail during setup
-    test.skip('System endpoints fall back to error responses when the database is unavailable', async () => {
+    test('System endpoints fall back to error responses when the database is unavailable', async () => {
         const { app, Database } = setupTestApp(({ Database }) => {
-            jest.spyOn(Database, 'getInstance').mockImplementation(() => {
-                throw new Error('Database offline');
-            });
+            const dbInstance = Database.getInstance();
+            
+            // Mock database methods to throw errors, but keep getInstance working
+            // This simulates a scenario where the database connection exists but operations fail
+            jest.spyOn(dbInstance, 'get').mockRejectedValue(new Error('Database offline'));
+            jest.spyOn(dbInstance, 'all').mockRejectedValue(new Error('Database offline'));
+            jest.spyOn(dbInstance, 'run').mockRejectedValue(new Error('Database offline'));
         });
 
         await request(app)
