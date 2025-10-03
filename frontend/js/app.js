@@ -118,6 +118,9 @@ export class SommOS {
         this.loadingScreen = document.getElementById('loading-screen');
         this.appContainer = document.getElementById('app');
         this.authScreen = document.getElementById('auth-screen');
+        this.guestBanner = document.getElementById('guest-session-banner');
+        this.guestBannerClose = document.getElementById('close-guest-banner');
+        this.guestSessionExpiry = document.getElementById('guest-session-expiry');
     }
 
     setupAuthHandlers() {
@@ -131,6 +134,12 @@ export class SommOS {
             userRoleBadge: document.getElementById('user-role-badge'),
             userEmail: document.getElementById('user-email'),
             guestNotice: document.getElementById('guest-notice'),
+            guestEventCode: document.getElementById('guest-event-code'),
+            guestPin: document.getElementById('guest-pin'),
+            guestPinGroup: document.getElementById('guest-pin-group'),
+            guestPinToggle: document.getElementById('guest-pin-toggle'),
+            guestLoginBtn: document.getElementById('guest-login-btn'),
+            guestError: document.getElementById('guest-error'),
         };
 
         if (this.authElements.loginForm) {
@@ -140,6 +149,51 @@ export class SommOS {
         if (this.authElements.logoutBtn) {
             this.authElements.logoutBtn.addEventListener('click', () => this.handleLogout());
         }
+
+        if (this.authElements.guestLoginBtn) {
+            this.authElements.guestLoginBtn.addEventListener('click', (event) => this.handleGuestLogin(event));
+        }
+
+        // Toggle PIN field visibility
+        if (this.authElements.guestPinToggle && this.authElements.guestPinGroup) {
+            this.authElements.guestPinToggle.addEventListener('change', (event) => {
+                if (event.target.checked) {
+                    this.authElements.guestPinGroup.style.display = 'block';
+                    if (this.authElements.guestPin) {
+                        this.authElements.guestPin.focus();
+                    }
+                } else {
+                    this.authElements.guestPinGroup.style.display = 'none';
+                    if (this.authElements.guestPin) {
+                        this.authElements.guestPin.value = '';
+                    }
+                }
+            });
+        }
+
+        // Clear error messages when user starts typing
+        if (this.authElements.guestEventCode && this.authElements.guestError) {
+            this.authElements.guestEventCode.addEventListener('input', () => {
+                if (this.authElements.guestError) {
+                    this.authElements.guestError.textContent = '';
+                }
+            });
+        }
+
+        if (this.authElements.guestPin && this.authElements.guestError) {
+            this.authElements.guestPin.addEventListener('input', () => {
+                if (this.authElements.guestError) {
+                    this.authElements.guestError.textContent = '';
+                }
+            });
+        }
+
+        if (this.guestBannerClose) {
+            this.guestBannerClose.addEventListener('click', () => this.hideGuestBanner());
+        }
+
+        // Setup auth tab switching
+        this.setupAuthTabs();
 
         window.addEventListener('sommos:auth-expired', () => this.handleSessionExpired());
     }
@@ -239,6 +293,103 @@ export class SommOS {
                 guestNotice.classList.add('hidden-by-role');
             }
         }
+
+        // Show/hide guest banner
+        if (this.currentUser?.role === 'guest') {
+            this.showGuestBanner();
+        } else {
+            this.hideGuestBanner();
+        }
+    }
+
+    showGuestBanner() {
+        if (!this.guestBanner) return;
+
+        // Check if user dismissed the banner in this session
+        const dismissed = sessionStorage.getItem('sommos:guest-banner-dismissed');
+        if (dismissed === 'true') return;
+
+        this.guestBanner.classList.remove('hidden');
+
+        // Calculate and display session expiry if available
+        // Guest sessions have 4-hour refresh tokens
+        if (this.guestSessionExpiry) {
+            const expiryTime = new Date(Date.now() + 4 * 60 * 60 * 1000);
+            this.guestSessionExpiry.textContent = `Session expires at ${expiryTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        }
+    }
+
+    hideGuestBanner() {
+        if (!this.guestBanner) return;
+        
+        this.guestBanner.classList.add('hidden');
+        
+        // Remember dismissal for this session only
+        sessionStorage.setItem('sommos:guest-banner-dismissed', 'true');
+    }
+
+    setupAuthTabs() {
+        const memberTab = document.getElementById('member-login-tab');
+        const guestTab = document.getElementById('guest-login-tab');
+        const memberPanel = document.getElementById('member-login-panel');
+        const guestPanel = document.getElementById('guest-login-panel');
+        const authTitle = document.getElementById('auth-title');
+        const authSubtitle = document.getElementById('auth-subtitle');
+
+        if (!memberTab || !guestTab || !memberPanel || !guestPanel) {
+            return;
+        }
+
+        // Load saved preference
+        const savedMode = localStorage.getItem('sommos:auth-mode') || 'member';
+        if (savedMode === 'guest') {
+            this.switchAuthTab('guest', { memberTab, guestTab, memberPanel, guestPanel, authTitle, authSubtitle });
+        }
+
+        memberTab.addEventListener('click', () => {
+            this.switchAuthTab('member', { memberTab, guestTab, memberPanel, guestPanel, authTitle, authSubtitle });
+        });
+
+        guestTab.addEventListener('click', () => {
+            this.switchAuthTab('guest', { memberTab, guestTab, memberPanel, guestPanel, authTitle, authSubtitle });
+        });
+    }
+
+    switchAuthTab(mode, elements) {
+        const { memberTab, guestTab, memberPanel, guestPanel, authTitle, authSubtitle } = elements;
+
+        if (mode === 'member') {
+            memberTab.classList.add('active');
+            memberTab.setAttribute('aria-selected', 'true');
+            guestTab.classList.remove('active');
+            guestTab.setAttribute('aria-selected', 'false');
+            memberPanel.classList.add('active');
+            guestPanel.classList.remove('active');
+
+            if (authTitle) {
+                authTitle.textContent = 'Sign in to SommOS';
+            }
+            if (authSubtitle) {
+                authSubtitle.textContent = 'Access cellar intelligence, procurement workflows, and guest experiences.';
+            }
+        } else {
+            guestTab.classList.add('active');
+            guestTab.setAttribute('aria-selected', 'true');
+            memberTab.classList.remove('active');
+            memberTab.setAttribute('aria-selected', 'false');
+            guestPanel.classList.add('active');
+            memberPanel.classList.remove('active');
+
+            if (authTitle) {
+                authTitle.textContent = 'Guest Access';
+            }
+            if (authSubtitle) {
+                authSubtitle.textContent = 'Browse the wine collection with read-only access using your event code.';
+            }
+        }
+
+        // Save preference
+        localStorage.setItem('sommos:auth-mode', mode);
     }
 
     toggleRoleVisibility(element, shouldShow) {
@@ -434,6 +585,78 @@ export class SommOS {
             this.ui.showToast('Sign-in failed. Please check your credentials.', 'error');
         } finally {
             this.ui.hideLoading('login-submit');
+        }
+    }
+
+    async handleGuestLogin(event) {
+        event.preventDefault();
+
+        if (!this.authElements.guestEventCode) {
+            return;
+        }
+
+        const eventCode = this.authElements.guestEventCode.value.trim();
+        const pin = this.authElements.guestPin?.value.trim() || null;
+
+        // Clear previous errors
+        if (this.authElements.guestError) {
+            this.authElements.guestError.textContent = '';
+        }
+
+        // Validate event code
+        if (!eventCode) {
+            if (this.authElements.guestError) {
+                this.authElements.guestError.textContent = 'Event code is required.';
+            }
+            if (this.authElements.guestEventCode) {
+                this.authElements.guestEventCode.focus();
+            }
+            return;
+        }
+
+        this.ui.showLoading('guest-login-btn', 'Joining...');
+
+        try {
+            const result = await this.api.guestLogin(eventCode, pin);
+
+            if (result?.success && result.data) {
+                this.setCurrentUser(result.data);
+                this.hideAuthScreen();
+                this.ui.showToast('Welcome! You have guest access to browse the collection.', 'success');
+                this.showLoadingScreen();
+                await this.bootstrapApplication();
+            } else {
+                throw new Error('Unable to join as guest. Please verify your event code.');
+            }
+        } catch (error) {
+            console.error('Guest login failed', error);
+            
+            let errorMessage = error?.message || 'Failed to join as guest. Please try again.';
+            
+            // Handle PIN_REQUIRED error by showing the PIN field
+            if (error?.code === 'PIN_REQUIRED') {
+                errorMessage = 'This event code requires a PIN. Please check the box below and enter your PIN.';
+                
+                // Auto-show PIN field
+                if (this.authElements.guestPinToggle && this.authElements.guestPinGroup) {
+                    this.authElements.guestPinToggle.checked = true;
+                    this.authElements.guestPinGroup.style.display = 'block';
+                    
+                    // Focus PIN input after a brief delay
+                    setTimeout(() => {
+                        if (this.authElements.guestPin) {
+                            this.authElements.guestPin.focus();
+                        }
+                    }, 100);
+                }
+            }
+            
+            if (this.authElements.guestError) {
+                this.authElements.guestError.textContent = errorMessage;
+            }
+            this.ui.showToast(errorMessage, 'error');
+        } finally {
+            this.ui.hideLoading('guest-login-btn');
         }
     }
 

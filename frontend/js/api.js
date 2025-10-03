@@ -763,6 +763,77 @@ export class SommOSAPI {
         });
     }
 
+    async guestLogin(eventCode, pin = null) {
+        if (!eventCode || typeof eventCode !== 'string' || !eventCode.trim()) {
+            throw new SommOSAPIError('Event code is required', {
+                status: 400,
+                code: 'GUEST_CODE_REQUIRED'
+            });
+        }
+
+        const payload = {
+            event_code: eventCode.trim()
+        };
+
+        if (pin && typeof pin === 'string' && pin.trim()) {
+            payload.pin = pin.trim();
+        }
+
+        try {
+            const response = await this.request('/guest/session', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                suppressAuthEvent: true
+            });
+
+            return response;
+        } catch (error) {
+            // Enhance error messages for better UX
+            if (error.status === 400) {
+                if (error.code === 'PIN_REQUIRED') {
+                    throw new SommOSAPIError('A PIN is required for this event code', {
+                        status: 400,
+                        code: 'PIN_REQUIRED',
+                        details: error.details
+                    });
+                }
+                throw new SommOSAPIError('Invalid request. Please check your event code.', {
+                    status: 400,
+                    code: error.code || 'INVALID_REQUEST',
+                    details: error.details
+                });
+            } else if (error.status === 401) {
+                throw new SommOSAPIError('Incorrect PIN. Please try again.', {
+                    status: 401,
+                    code: 'INVALID_PIN',
+                    details: error.details
+                });
+            } else if (error.status === 404) {
+                throw new SommOSAPIError('Event code not found or has expired. Please request a new code.', {
+                    status: 404,
+                    code: 'INVALID_GUEST_CODE',
+                    details: error.details
+                });
+            } else if (error.status === 409) {
+                throw new SommOSAPIError('Guest profile is no longer eligible for access.', {
+                    status: 409,
+                    code: 'INVALID_GUEST_PROFILE',
+                    details: error.details
+                });
+            }
+
+            // Network or other errors
+            throw new SommOSAPIError(
+                error.message || 'Unable to connect. Please check your network and try again.',
+                {
+                    status: error.status,
+                    code: error.code || 'NETWORK_ERROR',
+                    details: error.details
+                }
+            );
+        }
+    }
+
     // Inventory endpoints
     async getInventory(filters = {}) {
         const query = SommOSAPI.buildQuery(filters);
