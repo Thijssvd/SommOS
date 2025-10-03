@@ -16,10 +16,15 @@ const helmetConfig = {
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "https:"],
             connectSrc: [
-                "'self'", 
-                "https://api.openai.com", 
-                "https://archive-api.open-meteo.com",
-                ...(env.nodeEnv === 'development' ? ["http://localhost:3001", "http://localhost:3000"] : [])
+                "'self'",
+                "ws://localhost:3000",
+                "ws://localhost",
+                "http://localhost:3000",
+                "http://localhost:3001",
+                "http://localhost",
+                "https://api.openai.com",
+                "https://api.deepseek.com",
+                "https://archive-api.open-meteo.com"
             ],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
@@ -60,7 +65,7 @@ const rateLimitConfigs = {
     },
     auth: {
         windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 5, // Limit each IP to 5 auth requests per windowMs
+        max: 100, // Limit each IP to 100 auth requests per windowMs (increased for dev)
         standardHeaders: 'draft-7', // Enable rate limit headers
         legacyHeaders: false,
         skipSuccessfulRequests: true,
@@ -105,8 +110,8 @@ const rateLimitConfigs = {
  */
 const corsConfig = {
     origin: env.nodeEnv === 'production'
-        ? ['https://sommos.yacht'] // Production domain
-        : ['http://localhost:3000', 'http://127.0.0.1:3000'], // Development
+        ? ['https://sommos.yacht', 'http://localhost', 'http://localhost:80', 'http://localhost:3000', 'http://127.0.0.1'] // Production domain
+        : ['http://localhost', 'http://localhost:80', 'http://localhost:3000', 'http://127.0.0.1', 'http://127.0.0.1:3000'], // Development
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

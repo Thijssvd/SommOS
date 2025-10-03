@@ -170,8 +170,11 @@ export class SommOSAPI {
             const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
             let resolvedOrigin = origin || `${protocol}//${hostname}${port ? `:${port}` : ''}`;
 
-            if (isLocalhost && (!port || port === '')) {
-                resolvedOrigin = `${protocol}//${hostname}:3000`;
+            // Only use port 3000 if we're specifically on development Vite server (port 3000)
+            // Otherwise use the same origin (for nginx on port 80 or direct backend on 3001)
+            if (isLocalhost && port === '3000') {
+                // Development: frontend on 3000, backend on 3001
+                resolvedOrigin = `${protocol}//${hostname}:3001`;
             }
 
             computedBase = `${resolvedOrigin.replace(/\/$/, '')}/api`;

@@ -44,8 +44,8 @@ class SommOSWebSocketServer {
         
         // Check origin
         const allowedOrigins = this.config.isProduction 
-            ? ['https://sommos.yacht'] 
-            : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+            ? ['https://sommos.yacht', 'http://localhost', 'http://localhost:80', 'http://localhost:3000', 'http://127.0.0.1'] 
+            : ['http://localhost', 'http://localhost:80', 'http://localhost:3000', 'http://127.0.0.1', 'http://127.0.0.1:3000'];
         
         if (!allowedOrigins.includes(origin)) {
             console.warn(`WebSocket connection rejected: invalid origin ${origin} from ${ip}`);

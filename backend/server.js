@@ -207,7 +207,11 @@ if (NODE_ENV !== 'test') {
 }
 
 // Static file serving (for PWA assets)
-app.use(express.static(path.join(__dirname, '../frontend')));
+// In production, serve from dist directory
+const frontendPath = NODE_ENV === 'production' 
+    ? path.join(__dirname, '../frontend/dist')
+    : path.join(__dirname, '../frontend');
+app.use(express.static(frontendPath));
 
 // Apply specific rate limiters to API routes
 app.use('/api', apiLimiter);
@@ -259,7 +263,10 @@ app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) {
         return next();
     }
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+    const indexPath = NODE_ENV === 'production'
+        ? path.join(__dirname, '../frontend/dist/index.html')
+        : path.join(__dirname, '../frontend/index.html');
+    res.sendFile(indexPath);
 });
 
 // Global error handler

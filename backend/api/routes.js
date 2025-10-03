@@ -1460,8 +1460,8 @@ router.post('/vintage/pairing-insight', requireRole('admin', 'crew'), validate(v
 // ============================================================================
 
 // GET /api/system/health
-// System health check
-router.get('/system/health', requireRole('admin', 'crew', 'guest'), validate(), asyncHandler(async (req, res) => {
+// System health check (public endpoint - no auth required)
+router.get('/system/health', validate(), asyncHandler(async (req, res) => {
     try {
         const db = Database.getInstance();
 

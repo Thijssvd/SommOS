@@ -33,7 +33,7 @@ const schema = z.object({
     SESSION_SECRET: z.string({ required_error: 'SESSION_SECRET is required' })
         .trim()
         .min(32, 'SESSION_SECRET must be at least 32 characters long'),
-    WEATHER_API_KEY: z.string().trim().min(1, 'WEATHER_API_KEY cannot be empty').optional(),
+    WEATHER_API_KEY: z.string().trim().optional(),
     PERFORMANCE_TEST_DATASET_SIZE: z
         .coerce
         .number({ invalid_type_error: 'PERFORMANCE_TEST_DATASET_SIZE must be a number' })
