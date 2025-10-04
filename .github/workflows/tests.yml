@@ -91,10 +91,17 @@ jobs:
           path: test-results/
           retention-days: 7
   
-  test-flakiness-detection:
-    name: Flakiness Detection
+  # FLAKINESS DETECTION: Jest Unit Tests
+  # Runs Jest tests multiple times to detect inconsistent test behavior
+  # Uses JSON output for detailed per-test analysis
+  jest-flakiness-detection:
+    name: Jest Flakiness Detection
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
+    
+    strategy:
+      matrix:
+        run: [1, 2, 3, 4, 5]
     
     steps:
       - name: Checkout code
@@ -109,67 +116,266 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Run Jest tests 3 times
+      - name: Run Jest tests (Run ${{ matrix.run }}/5)
         run: |
-          echo "Run 1:"
-          npm test -- --silent --maxWorkers=2 > jest-run1.log 2>&1 || echo "Run 1 had failures"
-          echo "Run 2:"
-          npm test -- --silent --maxWorkers=2 > jest-run2.log 2>&1 || echo "Run 2 had failures"
-          echo "Run 3:"
-          npm test -- --silent --maxWorkers=2 > jest-run3.log 2>&1 || echo "Run 3 had failures"
+          echo "🔄 Running Jest test suite - Run ${{ matrix.run }} of 5"
+          npm test -- --json --outputFile=jest-results-${{ matrix.run }}.json --maxWorkers=2 || true
         continue-on-error: true
         env:
           NODE_ENV: test
           CI: true
       
-      - name: Analyze flakiness
-        run: |
-          echo "## Flakiness Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Compare test results across runs
-          if grep -q "Tests:.*failed" jest-run1.log jest-run2.log jest-run3.log; then
-            echo "⚠️ Test failures detected across runs" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Run 1:" >> $GITHUB_STEP_SUMMARY
-            grep "Tests:" jest-run1.log >> $GITHUB_STEP_SUMMARY || echo "No summary found" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Run 2:" >> $GITHUB_STEP_SUMMARY
-            grep "Tests:" jest-run2.log >> $GITHUB_STEP_SUMMARY || echo "No summary found" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Run 3:" >> $GITHUB_STEP_SUMMARY
-            grep "Tests:" jest-run3.log >> $GITHUB_STEP_SUMMARY || echo "No summary found" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ All test runs consistent" >> $GITHUB_STEP_SUMMARY
-          fi
-        continue-on-error: true
-      
-      - name: Upload flakiness logs
-        uses: actions/upload-artifact@v3
+      - name: Upload Jest results
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: flakiness-logs
-          path: jest-run*.log
+          name: jest-flakiness-run-${{ matrix.run }}
+          path: jest-results-${{ matrix.run }}.json
           retention-days: 7
   
-  test-summary:
-    name: Test Summary
+  # FLAKINESS ANALYSIS: Jest
+  # Aggregates results from multiple Jest runs and identifies flaky tests
+  jest-flakiness-analysis:
+    name: Analyze Jest Flakiness
     runs-on: ubuntu-latest
-    needs: [jest-tests, playwright-tests]
+    needs: jest-flakiness-detection
+    if: always() && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      
+      - name: Download all Jest flakiness results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: jest-flakiness-run-*
+          path: flakiness-results/
+          merge-multiple: true
+      
+      - name: Analyze Jest flakiness
+        run: |
+          echo "📊 Analyzing Jest test flakiness across 5 runs..."
+          node scripts/analyze-flakiness.js flakiness-results/jest-results-*.json --format jest --output jest-flakiness-reports --verbose
+        continue-on-error: true
+      
+      - name: Generate GitHub Step Summary
+        if: always()
+        run: |
+          echo "## 🔍 Jest Flakiness Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f jest-flakiness-reports/flakiness-report.md ]; then
+            cat jest-flakiness-reports/flakiness-report.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Flakiness analysis could not be completed" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Upload Jest flakiness report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jest-flakiness-report
+          path: jest-flakiness-reports/
+          retention-days: 30
+  
+  # FLAKINESS DETECTION: Playwright E2E Tests
+  # Runs Playwright tests multiple times across all browser configurations
+  playwright-flakiness-detection:
+    name: Playwright Flakiness Detection
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+        run: [1, 2, 3]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      
+      - name: Run Playwright tests (${{ matrix.browser }}, Run ${{ matrix.run }}/3)
+        run: |
+          echo "🎭 Running Playwright E2E tests on ${{ matrix.browser }} - Run ${{ matrix.run }} of 3"
+          npx playwright test --project=${{ matrix.browser }} --reporter=json > playwright-results-${{ matrix.browser }}-${{ matrix.run }}.json || true
+        continue-on-error: true
+        env:
+          CI: true
+      
+      - name: Upload Playwright results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-flakiness-${{ matrix.browser }}-run-${{ matrix.run }}
+          path: playwright-results-${{ matrix.browser }}-${{ matrix.run }}.json
+          retention-days: 7
+  
+  # FLAKINESS ANALYSIS: Playwright
+  # Aggregates results from multiple Playwright runs and identifies browser-specific flakiness
+  playwright-flakiness-analysis:
+    name: Analyze Playwright Flakiness
+    runs-on: ubuntu-latest
+    needs: playwright-flakiness-detection
+    if: always() && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      
+      - name: Download all Playwright flakiness results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-flakiness-*
+          path: flakiness-results/
+          merge-multiple: true
+      
+      - name: Analyze Playwright flakiness
+        run: |
+          echo "📊 Analyzing Playwright test flakiness across browsers..."
+          node scripts/analyze-flakiness.js flakiness-results/playwright-results-*.json --format playwright --output playwright-flakiness-reports --verbose
+        continue-on-error: true
+      
+      - name: Generate GitHub Step Summary
+        if: always()
+        run: |
+          echo "## 🎭 Playwright Flakiness Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f playwright-flakiness-reports/flakiness-report.md ]; then
+            cat playwright-flakiness-reports/flakiness-report.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Flakiness analysis could not be completed" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Upload Playwright flakiness report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-flakiness-report
+          path: playwright-flakiness-reports/
+          retention-days: 30
+  
+  test-summary:
+    name: Test Suite Summary
+    runs-on: ubuntu-latest
+    needs: [jest-tests, playwright-tests, jest-flakiness-analysis, playwright-flakiness-analysis]
     if: always()
     
     steps:
-      - name: Create test summary
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download flakiness reports
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: '*-flakiness-report'
+          path: flakiness-reports/
+      
+      - name: Create comprehensive test summary
         run: |
-          echo "# Test Suite Summary" >> $GITHUB_STEP_SUMMARY
+          echo "# 📋 Test Suite Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Status" >> $GITHUB_STEP_SUMMARY
-          echo "- Jest Tests: ${{ needs.jest-tests.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Playwright Tests: ${{ needs.playwright-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Test Execution Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Jest Unit & Integration | ${{ needs.jest-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Playwright E2E | ${{ needs.playwright-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Add flakiness status if available
+          if [ "${{ needs.jest-flakiness-analysis.result }}" != "" ]; then
+            echo "| Jest Flakiness Detection | ${{ needs.jest-flakiness-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ needs.playwright-flakiness-analysis.result }}" != "" ]; then
+            echo "| Playwright Flakiness Detection | ${{ needs.playwright-flakiness-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           
+          # Overall status
           if [ "${{ needs.jest-tests.result }}" == "success" ] && [ "${{ needs.playwright-tests.result }}" == "success" ]; then
-            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+            echo "### ✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Some tests failed. Check the job logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "### ❌ Some tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "Check the job logs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Flakiness summary
+          echo "## 🔍 Flakiness Analysis Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          FLAKY_FOUND=false
+          
+          # Check Jest flakiness
+          if [ -f flakiness-reports/jest-flakiness-report/flakiness-data.json ]; then
+            JEST_FLAKY=$(jq -r '.summary.flakyTests' flakiness-reports/jest-flakiness-report/flakiness-data.json 2>/dev/null || echo "0")
+            JEST_TOTAL=$(jq -r '.summary.totalTests' flakiness-reports/jest-flakiness-report/flakiness-data.json 2>/dev/null || echo "0")
+            JEST_RATE=$(jq -r '.summary.flakinessRate' flakiness-reports/jest-flakiness-report/flakiness-data.json 2>/dev/null || echo "0")
+            
+            echo "**Jest Tests:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Flaky tests: $JEST_FLAKY out of $JEST_TOTAL (${JEST_RATE}%)" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "$JEST_FLAKY" != "0" ]; then
+              FLAKY_FOUND=true
+              if [ "$(echo "$JEST_RATE > 10" | bc)" == "1" ]; then
+                echo "- ⚠️  **Warning:** High flakiness rate!" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          else
+            echo "**Jest Tests:** No flakiness data available" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check Playwright flakiness
+          if [ -f flakiness-reports/playwright-flakiness-report/flakiness-data.json ]; then
+            PW_FLAKY=$(jq -r '.summary.flakyTests' flakiness-reports/playwright-flakiness-report/flakiness-data.json 2>/dev/null || echo "0")
+            PW_TOTAL=$(jq -r '.summary.totalTests' flakiness-reports/playwright-flakiness-report/flakiness-data.json 2>/dev/null || echo "0")
+            PW_RATE=$(jq -r '.summary.flakinessRate' flakiness-reports/playwright-flakiness-report/flakiness-data.json 2>/dev/null || echo "0")
+            
+            echo "**Playwright Tests:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Flaky tests: $PW_FLAKY out of $PW_TOTAL (${PW_RATE}%)" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "$PW_FLAKY" != "0" ]; then
+              FLAKY_FOUND=true
+              if [ "$(echo "$PW_RATE > 10" | bc)" == "1" ]; then
+                echo "- ⚠️  **Warning:** High flakiness rate!" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          else
+            echo "**Playwright Tests:** No flakiness data available" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$FLAKY_FOUND" = true ]; then
+            echo "🔗 View detailed flakiness reports in the artifacts section above." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No flaky tests detected across all test suites!" >> $GITHUB_STEP_SUMMARY
           fi

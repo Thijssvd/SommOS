@@ -40,7 +40,11 @@
     "test:weather": "node scripts/test-open-meteo.js",
     "test:rum": "node scripts/test-rum-persistence.js",
     "simulate:year": "node scripts/simulate-year-data.js",
-    "train:ml": "node scripts/train-ml-models.js"
+    "train:ml": "node scripts/train-ml-models.js",
+    "test:flaky": "for i in 1 2 3 4 5; do npm test -- --json --outputFile=jest-run-$i.json --silent || true; done && node scripts/analyze-flakiness.js jest-run-*.json --format jest",
+    "test:e2e:flaky": "for i in 1 2 3; do npx playwright test --reporter=json --output=playwright-run-$i.json || true; done && node scripts/analyze-flakiness.js playwright-run-*.json --format playwright",
+    "test:flaky:quick": "for i in 1 2 3; do npm test -- tests/backend --json --outputFile=jest-quick-$i.json --silent || true; done && node scripts/analyze-flakiness.js jest-quick-*.json --format jest",
+    "analyze:flakiness": "node scripts/analyze-flakiness.js"
   },
   "keywords": [
     "wine",

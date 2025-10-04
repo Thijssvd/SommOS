@@ -101,6 +101,15 @@ test-results/
 test-results.json/
 .last-run.json
 
+# Flakiness detection artifacts
+flakiness-reports/
+flakiness-results/
+jest-run-*.json
+jest-quick-*.json
+playwright-run-*.json
+playwright-results-*.json
+jest-results-*.json
+
 # Temporary reports and summaries (Warp-generated)
 *_REPORT.md
 *_SUMMARY.md

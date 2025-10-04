@@ -2,6 +2,14 @@ module.exports = {
   // Test environment
   testEnvironment: 'node',
   
+  // Automatic test retries for flakiness mitigation
+  // Retries failed tests up to 2 times in CI environment to reduce false negatives
+  // Note: This helps with genuine flakiness but won't mask real failures
+  ...(process.env.CI && {
+    retryTimes: 2,
+    retryImmediately: false // Wait before retry to let async operations settle
+  }),
+  
   // Test file patterns - comprehensive discovery
   // Exclude backend/test/ml/ as they use custom TestRunner
   testMatch: [

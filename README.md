@@ -1,5 +1,8 @@
 # SommOS - Yacht Sommelier Operating System
 
+[![Test Suite](https://github.com/Thijssvd/SommOS/actions/workflows/tests.yml/badge.svg)](https://github.com/Thijssvd/SommOS/actions/workflows/tests.yml)
+[![CI](https://github.com/Thijssvd/SommOS/actions/workflows/ci.yml/badge.svg)](https://github.com/Thijssvd/SommOS/actions/workflows/ci.yml)
+
 An offline-first PWA for yacht wine management with AI-powered pairing recommendations and weather intelligence.
 
 ## System Overview
@@ -96,9 +99,51 @@ npm install
 
 ### Development Mode
 ```bash
-npm run dev  # Development server
-npm test     # Run test suite
+npm run dev       # Development server
+npm test          # Run test suite
+npm run test:e2e  # Run E2E tests
+
+# Test flakiness detection (local)
+npm run test:flaky       # Run Jest tests 5x and analyze
+npm run test:e2e:flaky   # Run Playwright tests 3x and analyze
 ```
+
+## 🧪 Testing & Quality
+
+### Test Suite
+- **Unit & Integration Tests**: 600+ Jest tests across backend, frontend, and integration layers
+- **E2E Tests**: Playwright tests covering critical user workflows
+- **Flakiness Detection**: Automatic detection and reporting of inconsistent tests
+- **CI/CD**: Automated testing on every push with comprehensive reporting
+
+### Running Tests
+```bash
+# Run all Jest tests
+npm test
+
+# Run with coverage
+npm test -- --coverage
+
+# Run E2E tests
+npm run test:e2e
+
+# Run E2E tests in UI mode
+npm run test:e2e:ui
+
+# Detect flaky tests locally
+npm run test:flaky
+```
+
+### Flakiness Detection
+
+SommOS includes a comprehensive flakiness detection system that runs automatically in CI:
+
+- **Jest Tests**: Runs 5 times to identify inconsistent unit tests
+- **Playwright Tests**: Runs 3 times across all browsers (Chromium, Firefox, WebKit)
+- **Detailed Reports**: Per-test flakiness analysis with failure patterns
+- **Automatic Retries**: Failed tests retry up to 2 times to reduce false negatives
+
+📚 **Full Documentation**: See [`docs/FLAKINESS_DETECTION.md`](docs/FLAKINESS_DETECTION.md) for complete guide
 
 ## Data Models
 

@@ -52,7 +52,12 @@ describe('WebSocket Server', () => {
                 id: 'test-client-1'
             };
 
-            wss.handleConnection(mockClient);
+            const mockReq = {
+                socket: { remoteAddress: '127.0.0.1' },
+                headers: { 'user-agent': 'test-client' }
+            };
+
+            wss.handleConnection(mockClient, mockReq);
             
             expect(mockClient.on).toHaveBeenCalledWith('message', expect.any(Function));
             expect(mockClient.on).toHaveBeenCalledWith('close', expect.any(Function));
@@ -66,20 +71,30 @@ describe('WebSocket Server', () => {
             const client1 = { on: jest.fn(), send: jest.fn(), readyState: 1 };
             const client2 = { on: jest.fn(), send: jest.fn(), readyState: 1 };
 
-            wss.handleConnection(client1);
-            wss.handleConnection(client2);
+            const mockReq = {
+                socket: { remoteAddress: '127.0.0.1' },
+                headers: { 'user-agent': 'test-client' }
+            };
 
-            // Each client should have a unique ID
-            expect(client1.id).toBeDefined();
-            expect(client2.id).toBeDefined();
-            expect(client1.id).not.toBe(client2.id);
+            wss.handleConnection(client1, mockReq);
+            wss.handleConnection(client2, mockReq);
+
+            // Each client should have unique IDs assigned by the server
+            const clientIds = Array.from(wss.clients.keys());
+            expect(clientIds.length).toBe(2);
+            expect(clientIds[0]).not.toBe(clientIds[1]);
         });
 
         test('should track connected clients', () => {
             wss = new WebSocketServer(mockHttpServer);
             
             const mockClient = { on: jest.fn(), send: jest.fn(), readyState: 1 };
-            wss.handleConnection(mockClient);
+            const mockReq = {
+                socket: { remoteAddress: '127.0.0.1' },
+                headers: { 'user-agent': 'test-client' }
+            };
+            
+            wss.handleConnection(mockClient, mockReq);
 
             const clientCount = wss.getClientCount();
             expect(clientCount).toBeGreaterThan(0);
@@ -97,6 +112,11 @@ describe('WebSocket Server', () => {
                 id: 'test-client'
             };
 
+            const mockReq = {
+                socket: { remoteAddress: '127.0.0.1' },
+                headers: { 'user-agent': 'test-client' }
+            };
+
             let messageHandler;
             mockClient.on.mockImplementation((event, handler) => {
                 if (event === 'message') {
@@ -104,7 +124,7 @@ describe('WebSocket Server', () => {
                 }
             });
 
-            wss.handleConnection(mockClient);
+            wss.handleConnection(mockClient, mockReq);
 
             const testMessage = JSON.stringify({
                 type: 'ping',
@@ -130,6 +150,11 @@ describe('WebSocket Server', () => {
                 id: 'test-client'
             };
 
+            const mockReq = {
+                socket: { remoteAddress: '127.0.0.1' },
+                headers: { 'user-agent': 'test-client' }
+            };
+
             let messageHandler;
             mockClient.on.mockImplementation((event, handler) => {
                 if (event === 'message') {
@@ -137,7 +162,7 @@ describe('WebSocket Server', () => {
                 }
             });
 
-            wss.handleConnection(mockClient);
+            wss.handleConnection(mockClient, mockReq);
 
             const malformedMessage = '{invalid json}';
 
@@ -214,6 +239,11 @@ describe('WebSocket Server', () => {
                 id: 'test-client'
             };
 
+            const mockReq = {
+                socket: { remoteAddress: '127.0.0.1' },
+                headers: { 'user-agent': 'test-client' }
+            };
+
             let closeHandler;
             mockClient.on.mockImplementation((event, handler) => {
                 if (event === 'close') {
@@ -221,7 +251,7 @@ describe('WebSocket Server', () => {
                 }
             });
 
-            wss.handleConnection(mockClient);
+            wss.handleConnection(mockClient, mockReq);
             
             const initialCount = wss.getClientCount();
             
@@ -242,8 +272,13 @@ describe('WebSocket Server', () => {
                 { on: jest.fn(), send: jest.fn(), readyState: 1, id: '3' }
             ];
 
+            const mockReq = {
+                socket: { remoteAddress: '127.0.0.1' },
+                headers: { 'user-agent': 'test-client' }
+            };
+
             clients.forEach(client => {
-                wss.handleConnection(client);
+                wss.handleConnection(client, mockReq);
             });
 
             // Simulate disconnections
@@ -268,6 +303,11 @@ describe('WebSocket Server', () => {
                 id: 'test-client'
             };
 
+            const mockReq = {
+                socket: { remoteAddress: '127.0.0.1' },
+                headers: { 'user-agent': 'test-client' }
+            };
+
             let errorHandler;
             mockClient.on.mockImplementation((event, handler) => {
                 if (event === 'error') {
@@ -275,7 +315,7 @@ describe('WebSocket Server', () => {
                 }
             });
 
-            wss.handleConnection(mockClient);
+            wss.handleConnection(mockClient, mockReq);
 
             // Simulate error
             const error = new Error('Connection error');
