@@ -21,7 +21,7 @@ const BASE_GUIDANCE = {
     },
     Sparkling: {
         storage: { minC: 6, maxC: 8, note: 'Keep very cold to preserve mousse and precision.' },
-        decant: { shouldDecant: false, note: 'Avoid decanting to maintain carbonation.' }
+        decant: { shouldDecant: false, note: 'No decanting required; avoid to maintain carbonation.' }
     },
     Dessert: {
         storage: { minC: 10, maxC: 12, note: 'Slightly cool storage balances sweetness and freshness.' },
@@ -190,13 +190,46 @@ function getGuidance(wine = {}) {
     }
 
     const grapes = parseGrapeVarieties(wine.grape_varieties);
+    // For each grape, select the longest decant time (maximum) and tightest storage range
+    let maxDecantMin = decant.minMinutes;
+    let maxDecantMax = decant.maxMinutes;
+    let bestDecantNote = decant.note;
+    
     for (const grape of grapes) {
         const key = grape.toLowerCase();
         if (GRAPE_GUIDANCE[key]) {
-            storage = mergeGuidance(storage, GRAPE_GUIDANCE[key].storage);
-            decant = mergeGuidance(decant, GRAPE_GUIDANCE[key].decant);
+            // Only apply grape storage guidance for non-sparkling, non-dessert wines
+            // (Sparkling and Dessert wine types should take precedence)
+            if (wineType !== 'Sparkling' && wineType !== 'Dessert' && wineType !== 'Rosé') {
+                storage = mergeGuidance(storage, GRAPE_GUIDANCE[key].storage);
+            }
+            
+            // For decanting, use the longest time from any grape variety
+            // BUT only if the base wine type says to decant
+            const grapeDecant = GRAPE_GUIDANCE[key].decant;
+            if (grapeDecant && decant.shouldDecant) {
+                if (grapeDecant.shouldDecant !== undefined) {
+                    // If any grape says to decant and base wine type also says to decant
+                    if (grapeDecant.shouldDecant && decant.shouldDecant) {
+                        decant.shouldDecant = true;
+                    }
+                }
+                
+                if (grapeDecant.minMinutes && (!maxDecantMin || grapeDecant.minMinutes > maxDecantMin)) {
+                    maxDecantMin = grapeDecant.minMinutes;
+                    bestDecantNote = grapeDecant.note || bestDecantNote;
+                }
+                if (grapeDecant.maxMinutes && (!maxDecantMax || grapeDecant.maxMinutes > maxDecantMax)) {
+                    maxDecantMax = grapeDecant.maxMinutes;
+                }
+            }
         }
     }
+    
+    // Apply the selected decant times
+    if (maxDecantMin) decant.minMinutes = maxDecantMin;
+    if (maxDecantMax) decant.maxMinutes = maxDecantMax;
+    if (bestDecantNote) decant.note = bestDecantNote;
 
     const explicitMin = toNumber(wine.storage_temp_min);
     const explicitMax = toNumber(wine.storage_temp_max);

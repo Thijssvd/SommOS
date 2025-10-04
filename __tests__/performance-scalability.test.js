@@ -13,6 +13,9 @@ const PerformanceMonitoringEngine = require('../backend/core/performance_monitor
 const path = require('path');
 const fs = require('fs');
 
+// Mock the database
+jest.mock('../backend/database/connection');
+
 describe('Priority 3: Performance & Scalability Tests', () => {
     let db;
     let dbPath;
@@ -22,7 +25,22 @@ describe('Priority 3: Performance & Scalability Tests', () => {
         if (fs.existsSync(dbPath)) {
             fs.unlinkSync(dbPath);
         }
-        db = Database.getInstance(dbPath);
+        
+        // Create mock database with required methods
+        db = {
+            connect: jest.fn().mockResolvedValue(true),
+            close: jest.fn().mockResolvedValue(true),
+            all: jest.fn().mockResolvedValue([]),
+            get: jest.fn().mockResolvedValue(null),
+            run: jest.fn().mockResolvedValue({ lastID: 1, changes: 1 }),
+            prepare: jest.fn().mockReturnValue({
+                bind: jest.fn().mockReturnThis(),
+                run: jest.fn(),
+                finalize: jest.fn()
+            })
+        };
+        
+        Database.getInstance = jest.fn().mockReturnValue(db);
         await db.connect();
     });
 

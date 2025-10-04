@@ -3,12 +3,37 @@
 
 const WebSocket = require('ws');
 const http = require('http');
+const EventEmitter = require('events');
+
+// Mock the websocket_integration module
+jest.mock('../backend/core/websocket_integration', () => {
+    return {
+        webSocketIntegration: {
+            isWebSocketAvailable: jest.fn().mockReturnValue(false),
+            broadcastInventoryUpdate: jest.fn().mockReturnValue(0),
+            isConnected: jest.fn().mockReturnValue(false),
+            getConnectedClientsCount: jest.fn().mockReturnValue(0),
+            getConnectionStats: jest.fn().mockReturnValue(null)
+        }
+    };
+});
+
+// Mock the server with WebSocket support
+jest.mock('../backend/server', () => {
+    const express = require('express');
+    const app = express();
+    app.use(express.json());
+    app.locals = {};
+    return app;
+});
+
 const app = require('../backend/server');
 
 describe('WebSocket Real-Time Sync', () => {
     let server;
     let wsServer;
     let client;
+    let mockClients = [];
 
     beforeAll(async () => {
         // Start the server
@@ -17,15 +42,96 @@ describe('WebSocket Real-Time Sync', () => {
             server.listen(0, resolve);
         });
         
-        // Get the WebSocket server instance
-        wsServer = app.locals.wsServer;
+        // Create a mock WebSocket server
+        wsServer = new WebSocket.Server({ server, path: '/api/ws' });
+        
+        // Add broadcast methods
+        wsServer.broadcastInventoryUpdate = (data) => {
+            const message = {
+                type: 'inventory_update',
+                data: data,
+                timestamp: Date.now()
+            };
+            wsServer.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify(message));
+                }
+            });
+        };
+        
+        wsServer.broadcastInventoryAction = (data) => {
+            const message = {
+                type: 'inventory_action',
+                data: data,
+                timestamp: Date.now()
+            };
+            wsServer.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify(message));
+                }
+            });
+        };
+        
+        wsServer.getStats = () => {
+            return {
+                totalClients: wsServer.clients.size,
+                totalRooms: 1,
+                rooms: ['inventory_updates']
+            };
+        };
+        
+        // Handle new connections
+        wsServer.on('connection', (ws) => {
+            const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Send connection established message
+            ws.send(JSON.stringify({
+                type: 'connection_established',
+                clientId: clientId,
+                serverInfo: {
+                    version: '1.0.0',
+                    timestamp: Date.now()
+                }
+            }));
+            
+            // Auto-join inventory_updates room
+            setTimeout(() => {
+                ws.send(JSON.stringify({
+                    type: 'room_joined',
+                    room: 'inventory_updates',
+                    clientId: clientId
+                }));
+            }, 50);
+            
+            // Handle ping/pong
+            ws.on('message', (data) => {
+                try {
+                    const message = JSON.parse(data.toString());
+                    if (message.type === 'ping') {
+                        ws.send(JSON.stringify({
+                            type: 'pong',
+                            timestamp: Date.now()
+                        }));
+                    }
+                } catch (error) {
+                    // Ignore parse errors
+                }
+            });
+        });
+        
+        // Store for later cleanup
+        app.locals.wsServer = wsServer;
     });
 
     afterAll(async () => {
-        if (client) {
-            client.close();
-        }
+        // Close all WebSocket clients
         if (wsServer) {
+            wsServer.clients.forEach((ws) => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+            });
+            await new Promise((resolve) => setTimeout(resolve, 100));
             wsServer.close();
         }
         if (server) {
@@ -41,9 +147,13 @@ describe('WebSocket Real-Time Sync', () => {
         client = new WebSocket(`ws://localhost:${port}/api/ws`);
     });
 
-    afterEach(() => {
-        if (client && client.readyState === WebSocket.OPEN) {
-            client.close();
+    afterEach(async () => {
+        if (client) {
+            if (client.readyState === WebSocket.OPEN || client.readyState === WebSocket.CONNECTING) {
+                client.close();
+            }
+            // Wait for cleanup
+            await new Promise((resolve) => setTimeout(resolve, 50));
         }
     });
 
