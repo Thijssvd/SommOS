@@ -18,6 +18,7 @@ const EnsembleEngine = require('../core/ensemble_engine');
 const VintageIntelligenceService = require('../core/vintage_intelligence');
 const wineGuidanceService = require('../core/wine_guidance_service');
 const ExplainabilityService = require('../core/explainability_service');
+const ImageService = require('../services/imageService');
 const Database = require('../database/connection');
 const { validate, validators } = require('../middleware/validate');
 const { authService, requireAuth, requireRole } = require('../middleware/auth');
@@ -82,6 +83,7 @@ async function createServices() {
     }
 
     const explainabilityService = new ExplainabilityService(db);
+    const imageService = new ImageService(db);
 
     return {
         db,
@@ -97,7 +99,8 @@ async function createServices() {
         inventoryManager: new InventoryManager(db, enhancedLearningEngine),
         procurementEngine: new ProcurementEngine(db, enhancedLearningEngine),
         vintageIntelligenceService: new VintageIntelligenceService(db),
-        explainabilityService
+        explainabilityService,
+        imageService
     };
 }
 
@@ -1131,11 +1134,29 @@ router.get('/wines', requireRole('admin', 'crew', 'guest'), validate(validators.
 
 // POST /api/wines
 // Add new wine to inventory with vintage intelligence
-router.post('/wines', requireRole('admin', 'crew'), validate(validators.winesCreate), asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
+router.post('/wines', requireRole('admin', 'crew'), validate(validators.winesCreate), asyncHandler(withServices(async ({ inventoryManager, imageService }, req, res) => {
     const { wine, vintage, stock } = req.body;
 
     if (!wine || !vintage || !stock) {
         return sendError(res, 400, 'WINES_CREATE_VALIDATION', 'Wine, vintage, and stock information are required.');
+    }
+
+    // Auto-fetch image if not provided
+    if (!wine.image_url && imageService) {
+        try {
+            wine.image_url = await imageService.searchWineImage({
+                name: wine.name,
+                producer: wine.producer,
+                year: vintage?.year,
+                varietal: wine.grape_varieties?.[0],
+                wine_type: wine.wine_type
+            });
+            
+            console.log(`✓ Found image for ${wine.name}: ${wine.image_url}`);
+        } catch (error) {
+            console.warn(`⚠ Image lookup failed for ${wine.name}:`, error.message);
+            wine.image_url = null; // Will use placeholder in frontend
+        }
     }
 
     try {

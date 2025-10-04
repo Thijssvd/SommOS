@@ -1480,9 +1480,29 @@ export class SommOS {
                     }
                 );
                 
-                // Set render callback for inventory items
+                // Set render callback for inventory items with image optimization
                 this.inventoryVirtualScroll.setRenderCallback((item, index) => {
-                    return this.createInventoryWineCard(item, index, isGuest);
+                    const cardHtml = this.createInventoryWineCard(item, index, isGuest);
+                    
+                    // Convert HTML string to DOM element
+                    const template = document.createElement('template');
+                    template.innerHTML = cardHtml.trim();
+                    const card = template.content.firstChild;
+                    
+                    // Optimize images in this card
+                    if (card && window.imageOptimizer) {
+                        const img = card.querySelector('img.wine-bottle-image');
+                        if (img) {
+                            window.imageOptimizer.optimizeImage(img, {
+                                width: 300,
+                                height: 450,
+                                lazyLoad: true,
+                                compressionQuality: 0.8
+                            });
+                        }
+                    }
+                    
+                    return card;
                 });
             } else {
                 // Update existing virtual scroll with new data
@@ -1506,6 +1526,11 @@ export class SommOS {
         // Improve region display
         const displayRegion = this.getDisplayRegion(item);
         const displayCountry = item.country && item.country !== 'Unknown' ? item.country : '';
+        
+        // Image setup
+        const imageUrl = item.image_url || '/images/wine-placeholder.svg';
+        const imageName = `${item.name || 'Unknown'} - ${item.producer || 'Unknown'}`;
+        
         const actionSection = isGuest
             ? `
                 <div class="card-actions-simple guest-readonly" aria-live="polite">
@@ -1530,6 +1555,17 @@ export class SommOS {
 
         return `
             <div class="wine-card simple-card fade-in" style="animation-delay: ${Math.min(index * 0.02, 2)}s">
+                <div class="wine-image-container aspect-3-2">
+                    <img 
+                        class="wine-bottle-image" 
+                        src="${imageUrl}"
+                        alt="${imageName} bottle"
+                        loading="lazy"
+                        data-optimized="false"
+                        onerror="this.onerror=null; this.src='/images/wine-placeholder.svg';"
+                    />
+                    <div class="image-skeleton"></div>
+                </div>
                 <div class="wine-header">
                     <div class="wine-type-badge ${item.wine_type?.toLowerCase() || 'unknown'}">
                         ${this.getWineTypeIcon(item.wine_type)} ${item.wine_type || 'Wine'}
@@ -4305,9 +4341,30 @@ export class SommOS {
                     }
                 );
                 
-                // Set render callback for catalog items
+                // Set render callback for catalog items with image optimization
                 this.catalogVirtualScroll.setRenderCallback((wine, index) => {
-                    return this.createCatalogWineCard(wine, this.catalogView);
+                    const cardHtml = this.createCatalogWineCard(wine, this.catalogView);
+                    
+                    // Convert HTML string to DOM element
+                    const template = document.createElement('template');
+                    template.innerHTML = cardHtml.trim();
+                    const card = template.content.firstChild;
+                    
+                    // Optimize images based on view type
+                    if (card && window.imageOptimizer) {
+                        const img = card.querySelector('img.wine-bottle-image');
+                        if (img) {
+                            const dimensions = this.getCatalogImageDimensions(this.catalogView);
+                            window.imageOptimizer.optimizeImage(img, {
+                                width: dimensions.width,
+                                height: dimensions.height,
+                                lazyLoad: true,
+                                compressionQuality: 0.8
+                            });
+                        }
+                    }
+                    
+                    return card;
                 });
             } else {
                 // Update existing virtual scroll with new data and view
@@ -4315,9 +4372,30 @@ export class SommOS {
                 this.catalogVirtualScroll.updateItemHeight(itemHeight);
                 this.catalogVirtualScroll.setItems(wines);
                 
-                // Update render callback for new view type
+                // Update render callback for new view type with image optimization
                 this.catalogVirtualScroll.setRenderCallback((wine, index) => {
-                    return this.createCatalogWineCard(wine, this.catalogView);
+                    const cardHtml = this.createCatalogWineCard(wine, this.catalogView);
+                    
+                    // Convert HTML string to DOM element
+                    const template = document.createElement('template');
+                    template.innerHTML = cardHtml.trim();
+                    const card = template.content.firstChild;
+                    
+                    // Optimize images based on view type
+                    if (card && window.imageOptimizer) {
+                        const img = card.querySelector('img.wine-bottle-image');
+                        if (img) {
+                            const dimensions = this.getCatalogImageDimensions(this.catalogView);
+                            window.imageOptimizer.optimizeImage(img, {
+                                width: dimensions.width,
+                                height: dimensions.height,
+                                lazyLoad: true,
+                                compressionQuality: 0.8
+                            });
+                        }
+                    }
+                    
+                    return card;
                 });
             }
             
@@ -4345,6 +4423,15 @@ export class SommOS {
             default:
                 return 280; // Standard grid card height
         }
+    }
+    
+    getCatalogImageDimensions(viewType) {
+        const dimensions = {
+            grid: { width: 300, height: 450 },
+            list: { width: 80, height: 120 },
+            detail: { width: 600, height: 400 }
+        };
+        return dimensions[viewType] || dimensions.grid;
     }
 
     displayCatalogWinesFallback(wines, grid) {
@@ -4380,6 +4467,31 @@ export class SommOS {
         const avgCostWithUnit = formattedAvgCost !== '—' ? `${formattedAvgCost} per bottle` : '—';
         const storageSummary = this.formatStorageRange(wine);
         const decantingSummary = this.formatDecantingSummary(wine);
+        
+        // Image setup with different sizes for different views
+        const imageUrl = wine.image_url || '/images/wine-placeholder.svg';
+        const imageName = `${wine.name || 'Unknown'} - ${wine.producer || 'Unknown'}`;
+        const imageSizes = {
+            grid: { aspectRatio: 'aspect-3-2', width: 300, height: 450 },
+            list: { aspectRatio: 'aspect-thumbnail', width: 80, height: 120 },
+            detail: { aspectRatio: 'aspect-16-9', width: 600, height: 400 }
+        };
+        const imageConfig = imageSizes[viewType] || imageSizes.grid;
+        
+        const imageHtml = `
+            <div class="wine-image-container ${imageConfig.aspectRatio}">
+                <img 
+                    class="wine-bottle-image" 
+                    src="${imageUrl}"
+                    alt="${imageName} bottle"
+                    loading="lazy"
+                    data-optimized="false"
+                    data-dimensions="${imageConfig.width}x${imageConfig.height}"
+                    onerror="this.onerror=null; this.src='/images/wine-placeholder.svg';"
+                />
+                <div class="image-skeleton"></div>
+            </div>
+        `;
 
         if (viewType === 'grid') {
             return `
@@ -4389,6 +4501,7 @@ export class SommOS {
                      tabindex="0"
                      aria-label="View details for ${wine.name || 'Unknown Wine'} from ${wine.producer || 'Unknown Producer'}, ${wine.year || 'N/A'}"
                      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.showWineDetails('${wine.id}')}">
+                    ${imageHtml}
                     <div class="wine-card-header">
                         <div class="wine-type-badge ${wine.wine_type?.toLowerCase() || 'unknown'}" aria-label="Wine type: ${wine.wine_type || 'Wine'}">
                             <span aria-hidden="true">${this.getWineTypeIcon(wine.wine_type)}</span> ${wine.wine_type || 'Wine'}
@@ -4435,6 +4548,7 @@ export class SommOS {
         } else if (viewType === 'list') {
             return `
                 <div class="wine-list-item" onclick="app.showWineDetails('${wine.id}')">
+                    ${imageHtml}
                     <div class="wine-basic-info">
                         <h4>${wine.name || 'Unknown Wine'}</h4>
                         <span class="producer">${wine.producer || 'Unknown Producer'}</span>
@@ -4469,6 +4583,7 @@ export class SommOS {
         } else { // detail view
             return `
                 <div class="wine-detail-card" onclick="app.showWineDetails('${wine.id}')">
+                    ${imageHtml}
                     <div class="wine-detail-header">
                         <div class="wine-title">
                             <h3>${wine.name || 'Unknown Wine'}</h3>

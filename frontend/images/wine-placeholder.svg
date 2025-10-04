@@ -1,0 +1,39 @@
+<svg width="300" height="450" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#16213e;stop-opacity:0" />
+      <stop offset="50%" style="stop-color:#2a2d5a;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="300" height="450" fill="url(#bg)"/>
+  
+  <!-- Subtle shine effect -->
+  <rect x="0" y="0" width="300" height="450" fill="url(#shine)" opacity="0.5"/>
+  
+  <!-- Wine bottle icon -->
+  <g transform="translate(150, 200)">
+    <ellipse cx="0" cy="-60" rx="15" ry="8" fill="#e94560"/>
+    <rect x="-15" y="-60" width="30" height="10" fill="#e94560"/>
+    <path d="M -12 -50 L -25 0 L -25 60 Q -25 75 -15 80 L 15 80 Q 25 75 25 60 L 25 0 L 12 -50 Z" 
+          fill="#e94560" opacity="0.6"/>
+    <path d="M -10 10 Q -15 30 -15 50 L 15 50 Q 15 30 10 10 Z" 
+          fill="#1a1a2e" opacity="0.2"/>
+  </g>
+  
+  <!-- Wine glass emoji as primary icon -->
+  <text x="150" y="220" font-family="Arial, sans-serif" font-size="72" 
+        fill="#e94560" text-anchor="middle" dominant-baseline="middle">🍷</text>
+  
+  <!-- Text label -->
+  <text x="150" y="310" font-family="Arial, sans-serif" font-size="16" 
+        fill="#a8b2d1" text-anchor="middle" font-weight="600">Wine Bottle</text>
+  <text x="150" y="335" font-family="Arial, sans-serif" font-size="12" 
+        fill="#6b7794" text-anchor="middle" opacity="0.7">Image Not Available</text>
+</svg>

@@ -17,6 +17,7 @@ CREATE TABLE Wines (
     food_pairings TEXT, -- JSON array of pairing suggestions
     serving_temp_min INTEGER,
     serving_temp_max INTEGER,
+    image_url TEXT, -- URL to wine bottle image (from Unsplash or custom upload)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
     updated_by TEXT DEFAULT 'system',

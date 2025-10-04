@@ -1742,6 +1742,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /procurement/feedback:
+    post:
+      tags: [Procurement]
+      summary: Submit feedback on procurement recommendations.
+      description: Record feedback on procurement recommendations to improve future suggestions.
+      security:
+        - accessTokenCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recommendation_id, action_taken, outcome_rating]
+              properties:
+                recommendation_id:
+                  type: integer
+                  description: ID of the procurement recommendation.
+                action_taken:
+                  type: string
+                  enum: [accepted, rejected, modified]
+                  description: Action taken on the recommendation.
+                intake_order_id:
+                  type: integer
+                  description: Optional ID of the intake order if recommendation was followed.
+                outcome_rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  description: Rating of the recommendation quality (1-5).
+                feedback_notes:
+                  type: string
+                  description: Optional feedback notes.
+      responses:
+        '200':
+          description: Feedback recorded successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: object
+                    properties:
+                      feedback_recorded:
+                        type: boolean
+                      recommendation_id:
+                        type: integer
+                      action_taken:
+                        type: string
+                      weight_update:
+                        type: object
+                        additionalProperties: true
+        '404':
+          description: Recommendation not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unable to record feedback.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /wines:
     get:
       tags: [Wines]
