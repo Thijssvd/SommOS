@@ -189,7 +189,8 @@ function loadConfigFromEnv() {
         path: process.env.DOTENV_CONFIG_PATH || path.resolve(process.cwd(), '.env'),
     });
 
-    if (dotenvResult.error && dotenvResult.error.code !== 'ENOENT') {
+    // ENOENT = file not found, ENOTDIR = not a directory (for /dev/null trick in tests)
+    if (dotenvResult.error && dotenvResult.error.code !== 'ENOENT' && dotenvResult.error.code !== 'ENOTDIR') {
         throw dotenvResult.error;
     }
 

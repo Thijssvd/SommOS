@@ -2,9 +2,11 @@ module.exports = {
   // Test environment
   testEnvironment: 'node',
   
-  // Test file patterns
+  // Test file patterns - include tests in tests/, __tests__/, and backend/test/
   testMatch: [
-    '**/tests/**/*.test.js'
+    '**/tests/**/*.test.js',
+    '**/__tests__/**/*.test.js',
+    '**/backend/test/**/*.test.js'
   ],
   
   // Coverage configuration
@@ -88,6 +90,16 @@ module.exports = {
     {
       displayName: 'Config Tests',
       testMatch: ['**/tests/config/**/*.test.js'],
+      testEnvironment: 'node'
+    },
+    {
+      displayName: 'ML Algorithm Tests',
+      testMatch: ['**/__tests__/**/*.test.js'],
+      testEnvironment: 'node'
+    },
+    {
+      displayName: 'Backend ML Tests',
+      testMatch: ['**/backend/test/**/*.test.js'],
       testEnvironment: 'node'
     }
   ],
