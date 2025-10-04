@@ -78,8 +78,34 @@ const checks = [
     }
 ];
 
+/**
+ * Check if a secret contains insecure placeholder patterns
+ * @param {string} secret - The secret to check
+ * @returns {boolean} True if the secret appears to be a placeholder
+ */
+function isPlaceholderSecret(secret) {
+    if (!secret || typeof secret !== 'string') {
+        return true;
+    }
+    
+    const placeholderPatterns = [
+        'dev-',
+        'change-me',
+        'placeholder',
+        'example',
+        'test-',
+        'your-',
+        'insert-',
+        'replace-'
+    ];
+    
+    const lowerSecret = secret.toLowerCase();
+    return placeholderPatterns.some(pattern => lowerSecret.includes(pattern));
+}
+
 let allRequired = true;
 let optionalFeatures = [];
+let securityWarnings = [];
 
 checks.forEach(check => {
     const hasValue = typeof check.value === 'number'
@@ -92,6 +118,14 @@ checks.forEach(check => {
     if (check.required) {
         if (hasValue) {
             console.log(`✅ ${check.name}: ${displayValue}`);
+            
+            // Check for placeholder secrets in production
+            if (check.sensitive && envConfig.nodeEnv === 'production') {
+                if (isPlaceholderSecret(check.value)) {
+                    console.log(`   ⚠️  WARNING: Placeholder secret detected in production!`);
+                    securityWarnings.push(`${check.name} contains a placeholder value`);
+                }
+            }
         } else {
             console.log(`❌ ${check.name}: REQUIRED BUT NOT SET`);
             allRequired = false;
@@ -107,6 +141,20 @@ checks.forEach(check => {
         }
     }
 });
+
+// Add feature flags status
+console.log('');
+console.log('🚩 Feature Flags:');
+console.log('==================');
+console.log(`   External Calls: ${envConfig.features.disableExternalCalls ? '❌ disabled' : '✅ enabled'}`);
+console.log(`   Auth Bypass: ${envConfig.features.authDisabled ? '⚠️  ENABLED (INSECURE!)' : '✅ disabled'}`);
+
+if (envConfig.features.authDisabled) {
+    securityWarnings.push('Authentication bypass is enabled');
+    if (envConfig.nodeEnv === 'production') {
+        console.log('   ❌ CRITICAL: Auth bypass is NOT allowed in production!');
+    }
+}
 
 console.log('');
 console.log('📋 Status Summary:');
@@ -132,16 +180,38 @@ if (optionalFeatures.length > 0) {
     console.log('   - WEATHER_API_KEY for enhanced weather data');
 }
 
-console.log('');
-console.log('🚀 Ready to start SommOS:', allRequired ? 'YES' : 'NO');
+// Security warnings summary
+if (securityWarnings.length > 0) {
+    console.log('');
+    console.log('⚠️  SECURITY WARNINGS:');
+    console.log('====================');
+    securityWarnings.forEach(warning => {
+        console.log(`   ⚠️  ${warning}`);
+    });
+    if (envConfig.nodeEnv === 'production') {
+        console.log('');
+        console.log('   ❌ Production deployment is NOT SAFE with these warnings!');
+        console.log('   🔧 Run: npm run generate:secrets');
+        console.log('   🔧 Update your .env file with secure values');
+    }
+}
 
-if (allRequired) {
+console.log('');
+const isProductionReady = allRequired && (envConfig.nodeEnv !== 'production' || securityWarnings.length === 0);
+console.log('🚀 Ready to start SommOS:', isProductionReady ? 'YES' : 'NO');
+
+if (allRequired && securityWarnings.length === 0) {
     console.log('   Run: npm start');
-} else {
-    console.log('   Fix missing variables first');
+} else if (!allRequired) {
+    console.log('   Fix missing required variables first');
+} else if (securityWarnings.length > 0) {
+    console.log('   Fix security warnings before starting');
+    if (envConfig.nodeEnv === 'production') {
+        console.log('   Production mode requires secure configuration');
+    }
 }
 
 console.log('');
 console.log('📚 For setup help: docs/environment_setup.md');
 
-process.exit(allRequired ? 0 : 1);
+process.exit(isProductionReady ? 0 : 1);

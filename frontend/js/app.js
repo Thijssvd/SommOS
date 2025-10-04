@@ -1202,6 +1202,60 @@ export class SommOS {
             syncBtn.addEventListener('click', () => this.syncData());
         }
 
+        // Help button (glossary modal)
+        const helpBtn = document.getElementById('help-btn');
+        if (helpBtn) {
+            helpBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showGlossaryModal();
+            });
+        }
+
+        // Procurement action buttons
+        const analyzeProcBtn = document.getElementById('analyze-procurement-btn');
+        if (analyzeProcBtn) {
+            analyzeProcBtn.addEventListener('click', () => {
+                if (this.modules.procurement && typeof this.modules.procurement.analyzeProcurementOpportunities === 'function') {
+                    this.modules.procurement.analyzeProcurementOpportunities();
+                } else if (typeof this.analyzeProcurementOpportunities === 'function') {
+                    this.analyzeProcurementOpportunities();
+                }
+            });
+        }
+
+        const purchaseDecisionBtn = document.getElementById('purchase-decision-btn');
+        if (purchaseDecisionBtn) {
+            purchaseDecisionBtn.addEventListener('click', () => {
+                if (this.modules.procurement && typeof this.modules.procurement.showPurchaseDecisionTool === 'function') {
+                    this.modules.procurement.showPurchaseDecisionTool();
+                } else if (typeof this.showPurchaseDecisionTool === 'function') {
+                    this.showPurchaseDecisionTool();
+                }
+            });
+        }
+
+        const generatePOBtn = document.getElementById('generate-po-btn');
+        if (generatePOBtn) {
+            generatePOBtn.addEventListener('click', () => {
+                if (this.modules.procurement && typeof this.modules.procurement.generatePurchaseOrder === 'function') {
+                    this.modules.procurement.generatePurchaseOrder();
+                } else if (typeof this.generatePurchaseOrder === 'function') {
+                    this.generatePurchaseOrder();
+                }
+            });
+        }
+
+        const filterProcBtn = document.getElementById('filter-procurement-btn');
+        if (filterProcBtn) {
+            filterProcBtn.addEventListener('click', () => {
+                if (this.modules.procurement && typeof this.modules.procurement.filterProcurementOpportunities === 'function') {
+                    this.modules.procurement.filterProcurementOpportunities();
+                } else if (typeof this.filterProcurementOpportunities === 'function') {
+                    this.filterProcurementOpportunities();
+                }
+            });
+        }
+
         // Online/offline detection
         window.addEventListener('online', async () => {
             this.isOnline = true;

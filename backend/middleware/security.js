@@ -82,7 +82,33 @@ function validateContentType(req, res, next) {
 }
 
 /**
- * File upload validation middleware
+ * File Upload Validation Middleware
+ * 
+ * STATUS: Ready for future implementation - currently NOT IN USE
+ * 
+ * The app does not currently support file uploads. Wine images are automatically
+ * fetched from the Vivino API via imageService rather than accepting user uploads.
+ * 
+ * WHEN FILE UPLOADS ARE ADDED:
+ * 1. Apply this middleware to all file upload routes
+ * 2. Enforces the following security measures:
+ *    - Max file size: 5MB (configurable via validationRules.maxFileSize)
+ *    - Allowed types: JPEG, PNG, GIF, WebP only (via validationRules.allowedFileTypes)
+ *    - Validates MIME types and file extensions
+ *    - Prevents malicious files from being uploaded
+ * 
+ * EXAMPLE USAGE:
+ * ```javascript
+ * router.post('/api/wines/upload-image', 
+ *     requireRole('admin', 'crew'),
+ *     validateFileUpload,  // Apply this middleware
+ *     uploadController
+ * );
+ * ```
+ * 
+ * IMPLEMENTATION NOTE:
+ * This middleware expects a file upload library (like multer or express-fileupload)
+ * to be installed and configured before use. Currently no such library is installed.
  */
 function validateFileUpload(req, res, next) {
     if (!req.files || Object.keys(req.files).length === 0) {

@@ -2,8 +2,16 @@
 // Express.js server for the SommOS yacht wine management system
 
 // Centralized environment configuration
-const { getConfig } = require('./config/env');
+const { getConfig, enforceRuntimeGuards } = require('./config/env');
 const env = getConfig();
+
+// Enforce runtime security guards (production checks)
+try {
+    enforceRuntimeGuards(process.env);
+} catch (error) {
+    console.error('❌ ' + error.message);
+    process.exit(1);
+}
 
 // Security configuration
 const { 
@@ -25,6 +33,19 @@ function ensureRequiredSecrets(config) {
 
     if (missing.length === 0) {
         console.log('🔐 Required secrets verified');
+        
+        // Log feature flags and AI configuration
+        console.log('');
+        console.log('🚩 Feature Flags:');
+        console.log(`   External Calls: ${config.features.disableExternalCalls ? '❌ disabled' : '✅ enabled'}`);
+        console.log(`   Auth Bypass: ${config.features.authDisabled ? '⚠️  ENABLED (INSECURE!)' : '✅ disabled'}`);
+        
+        // Log AI provider configuration
+        const aiStatus = config.deepSeek.apiKey 
+            ? 'DeepSeek (primary)' 
+            : 'Traditional (no AI keys)';
+        console.log(`   AI Provider: ${aiStatus}`);
+        
         return true;
     }
 
@@ -115,13 +136,21 @@ const websocketLimiter = rateLimit(rateLimitConfigs.websocket);
 
 app.use(generalLimiter);
 
-// Additional security middleware
+/**
+ * Security Middleware Stack (Applied Globally)
+ * ============================================
+ * 1. Helmet - Security headers and Content Security Policy (CSP)
+ * 2. Rate limiting - Prevents abuse and DDoS attacks
+ * 3. Request validation - Size, URL length, and content type checks
+ * 4. SQL injection prevention - Pattern-based detection
+ * 5. Input sanitization - XSS protection (applied below)
+ */
 app.use(validateRequestSize);
 app.use(validateUrlLength);
 app.use(validateContentType);
 app.use(requestTiming(30000)); // 30 second timeout
 app.use(securityHeaders);
-app.use(preventSQLInjection);
+app.use(preventSQLInjection); // Global SQL injection prevention middleware
 
 // CORS configuration
 app.use(cors(corsConfig));
@@ -178,7 +207,17 @@ app.use(express.urlencoded({
     parameterLimit: 1000 // Limit number of parameters
 }));
 
-// Input sanitization middleware
+/**
+ * Global XSS Protection via Input Sanitization
+ * =============================================
+ * Sanitizes all user inputs (body, query, params) to prevent XSS attacks.
+ * Removes potentially dangerous content:
+ * - <script> tags
+ * - javascript: protocol
+ * - inline event handlers (onclick, onerror, etc.)
+ * 
+ * This works in conjunction with CSP to provide defense-in-depth.
+ */
 app.use((req, res, next) => {
     // Sanitize request body
     if (req.body && typeof req.body === 'object') {

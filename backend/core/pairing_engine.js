@@ -108,10 +108,22 @@ class PairingEngine {
         this.loadRandomForestModel();
         
         const config = getConfig();
-        this.deepseek = config.deepSeek.apiKey ? new OpenAI({
-            apiKey: config.deepSeek.apiKey,
-            baseURL: 'https://api.deepseek.com/v1',
-        }) : null;
+        
+        // Respect SOMMOS_DISABLE_EXTERNAL_CALLS flag - skip AI initialization entirely
+        if (config.features.disableExternalCalls) {
+            console.log('🚫 External calls disabled - AI pairing will use traditional algorithm only');
+            this.deepseek = null;
+        } else if (config.deepSeek.apiKey) {
+            // Initialize AI client only if external calls are enabled and API key is configured
+            this.deepseek = new OpenAI({
+                apiKey: config.deepSeek.apiKey,
+                baseURL: 'https://api.deepseek.com/v1',
+            });
+            console.log('✅ AI pairing enabled with configured API key');
+        } else {
+            this.deepseek = null;
+            console.log('ℹ️  No AI API keys configured - traditional pairing will be used');
+        }
         this.scoringWeights = {
             style_match: 0.25,
             flavor_harmony: 0.30,
@@ -440,9 +452,17 @@ class PairingEngine {
         const forceAI = options.forceAI === true;
 
         try {
-            // Validate DeepSeek availability
+            // Check if AI pairing was explicitly requested but no AI keys are configured
+            if (forceAI && !this.deepseek) {
+                throw new Error(
+                    'AI_NOT_CONFIGURED: AI pairing was requested but no API keys are configured. ' +
+                    'Please set DEEPSEEK_API_KEY or OPENAI_API_KEY in your environment configuration.'
+                );
+            }
+            
+            // If AI is not available and not explicitly required, fall back gracefully to traditional pairing
             if (!this.deepseek && !forceAI) {
-                console.warn('DeepSeek not available, falling back to traditional pairing');
+                console.warn('AI not available (no API keys configured), falling back to traditional pairing');
                 const fallbackDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
                 return await this.generateTraditionalPairings(fallbackDish, preferences);
             }

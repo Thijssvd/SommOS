@@ -65,10 +65,87 @@ function applyDefaults(rawEnv) {
     return withDefaults;
 }
 
+/**
+ * Check if a secret contains insecure placeholder patterns
+ * @param {string} secret - The secret to check
+ * @returns {boolean} True if the secret appears to be a placeholder
+ */
+function isPlaceholderSecret(secret) {
+    if (!secret || typeof secret !== 'string') {
+        return true;
+    }
+    
+    const placeholderPatterns = [
+        'dev-',
+        'change-me',
+        'placeholder',
+        'example',
+        'test-',
+        'your-',
+        'insert-',
+        'replace-'
+    ];
+    
+    const lowerSecret = secret.toLowerCase();
+    return placeholderPatterns.some(pattern => lowerSecret.includes(pattern));
+}
+
+/**
+ * Enforce runtime security guards for production environments
+ * @param {Object} parsed - Validated environment configuration
+ * @throws {Error} If security requirements are not met in production
+ */
 function enforceRuntimeGuards(parsed) {
-    // Since JWT_SECRET and SESSION_SECRET are now required in the schema,
-    // we don't need additional runtime checks for them
-    // The schema validation will ensure they are present and meet minimum length requirements
+    const isProduction = parsed.NODE_ENV === 'production';
+    
+    if (!isProduction) {
+        // Only enforce strict checks in production
+        return;
+    }
+    
+    // 1. Authentication bypass must be disabled in production
+    if (parsed.SOMMOS_AUTH_DISABLED === 'true') {
+        throw new Error(
+            'CRITICAL SECURITY ERROR: Authentication bypass (SOMMOS_AUTH_DISABLED=true) is not allowed in production environment. ' +
+            'Remove or set to false in your production .env file.'
+        );
+    }
+    
+    // 2. Secrets must not contain placeholder values
+    if (isPlaceholderSecret(parsed.JWT_SECRET)) {
+        throw new Error(
+            'CRITICAL SECURITY ERROR: JWT_SECRET contains a placeholder value. ' +
+            'Generate secure secrets by running: npm run generate:secrets'
+        );
+    }
+    
+    if (isPlaceholderSecret(parsed.SESSION_SECRET)) {
+        throw new Error(
+            'CRITICAL SECURITY ERROR: SESSION_SECRET contains a placeholder value. ' +
+            'Generate secure secrets by running: npm run generate:secrets'
+        );
+    }
+    
+    // 3. JWT_SECRET and SESSION_SECRET must be different
+    if (parsed.JWT_SECRET === parsed.SESSION_SECRET) {
+        throw new Error(
+            'CRITICAL SECURITY ERROR: JWT_SECRET and SESSION_SECRET must be different values in production. ' +
+            'Generate unique secrets by running: npm run generate:secrets'
+        );
+    }
+    
+    // 4. Secrets must meet minimum entropy requirements
+    if (parsed.JWT_SECRET.length < 32) {
+        throw new Error(
+            'CRITICAL SECURITY ERROR: JWT_SECRET must be at least 32 characters long in production.'
+        );
+    }
+    
+    if (parsed.SESSION_SECRET.length < 32) {
+        throw new Error(
+            'CRITICAL SECURITY ERROR: SESSION_SECRET must be at least 32 characters long in production.'
+        );
+    }
 }
 
 function normalizeConfig(parsed) {
@@ -151,4 +228,5 @@ module.exports = {
     },
     getConfig,
     refreshConfig,
+    enforceRuntimeGuards,
 };
