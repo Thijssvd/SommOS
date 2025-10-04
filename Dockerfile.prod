@@ -1,5 +1,36 @@
 # Production Dockerfile for SommOS
-FROM node:18-alpine AS builder
+# Multi-stage build: Stage 1 - Build frontend and prepare dependencies
+FROM node:20-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Install build dependencies (needed for native modules and build tools)
+RUN apk add --no-cache make gcc g++ python3 curl
+
+# Copy package files for both root and frontend
+COPY package*.json ./
+COPY frontend/package*.json ./frontend/
+
+# Install ALL dependencies (including devDependencies for build tools)
+# Root dependencies include backend and shared tools
+RUN npm ci && \
+    npm rebuild sqlite3
+
+# Install frontend dependencies (vite, workbox-build, autoprefixer)
+RUN cd frontend && npm ci
+
+# Copy all application code
+COPY . .
+
+# Build the frontend (creates frontend/dist directory)
+RUN npm run build
+
+# Verify frontend build succeeded
+RUN test -d frontend/dist || (echo "ERROR: Frontend build failed - frontend/dist not found" && exit 1)
+
+# Multi-stage build: Stage 2 - Production image with only runtime dependencies
+FROM node:20-alpine AS production
 
 # Set working directory
 WORKDIR /app
@@ -7,19 +38,23 @@ WORKDIR /app
 # Ensure runtime defaults align with production deployment expectations
 ENV NODE_ENV=production
 
+# Install runtime dependencies and curl for healthcheck
+RUN apk add --no-cache make gcc g++ python3 curl
+
 # Copy package files
 COPY package*.json ./
 
-# Install build dependencies
-RUN apk add --no-cache make gcc g++ python3 curl
-
-# Install dependencies and rebuild native modules
+# Install only production dependencies
 RUN npm ci --omit=dev && \
     npm rebuild sqlite3 && \
     npm cache clean --force
 
-# Copy application code
-COPY . .
+# Copy backend code from builder
+COPY --from=builder /app/backend ./backend
+COPY --from=builder /app/data ./data
+
+# Copy built frontend from builder (all built assets are in frontend/dist)
+COPY --from=builder /app/frontend/dist ./frontend/dist
 
 # Create non-root user
 RUN addgroup -g 1001 -S sommuser && \
