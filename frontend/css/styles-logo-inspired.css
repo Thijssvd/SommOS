@@ -1,0 +1,764 @@
+/* ============================================================================
+   SommOS - Logo-Inspired Design Enhancements
+   Circular Elements, Burgundy Gradients, and Sophisticated Patterns
+   ============================================================================ */
+
+/* Additional Font Imports for Enhanced Typography */
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Cinzel:wght@400;600;700&display=swap');
+
+:root {
+    /* Enhanced Color Palette inspired by Logo */
+    --wine-deep: #4A0000;
+    --wine-dark: #6B0000;
+    --wine-rich: #8B0000;
+    --wine-medium: #A00000;
+    --wine-bright: #B51818;
+    --wine-accent: #CC3333;
+    
+    /* Gradient Definitions */
+    --gradient-burgundy: linear-gradient(135deg, #6B0000 0%, #8B0000 50%, #A00000 100%);
+    --gradient-burgundy-radial: radial-gradient(circle at 50% 50%, #8B0000 0%, #6B0000 70%, #4A0000 100%);
+    --gradient-wine-glow: radial-gradient(circle at center, rgba(139, 0, 0, 0.4) 0%, transparent 70%);
+    --gradient-subtle-wine: linear-gradient(180deg, rgba(139, 0, 0, 0.05) 0%, transparent 100%);
+    
+    /* Circular Design Variables */
+    --circle-sm: 60px;
+    --circle-md: 100px;
+    --circle-lg: 150px;
+    --circle-xl: 200px;
+    
+    /* Glow Effects */
+    --glow-burgundy: 0 0 20px rgba(139, 0, 0, 0.5), 0 0 40px rgba(139, 0, 0, 0.3);
+    --glow-burgundy-strong: 0 0 30px rgba(139, 0, 0, 0.7), 0 0 60px rgba(139, 0, 0, 0.5);
+    --glow-burgundy-subtle: 0 0 10px rgba(139, 0, 0, 0.3);
+    
+    /* Enhanced Shadows */
+    --shadow-wine: 0 4px 15px rgba(139, 0, 0, 0.25);
+    --shadow-wine-lg: 0 8px 30px rgba(139, 0, 0, 0.35);
+    --shadow-wine-xl: 0 12px 45px rgba(139, 0, 0, 0.45);
+    
+    /* Curved Border Radii */
+    --curve-soft: 20px;
+    --curve-medium: 30px;
+    --curve-strong: 40px;
+    --curve-elegant: 50px;
+}
+
+/* ============================================================================
+   SVG Pattern Backgrounds
+   ============================================================================ */
+
+/* Wine Glass Pattern Background */
+.wine-glass-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%238B0000' fill-opacity='0.03'%3E%3Cpath d='M30 5 L35 25 L25 25 Z M28 25 L28 45 L32 45 L32 25 M25 45 L35 45 L33 50 L27 50 Z'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 60px 60px;
+}
+
+/* Circular Accent Pattern */
+.circular-accent-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='40' cy='40' r='2' fill='%238B0000' fill-opacity='0.05'/%3E%3Ccircle cx='40' cy='40' r='10' fill='none' stroke='%238B0000' stroke-width='0.5' stroke-opacity='0.05'/%3E%3C/svg%3E");
+    background-size: 80px 80px;
+}
+
+/* ============================================================================
+   Enhanced Typography with Elegant Fonts
+   ============================================================================ */
+
+.heading-elegant,
+.brand-text-elegant {
+    font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--white);
+}
+
+.text-wine-elegant {
+    font-family: 'Crimson Text', Georgia, serif;
+    color: var(--wine-bright);
+    font-style: italic;
+}
+
+/* ============================================================================
+   Circular Frame Elements
+   ============================================================================ */
+
+.circular-frame {
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+}
+
+.circular-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    padding: 3px;
+    background: var(--gradient-burgundy);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+}
+
+.circular-frame-sm {
+    width: var(--circle-sm);
+    height: var(--circle-sm);
+}
+
+.circular-frame-md {
+    width: var(--circle-md);
+    height: var(--circle-md);
+}
+
+.circular-frame-lg {
+    width: var(--circle-lg);
+    height: var(--circle-lg);
+}
+
+.circular-frame-xl {
+    width: var(--circle-xl);
+    height: var(--circle-xl);
+}
+
+/* ============================================================================
+   Curved Border Utilities
+   ============================================================================ */
+
+.curved-border-soft {
+    border-radius: var(--curve-soft);
+}
+
+.curved-border-medium {
+    border-radius: var(--curve-medium);
+}
+
+.curved-border-strong {
+    border-radius: var(--curve-strong);
+}
+
+.curved-border-elegant {
+    border-radius: var(--curve-elegant);
+}
+
+.curved-top {
+    border-radius: var(--curve-medium) var(--curve-medium) 0 0;
+}
+
+.curved-bottom {
+    border-radius: 0 0 var(--curve-medium) var(--curve-medium);
+}
+
+/* ============================================================================
+   Gradient Overlays
+   ============================================================================ */
+
+.gradient-burgundy-overlay {
+    position: relative;
+}
+
+.gradient-burgundy-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-burgundy);
+    opacity: 0.1;
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+.gradient-burgundy-overlay-strong {
+    position: relative;
+}
+
+.gradient-burgundy-overlay-strong::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-burgundy);
+    opacity: 0.2;
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+/* Radial Gradient Overlay */
+.gradient-radial-wine {
+    position: relative;
+}
+
+.gradient-radial-wine::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-burgundy-radial);
+    opacity: 0.05;
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+/* ============================================================================
+   Enhanced Stat Cards with Circular Design
+   ============================================================================ */
+
+.stat-card-luxury.logo-inspired {
+    background: var(--surface);
+    border: 2px solid var(--border-medium);
+    border-radius: var(--curve-elegant);
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-wine);
+}
+
+.stat-card-luxury.logo-inspired::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 150%;
+    height: 150%;
+    background: var(--gradient-wine-glow);
+    opacity: 0.3;
+    transition: opacity var(--transition-medium);
+}
+
+.stat-card-luxury.logo-inspired:hover::before {
+    opacity: 0.5;
+}
+
+.stat-card-luxury.logo-inspired:hover {
+    border-color: var(--wine-rich);
+    box-shadow: var(--shadow-wine-lg), var(--glow-burgundy-subtle);
+    transform: translateY(-6px) scale(1.02);
+}
+
+.stat-icon-luxury.circular {
+    width: 80px;
+    height: 80px;
+    background: var(--gradient-burgundy);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: var(--white);
+    box-shadow: var(--glow-burgundy-subtle);
+    position: relative;
+}
+
+.stat-icon-luxury.circular::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px solid var(--wine-bright);
+    opacity: 0.3;
+}
+
+/* ============================================================================
+   Enhanced Buttons with Burgundy Glow
+   ============================================================================ */
+
+.btn.primary.logo-inspired {
+    background: var(--gradient-burgundy);
+    border: none;
+    border-radius: var(--curve-soft);
+    box-shadow: var(--shadow-wine);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn.primary.logo-inspired::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.btn.primary.logo-inspired:hover::before {
+    transform: translateX(100%);
+}
+
+.btn.primary.logo-inspired:hover {
+    box-shadow: var(--shadow-wine-lg), var(--glow-burgundy);
+    transform: translateY(-2px) scale(1.02);
+}
+
+.btn.primary.logo-inspired:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Secondary Button Enhancement */
+.btn.secondary.logo-inspired {
+    border-radius: var(--curve-soft);
+    border: 2px solid var(--wine-rich);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn.secondary.logo-inspired::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-burgundy);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.btn.secondary.logo-inspired:hover::after {
+    opacity: 1;
+}
+
+.btn.secondary.logo-inspired:hover {
+    box-shadow: var(--glow-burgundy-subtle);
+}
+
+/* ============================================================================
+   Circular Badges and Wine Type Indicators
+   ============================================================================ */
+
+.circular-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+}
+
+.circular-badge.red {
+    background: var(--gradient-burgundy);
+    color: var(--white);
+    box-shadow: var(--glow-burgundy-subtle);
+}
+
+.circular-badge.white {
+    background: linear-gradient(135deg, #F5F5F5 0%, #E5E5E5 100%);
+    color: var(--wine-dark);
+    border: 2px solid var(--gray-lighter);
+}
+
+.circular-badge.sparkling {
+    background: linear-gradient(135deg, #FFFFFF 0%, #E5E5E5 50%, #CACACA 100%);
+    color: var(--wine-dark);
+    animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+    0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8); }
+}
+
+/* ============================================================================
+   Wine Glass Background Decorations
+   ============================================================================ */
+
+.wine-glass-bg {
+    position: relative;
+}
+
+.wine-glass-bg::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 10 L40 50 Q40 70 40 75 L40 95 M35 95 L45 95 M40 95 L40 115 M30 115 L50 115' stroke='%238B0000' stroke-width='2' fill='none'/%3E%3Cellipse cx='40' cy='35' rx='15' ry='25' fill='%238B0000' fill-opacity='0.3'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    pointer-events: none;
+}
+
+/* ============================================================================
+   Curved Progress Bars
+   ============================================================================ */
+
+.progress-curved {
+    height: 12px;
+    background: var(--black-light);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.progress-curved-fill {
+    height: 100%;
+    background: var(--gradient-burgundy);
+    border-radius: var(--radius-full);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-curved-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* ============================================================================
+   Enhanced Modal with Circular Framing
+   ============================================================================ */
+
+.modal.logo-inspired {
+    border-radius: var(--curve-elegant);
+    border: 2px solid var(--wine-rich);
+    box-shadow: var(--shadow-wine-xl), var(--glow-burgundy);
+    position: relative;
+}
+
+.modal.logo-inspired::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 300px;
+    height: 300px;
+    background: var(--gradient-burgundy-radial);
+    opacity: 0.1;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.modal-header.logo-inspired::before {
+    height: 4px;
+    background: var(--gradient-burgundy);
+}
+
+/* ============================================================================
+   Enhanced Form Elements
+   ============================================================================ */
+
+.form-group input.logo-inspired,
+.form-group textarea.logo-inspired,
+.form-group select.logo-inspired {
+    border-radius: var(--curve-soft);
+    border: 2px solid var(--border-medium);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-group input.logo-inspired:focus,
+.form-group textarea.logo-inspired:focus,
+.form-group select.logo-inspired:focus {
+    border-color: var(--wine-rich);
+    box-shadow: 0 0 0 4px rgba(139, 0, 0, 0.1), var(--glow-burgundy-subtle);
+}
+
+/* ============================================================================
+   Navigation Enhancement
+   ============================================================================ */
+
+.nav-item.logo-inspired {
+    border-radius: var(--curve-soft);
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-item.logo-inspired::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--gradient-burgundy);
+    transform: scaleY(0);
+    transition: transform var(--transition-medium);
+}
+
+.nav-item.logo-inspired.active::before,
+.nav-item.logo-inspired:hover::before {
+    transform: scaleY(1);
+}
+
+.nav-item.logo-inspired.active {
+    border-radius: var(--curve-soft);
+    background: var(--gradient-burgundy);
+    box-shadow: var(--glow-burgundy-subtle);
+}
+
+/* ============================================================================
+   Wine Card Enhancements
+   ============================================================================ */
+
+.wine-card.logo-inspired {
+    border-radius: var(--curve-elegant);
+    border: 2px solid var(--border-medium);
+    position: relative;
+    overflow: hidden;
+}
+
+.wine-card.logo-inspired::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 150px;
+    height: 150px;
+    background: var(--gradient-wine-glow);
+    opacity: 0;
+    transition: opacity var(--transition-medium);
+    pointer-events: none;
+}
+
+.wine-card.logo-inspired:hover::before {
+    opacity: 1;
+}
+
+.wine-card.logo-inspired:hover {
+    border-color: var(--wine-rich);
+    box-shadow: var(--shadow-wine-lg), var(--glow-burgundy-subtle);
+}
+
+/* ============================================================================
+   Action Cards with Circular Icons
+   ============================================================================ */
+
+.action-card-luxury.logo-inspired {
+    border-radius: var(--curve-elegant);
+    border: 2px solid var(--border-medium);
+    position: relative;
+    overflow: hidden;
+}
+
+.action-card-luxury.logo-inspired .action-icon-luxury {
+    width: 80px;
+    height: 80px;
+    background: var(--gradient-burgundy);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--glow-burgundy-subtle);
+    position: relative;
+}
+
+.action-card-luxury.logo-inspired .action-icon-luxury::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px dashed var(--wine-bright);
+    opacity: 0.3;
+    animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.action-card-luxury.logo-inspired:hover {
+    border-color: var(--wine-rich);
+    box-shadow: var(--shadow-wine-lg), var(--glow-burgundy);
+    transform: translateY(-6px) scale(1.02);
+}
+
+/* ============================================================================
+   Pairing Card Enhancements
+   ============================================================================ */
+
+.pairing-card.logo-inspired {
+    border-radius: var(--curve-elegant);
+    border-left: 4px solid var(--wine-rich);
+    position: relative;
+}
+
+.pairing-card.logo-inspired::before {
+    content: '';
+    position: absolute;
+    top: var(--space-md);
+    right: var(--space-md);
+    width: 60px;
+    height: 60px;
+    background: var(--gradient-wine-glow);
+    border-radius: 50%;
+    opacity: 0.3;
+}
+
+.confidence-score.logo-inspired {
+    background: var(--gradient-burgundy);
+    border-radius: var(--radius-full);
+    box-shadow: var(--glow-burgundy-subtle);
+    position: relative;
+}
+
+.confidence-score.logo-inspired::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    padding: 2px;
+    background: var(--gradient-burgundy);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.5;
+}
+
+/* ============================================================================
+   Loading Screen Enhancement
+   ============================================================================ */
+
+.loading-screen.logo-inspired {
+    background: radial-gradient(circle at 50% 50%, var(--black-dark) 0%, var(--black-pure) 100%);
+}
+
+.wine-glass-icon.logo-inspired {
+    animation: float 3s ease-in-out infinite;
+    filter: drop-shadow(var(--glow-burgundy-subtle));
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+.loading-progress.logo-inspired {
+    background: var(--gradient-burgundy);
+    box-shadow: var(--glow-burgundy-subtle);
+}
+
+/* ============================================================================
+   Dashboard Section Enhancements
+   ============================================================================ */
+
+.dashboard-section-luxury.logo-inspired,
+.dashboard-section.logo-inspired {
+    border-radius: var(--curve-elegant);
+    border: 2px solid var(--border-medium);
+    position: relative;
+}
+
+.dashboard-section-luxury.logo-inspired::before,
+.dashboard-section.logo-inspired::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: var(--gradient-burgundy);
+    border-radius: var(--curve-elegant) var(--curve-elegant) 0 0;
+}
+
+/* ============================================================================
+   Toast Notifications Enhancement
+   ============================================================================ */
+
+.toast.logo-inspired {
+    border-radius: var(--curve-soft);
+    box-shadow: var(--shadow-wine-lg);
+}
+
+.toast.success.logo-inspired {
+    border-left: 4px solid var(--success);
+    box-shadow: var(--shadow-lg), 0 0 15px rgba(46, 125, 50, 0.3);
+}
+
+.toast.error.logo-inspired {
+    border-left: 4px solid var(--error);
+    box-shadow: var(--shadow-lg), 0 0 15px rgba(211, 47, 47, 0.3);
+}
+
+/* ============================================================================
+   Inventory Grid Enhancement
+   ============================================================================ */
+
+.inventory-grid.logo-inspired,
+.catalog-grid.logo-inspired {
+    gap: var(--space-2xl);
+}
+
+/* ============================================================================
+   Glow Animation Effects
+   ============================================================================ */
+
+.glow-pulse {
+    animation: glowPulse 2s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+    0%, 100% {
+        box-shadow: var(--glow-burgundy-subtle);
+    }
+    50% {
+        box-shadow: var(--glow-burgundy);
+    }
+}
+
+/* ============================================================================
+   Texture Overlays
+   ============================================================================ */
+
+.texture-wine {
+    position: relative;
+}
+
+.texture-wine::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: 
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 10px,
+            rgba(139, 0, 0, 0.02) 10px,
+            rgba(139, 0, 0, 0.02) 20px
+        );
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+/* ============================================================================
+   Responsive Adjustments
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .circular-frame-xl {
+        width: var(--circle-lg);
+        height: var(--circle-lg);
+    }
+    
+    .circular-frame-lg {
+        width: var(--circle-md);
+        height: var(--circle-md);
+    }
+    
+    .stat-icon-luxury.circular {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .curved-border-elegant {
+        border-radius: var(--curve-soft);
+    }
+    
+    .stat-icon-luxury.circular {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+}

@@ -66,5 +66,4 @@ function registerServiceWorker(options = {}) {
   });
 }
 
-export { setupServiceWorkerLifecycle, registerServiceWorker };
-export default { setupServiceWorkerLifecycle, registerServiceWorker };
+module.exports = { setupServiceWorkerLifecycle, registerServiceWorker };

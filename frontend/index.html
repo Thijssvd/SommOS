@@ -28,6 +28,7 @@
     <!-- Direct CSS import for testing -->
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/ui-enhancements.css">
+    <link rel="stylesheet" href="/css/styles-logo-inspired.css">
     <script>
         window.__SOMMOS_API_BASE__ = window.__SOMMOS_API_BASE__ || (function () {
             const { protocol, hostname, port } = window.location;
@@ -46,13 +47,13 @@
     <a href="#main-content" class="skip-link">Skip to main content</a>
     
     <!-- Loading Screen -->
-    <div id="loading-screen" class="loading-screen">
+    <div id="loading-screen" class="loading-screen logo-inspired">
         <div class="loading-content">
-            <div class="wine-glass-icon">🍷</div>
+            <div class="wine-glass-icon logo-inspired">🍷</div>
             <h1>SommOS</h1>
             <p>Initializing yacht wine management...</p>
             <div class="loading-bar">
-                <div class="loading-progress"></div>
+                <div class="loading-progress logo-inspired"></div>
             </div>
         </div>
     </div>
@@ -160,27 +161,27 @@
             </div>
             
             <div class="nav-menu" role="menubar">
-                <button class="nav-item active" data-view="dashboard" role="menuitem" aria-label="Navigate to Dashboard - View wine inventory overview and key metrics" data-testid="nav-dashboard">
+                <button class="nav-item logo-inspired active" data-view="dashboard" role="menuitem" aria-label="Navigate to Dashboard - View wine inventory overview and key metrics" data-testid="nav-dashboard">
                     <span class="nav-icon" aria-hidden="true">📊</span>
                     <span class="nav-text">Dashboard</span>
                 </button>
-                <button class="nav-item" data-view="pairing" role="menuitem" aria-label="Navigate to Wine Pairing - Get AI-powered wine recommendations for dishes" data-testid="nav-pairing">
+                <button class="nav-item logo-inspired" data-view="pairing" role="menuitem" aria-label="Navigate to Wine Pairing - Get AI-powered wine recommendations for dishes" data-testid="nav-pairing">
                     <span class="nav-icon" aria-hidden="true">🍽️</span>
                     <span class="nav-text">Pairing</span>
                 </button>
-                <button class="nav-item" data-view="inventory" role="menuitem" aria-label="Navigate to Inventory Management" data-testid="nav-inventory">
+                <button class="nav-item logo-inspired" data-view="inventory" role="menuitem" aria-label="Navigate to Inventory Management" data-testid="nav-inventory">
                     <span class="nav-icon" aria-hidden="true">📦</span>
                     <span class="nav-text">Inventory</span>
                 </button>
-                <button class="nav-item" data-view="procurement" role="menuitem" aria-label="Navigate to Procurement" data-role-allow="admin,crew" data-testid="nav-procurement">
+                <button class="nav-item logo-inspired" data-view="procurement" role="menuitem" aria-label="Navigate to Procurement" data-role-allow="admin,crew" data-testid="nav-procurement">
                     <span class="nav-icon" aria-hidden="true">🛒</span>
                     <span class="nav-text">Procurement</span>
                 </button>
-                <button class="nav-item" data-view="catalog" role="menuitem" aria-label="Navigate to Wine Catalog" data-testid="nav-catalog">
+                <button class="nav-item logo-inspired" data-view="catalog" role="menuitem" aria-label="Navigate to Wine Catalog" data-testid="nav-catalog">
                     <span class="nav-icon" aria-hidden="true">📚</span>
                     <span class="nav-text">Catalog</span>
                 </button>
-                <button class="nav-item" data-view="glossary" role="menuitem" aria-label="Navigate to Glossary - Learn wine terminology and system features" data-testid="nav-glossary">
+                <button class="nav-item logo-inspired" data-view="glossary" role="menuitem" aria-label="Navigate to Glossary - Learn wine terminology and system features" data-testid="nav-glossary">
                     <span class="nav-icon" aria-hidden="true">📖</span>
                     <span class="nav-text">Glossary</span>
                 </button>
@@ -221,32 +222,32 @@
                 </div>
                 
                 <div class="dashboard-luxury">
-                    <div class="stat-card-luxury">
-                        <div class="stat-icon-luxury">🍷</div>
+                    <div class="stat-card-luxury logo-inspired">
+                        <div class="stat-icon-luxury circular">🍷</div>
                         <div class="stat-content-luxury">
                             <div class="stat-number-luxury" id="total-bottles">-</div>
                             <div class="stat-label-luxury">Total Bottles</div>
                         </div>
                     </div>
 
-                    <div class="stat-card-luxury">
-                        <div class="stat-icon-luxury">🏷️</div>
+                    <div class="stat-card-luxury logo-inspired">
+                        <div class="stat-icon-luxury circular">🏷️</div>
                         <div class="stat-content-luxury">
                             <div class="stat-number-luxury" id="total-wines">-</div>
                             <div class="stat-label-luxury">Wine Labels</div>
                         </div>
                     </div>
 
-                    <div class="stat-card-luxury">
-                        <div class="stat-icon-luxury">📅</div>
+                    <div class="stat-card-luxury logo-inspired">
+                        <div class="stat-icon-luxury circular">📅</div>
                         <div class="stat-content-luxury">
                             <div class="stat-number-luxury" id="total-vintages">-</div>
                             <div class="stat-label-luxury">Vintages</div>
                         </div>
                     </div>
 
-                    <div class="stat-card-luxury">
-                        <div class="stat-icon-luxury">🏪</div>
+                    <div class="stat-card-luxury logo-inspired">
+                        <div class="stat-icon-luxury circular">🏪</div>
                         <div class="stat-content-luxury">
                             <div class="stat-number-luxury" id="active-suppliers">-</div>
                             <div class="stat-label-luxury">Suppliers</div>
@@ -255,22 +256,22 @@
                 </div>
                 
                 <div class="dashboard-sections">
-                <section class="dashboard-section-luxury">
+                <section class="dashboard-section-luxury logo-inspired">
                     <div class="dashboard-section-header-luxury">
                         <h2 class="dashboard-section-title-luxury">Quick Actions</h2>
                     </div>
                     <div class="quick-actions">
-                        <div class="action-card-luxury" data-action="quick-pairing" data-testid="dashboard-action-pairing">
+                        <div class="action-card-luxury logo-inspired" data-action="quick-pairing" data-testid="dashboard-action-pairing">
                             <div class="action-icon-luxury">⚡</div>
                             <h3 class="action-title-luxury">Quick Pairing</h3>
                             <p class="action-description-luxury">Get instant wine recommendations for your dishes</p>
                         </div>
-                        <div class="action-card-luxury" data-action="record-consumption" data-role-allow="admin,crew" data-testid="dashboard-action-record">
+                        <div class="action-card-luxury logo-inspired" data-action="record-consumption" data-role-allow="admin,crew" data-testid="dashboard-action-record">
                             <div class="action-icon-luxury">📝</div>
                             <h3 class="action-title-luxury">Record Service</h3>
                             <p class="action-description-luxury">Log wine consumption and service details</p>
                         </div>
-                        <div class="action-card-luxury" data-action="check-stock">
+                        <div class="action-card-luxury logo-inspired" data-action="check-stock">
                             <div class="action-icon-luxury">📊</div>
                             <h3 class="action-title-luxury">Check Stock</h3>
                             <p class="action-description-luxury">Monitor inventory levels and availability</p>
@@ -278,7 +279,7 @@
                     </div>
                 </section>
 
-                <section class="dashboard-section-luxury score-insights">
+                <section class="dashboard-section-luxury logo-inspired score-insights">
                     <div class="dashboard-section-header-luxury">
                         <h2 class="dashboard-section-title-luxury">Understanding SommOS Scores</h2>
                     </div>
@@ -330,7 +331,7 @@
                     </div>
                 </section>
 
-                <section class="dashboard-section">
+                <section class="dashboard-section logo-inspired">
                     <h2>Wine Collection Analytics</h2>
                     <div class="charts-container">
                         <div class="chart-wrapper">
@@ -344,7 +345,7 @@
                     </div>
                 </section>
                 
-                <section class="dashboard-section">
+                <section class="dashboard-section logo-inspired">
                     <h2>Recent Activity</h2>
                     <div id="recent-activity" class="activity-list">
                         <div class="activity-placeholder">
@@ -476,7 +477,7 @@
                             <textarea id="preferences-input" data-testid="pairing-input-preferences" placeholder="Any specific preferences, allergies, or dislikes?" rows="2"></textarea>
                         </div>
                         
-                        <button id="get-pairings-btn" data-testid="pairing-button-submit" class="btn primary large" aria-label="Get wine pairing recommendations based on dish description and guest preferences">
+                        <button id="get-pairings-btn" data-testid="pairing-button-submit" class="btn primary large logo-inspired" aria-label="Get wine pairing recommendations based on dish description and guest preferences">
                             <span class="btn-icon" aria-hidden="true">🔍</span>
                             Get Wine Recommendations
                         </button>
@@ -755,8 +756,8 @@
 
     <!-- Modals and Overlays -->
     <div id="modal-overlay" class="modal-overlay hidden" data-testid="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div class="modal" data-testid="modal-container">
-            <div class="modal-header">
+        <div class="modal logo-inspired" data-testid="modal-container">
+            <div class="modal-header logo-inspired">
                 <h3 id="modal-title" data-testid="modal-title">Modal Title</h3>
                 <button class="modal-close" data-testid="modal-button-close" aria-label="Close modal dialog">&times;</button>
             </div>
