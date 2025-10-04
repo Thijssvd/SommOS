@@ -84,6 +84,11 @@ module.exports = {
       displayName: 'Security Tests',
       testMatch: ['**/tests/security/**/*.test.js'],
       testEnvironment: 'node'
+    },
+    {
+      displayName: 'Config Tests',
+      testMatch: ['**/tests/config/**/*.test.js'],
+      testEnvironment: 'node'
     }
   ],
   
