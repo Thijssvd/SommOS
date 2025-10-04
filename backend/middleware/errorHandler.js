@@ -146,6 +146,8 @@ function logError(error, req, additionalContext = {}) {
     // In production, use structured logging
     if (env.nodeEnv === 'production') {
         console.error(JSON.stringify(errorLog));
+        // Note: For production deployments, consider integrating with external logging services
+        // such as Sentry, LogRocket, or Datadog for advanced error tracking and monitoring.
     } else if (env.nodeEnv !== 'test') {
         // In development, use more readable format (skip in test environment)
         console.error('\n🚨 ERROR OCCURRED:');
@@ -157,9 +159,6 @@ function logError(error, req, additionalContext = {}) {
         console.error(`   User: ${req.user?.id || 'Anonymous'}`);
         console.error(`   Stack: ${error.stack}\n`);
     }
-
-    // TODO: In production, you might want to send to external logging service
-    // Example: sendToLoggingService(errorLog);
 }
 
 /**

@@ -4066,9 +4066,9 @@ export class SommOS {
                 <div class="opportunity-details">
                     <p><strong>Producer:</strong> ${opportunity.producer || 'N/A'}</p>
                     <p><strong>Region:</strong> ${opportunity.region || 'N/A'}</p>
-                    <p><strong>Estimated Value:</strong> $${opportunity.estimated_value ?? 'TBD'}</p>
+                    <p><strong>Estimated Value:</strong> $${opportunity.estimated_value ?? 'Contact Crew'}</p>
                     <p><strong>Recommended Quantity:</strong> ${opportunity.recommended_quantity || 12} bottles</p>
-                    <p><strong>Projected Investment:</strong> $${opportunity.estimated_investment ?? 'TBD'}</p>
+                    <p><strong>Projected Investment:</strong> $${opportunity.estimated_investment ?? 'Contact Crew'}</p>
                     <p><strong>Urgency:</strong> ${opportunity.urgency || 'Moderate'}</p>
                 </div>
                 <div class="opportunity-reasoning">

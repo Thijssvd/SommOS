@@ -21,7 +21,6 @@ SommOS/
 │   ├── css/            # Stylesheets
 │   ├── sw.js           # Service worker source
 │   └── vite.config.js  # Frontend build config
-├── frontend-react/     # ⚠️ ARCHIVED - Incomplete React POC (see FRONTEND_COMPARISON.md)
 ├── backend/            # Node.js API server (Express)
 │   ├── api/            # REST API endpoints (auth, inventory, pairing, procurement, vintage)
 │   ├── core/           # Business logic (engines, services)
@@ -39,8 +38,6 @@ SommOS/
 - ✅ PWA with offline support
 - ✅ Real-time sync via WebSockets
 - ✅ Role-based access control
-
-**React POC** (`frontend-react/`) is archived and incomplete. See [FRONTEND_COMPARISON.md](FRONTEND_COMPARISON.md) for details.
 
 ## Key Features
 
@@ -64,8 +61,8 @@ SommOS/
 
 ### Option 1: Automated Setup (Recommended)
 ```bash
-git clone https://github.com/yourusername/sommos.git
-cd sommos
+git clone https://github.com/Thijssvd/SommOS.git
+cd SommOS
 npm install
 ./setup.sh          # Interactive API key configuration
 ./deployment/deploy.sh  # One-click deployment
@@ -76,8 +73,8 @@ npm install
 
 1. **Clone and Install**
    ```bash
-   git clone https://github.com/yourusername/sommos.git
-   cd sommos
+   git clone https://github.com/Thijssvd/SommOS.git
+   cd SommOS
    npm install
    ```
 
