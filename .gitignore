@@ -94,3 +94,38 @@ ehthumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Test artifacts and reports
+playwright-report/
+test-results/
+test-results.json/
+.last-run.json
+
+# Temporary reports and summaries (Warp-generated)
+*_REPORT.md
+*_SUMMARY.md
+*_COMPLETE.md
+*_FIXES*.md
+*_PROGRESS*.md
+*_STATUS*.md
+*_EXECUTION*.md
+*_AUDIT*.md
+*_IMPLEMENTATION*.md
+*_SESSION*.md
+
+# Preserve essential documentation (override patterns above)
+!README.md
+!WARP.md
+!SECURITY.md
+!DEPLOYMENT.md
+!DATABASE_SETUP.md
+!API_KEYS.md
+!AGENTS.md
+!PROJECT_WORKFLOW.md
+!DEVELOPMENT_NOTEBOOK.md
+!docs/**/*.md
+!tests/README.md
+!backend/test/ml/README.md
+!frontend/README.md
+!frontend/IMAGE_OPTIMIZATION_README.md
+!frontend/RETRY_LOGIC_README.md

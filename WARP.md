@@ -449,6 +449,47 @@ Located in `.cursor/rules/`:
 - `security-auth.mdc`: Security and authentication patterns
 - `testing-quality.mdc`: Testing standards
 
+## Documentation and Report Generation
+
+### Policy
+**IMPORTANT**: Do NOT automatically create report, summary, or session documentation files when working on this codebase.
+
+### User Preference
+- The user prefers **brief overviews in chat** rather than lengthy markdown documents
+- Session reports and progress summaries should be communicated verbally, not saved as files
+- Only permanent, essential project documentation should be committed to the repository
+
+### Approved Documentation Files
+The following documentation files are maintained in the repository:
+
+**Root Directory**:
+- `README.md` - Project overview and quick start
+- `WARP.md` - This file, guidance for AI assistants
+- `SECURITY.md` - Security considerations
+- `DEPLOYMENT.md` - Production deployment guide
+- `DATABASE_SETUP.md` - Database configuration
+- `API_KEYS.md` - API key setup instructions
+- `AGENTS.md` - Agent-specific instructions
+- `PROJECT_WORKFLOW.md` - Development timeline and workflow
+- `DEVELOPMENT_NOTEBOOK.md` - Architecture decisions and technical notes
+
+**Subdirectories**:
+- `docs/**/*.md` - Feature-specific documentation
+- `tests/README.md` - Testing infrastructure overview
+- `frontend/README.md` - Frontend-specific documentation
+- `backend/test/ml/README.md` - ML testing documentation
+
+### Excluded Patterns
+The following patterns are excluded from git tracking (see `.gitignore`):
+- Test artifacts: `playwright-report/`, `test-results/`, `test-results.json/`
+- Temporary reports: `*_REPORT.md`, `*_SUMMARY.md`, `*_COMPLETE.md`, `*_FIXES*.md`, `*_PROGRESS*.md`, `*_STATUS*.md`, `*_EXECUTION*.md`, `*_AUDIT*.md`, `*_IMPLEMENTATION*.md`, `*_SESSION*.md`
+
+### Guidelines
+- When completing tasks, provide concise summaries in the chat interface
+- Avoid creating files with names ending in `_REPORT`, `_SUMMARY`, `_COMPLETE`, `_FIXES`, `_PROGRESS`, `_STATUS`, `_EXECUTION`, `_AUDIT`, `_IMPLEMENTATION`, or `_SESSION`
+- If documentation is truly needed, discuss with the user first before creating new files
+- Test results and artifacts are ephemeral - they're regenerated on every test run
+
 ## Development Tips
 
 ### Concurrent Frontend Options
