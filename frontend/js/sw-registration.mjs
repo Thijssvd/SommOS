@@ -1,6 +1,4 @@
-import core from './sw-registration-core.cjs';
-
-const { setupServiceWorkerLifecycle: coreLifecycle, registerServiceWorker: coreRegister } = core;
+import { setupServiceWorkerLifecycle as coreLifecycle, registerServiceWorker as coreRegister } from './sw-registration-core.js';
 
 export function setupServiceWorkerLifecycle(registration) {
   return coreLifecycle(registration);

@@ -1,8 +1,9 @@
+# Docker build context exclusions
+# This file controls which files are sent to the Docker daemon during build
+
+# IDE and editor files
 **/.classpath
 **/.dockerignore
-**/.env
-**/.git
-**/.gitignore
 **/.project
 **/.settings
 **/.toolstarget
@@ -11,14 +12,35 @@
 **/*.*proj.user
 **/*.dbmdl
 **/*.jfm
+
+# Version control
+**/.git
+**/.gitignore
+
+# Environment files (loaded via ENV or volume mounts)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build and deployment files
 **/charts
 **/docker-compose*
 **/compose*
 **/Dockerfile*
+**/secrets.dev.yaml
+**/values.dev.yaml
+
+# Dependencies (installed during build)
 **/node_modules
 **/npm-debug.log
 **/obj
-**/secrets.dev.yaml
-**/values.dev.yaml
+
+# Documentation (not needed in runtime container)
 LICENSE
 README.md
+
+# IMPORTANT: These files MUST be included in the build:
+# - frontend/js/config.js (API configuration)
+# - frontend/icons/*.svg (PWA icons)
+# - frontend/public/* (static assets)
+# If you need to exclude specific files, use explicit patterns above

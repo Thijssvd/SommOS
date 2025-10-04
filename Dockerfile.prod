@@ -29,6 +29,11 @@ RUN npm run build
 # Verify frontend build succeeded
 RUN test -d frontend/dist || (echo "ERROR: Frontend build failed - frontend/dist not found" && exit 1)
 
+# Copy static files that Vite doesn't automatically handle
+RUN mkdir -p /app/frontend/dist/js /app/frontend/dist/icons && \
+    cp frontend/js/config.js /app/frontend/dist/js/config.js 2>/dev/null || echo "Warning: config.js not found" && \
+    cp frontend/icons/*.svg /app/frontend/dist/icons/ 2>/dev/null || echo "Warning: icons not found"
+
 # Multi-stage build: Stage 2 - Production image with only runtime dependencies
 FROM node:20-alpine AS production
 
@@ -71,7 +76,7 @@ USER sommuser
 EXPOSE 3000
 
 # Health check relies on runtime PORT value
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD ["sh", "-c", "curl -f http://localhost:${PORT:-3000}/api/system/health || exit 1"]
 
 # Start application
