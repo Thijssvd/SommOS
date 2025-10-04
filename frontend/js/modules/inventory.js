@@ -10,11 +10,27 @@ export class InventoryModule {
         this.currentInventory = [];
         this.filters = {};
         this.pagination = { page: 1, limit: 50, total: 0 };
+        this.isLoading = false;
+        this.hasMore = false;
+        
+        // Pagination UI elements
+        this.paginationContainer = null;
+        this.loadMoreBtn = null;
+        this.itemsCounter = null;
+        this.paginationError = null;
+        this.retryBtn = null;
     }
 
     async init() {
         this.container = document.getElementById('inventory-view');
         if (this.container) {
+            // Get pagination UI elements
+            this.paginationContainer = document.getElementById('inventory-pagination');
+            this.loadMoreBtn = document.getElementById('load-more-inventory');
+            this.itemsCounter = document.getElementById('inventory-items-counter');
+            this.paginationError = document.getElementById('pagination-error');
+            this.retryBtn = document.getElementById('pagination-retry-btn');
+            
             await this.loadInventory();
             this.setupEventListeners();
         }
@@ -22,29 +38,38 @@ export class InventoryModule {
 
     async loadInventory() {
         try {
+            this.isLoading = true;
+            this.hidePaginationError();
+            
             const result = await this.app.api.getInventory({
                 location: this.filters.location,
                 wine_type: this.filters.wine_type,
                 region: this.filters.region,
                 available_only: this.filters.available_only,
                 limit: this.pagination.limit,
-                offset: (this.pagination.page - 1) * this.pagination.limit
+                offset: 0 // Always reset to offset 0 for initial load
             });
 
             if (result.success && result.data) {
                 this.currentInventory = result.data;
                 this.pagination.total = result.meta?.total || 0;
+                this.pagination.page = 1;
+                this.hasMore = this.currentInventory.length < this.pagination.total;
+                
                 this.displayInventory();
+                this.updatePaginationUI();
             } else {
                 throw new Error('Failed to load inventory');
             }
         } catch (error) {
             console.error('Failed to load inventory:', error);
             this.displayError('Failed to load inventory');
+        } finally {
+            this.isLoading = false;
         }
     }
 
-    displayInventory() {
+    displayInventory(append = false) {
         if (!this.container) return;
 
         const grid = this.container.querySelector('.inventory-grid');
@@ -55,7 +80,13 @@ export class InventoryModule {
             this.createInventoryWineCard(item, index, isGuest)
         ).join('');
 
-        grid.innerHTML = wineCards;
+        if (append) {
+            // Append new cards to existing ones
+            grid.insertAdjacentHTML('beforeend', wineCards);
+        } else {
+            // Replace all cards (initial load or filter change)
+            grid.innerHTML = wineCards;
+        }
     }
 
     createInventoryWineCard(item, index, isGuest) {
@@ -172,10 +203,131 @@ export class InventoryModule {
                 this.loadInventory();
             });
         }
+        
+        // Pagination controls
+        if (this.loadMoreBtn) {
+            this.loadMoreBtn.addEventListener('click', () => this.loadMoreInventory());
+        }
+        
+        if (this.retryBtn) {
+            this.retryBtn.addEventListener('click', () => this.loadMoreInventory());
+        }
     }
 
     async refresh() {
         await this.loadInventory();
+    }
+    
+    async loadMoreInventory() {
+        if (this.isLoading || !this.hasMore) return;
+        
+        try {
+            this.isLoading = true;
+            this.showLoadingState();
+            this.hidePaginationError();
+            
+            const currentOffset = this.currentInventory.length;
+            
+            const result = await this.app.api.getInventory({
+                location: this.filters.location,
+                wine_type: this.filters.wine_type,
+                region: this.filters.region,
+                available_only: this.filters.available_only,
+                limit: this.pagination.limit,
+                offset: currentOffset
+            });
+            
+            if (result.success && result.data) {
+                // Append new items to existing inventory
+                const newItems = result.data;
+                this.currentInventory = [...this.currentInventory, ...newItems];
+                this.pagination.total = result.meta?.total || 0;
+                this.pagination.page++;
+                this.hasMore = this.currentInventory.length < this.pagination.total;
+                
+                // Display appended items
+                this.displayInventory(true);
+                this.updatePaginationUI();
+            } else {
+                throw new Error('Failed to load more inventory items');
+            }
+        } catch (error) {
+            console.error('Failed to load more inventory:', error);
+            this.showPaginationError('Failed to load more items. Please try again.');
+        } finally {
+            this.isLoading = false;
+            this.hideLoadingState();
+        }
+    }
+    
+    updatePaginationUI() {
+        if (!this.paginationContainer) return;
+        
+        // Show pagination container
+        this.paginationContainer.style.display = 'flex';
+        
+        // Update items counter
+        const loadedEl = document.getElementById('items-loaded');
+        const totalEl = document.getElementById('items-total');
+        if (loadedEl && totalEl) {
+            loadedEl.textContent = this.currentInventory.length;
+            totalEl.textContent = this.pagination.total;
+        }
+        
+        // Show/hide Load More button
+        if (this.loadMoreBtn) {
+            if (this.hasMore) {
+                this.loadMoreBtn.style.display = 'inline-flex';
+            } else {
+                this.loadMoreBtn.style.display = 'none';
+            }
+        }
+    }
+    
+    showLoadingState() {
+        if (!this.loadMoreBtn) return;
+        
+        const textEl = this.loadMoreBtn.querySelector('.load-more-text');
+        const spinnerEl = this.loadMoreBtn.querySelector('.spinner');
+        
+        this.loadMoreBtn.classList.add('loading');
+        this.loadMoreBtn.disabled = true;
+        
+        if (textEl) textEl.textContent = 'Loading...';
+        if (spinnerEl) spinnerEl.style.display = 'inline-block';
+    }
+    
+    hideLoadingState() {
+        if (!this.loadMoreBtn) return;
+        
+        const textEl = this.loadMoreBtn.querySelector('.load-more-text');
+        const spinnerEl = this.loadMoreBtn.querySelector('.spinner');
+        
+        this.loadMoreBtn.classList.remove('loading');
+        this.loadMoreBtn.disabled = false;
+        
+        if (textEl) textEl.textContent = 'Load More';
+        if (spinnerEl) spinnerEl.style.display = 'none';
+    }
+    
+    showPaginationError(message) {
+        if (!this.paginationError) return;
+        
+        const messageEl = document.getElementById('pagination-error-message');
+        if (messageEl) {
+            messageEl.textContent = message;
+        }
+        
+        this.paginationError.style.display = 'flex';
+        if (this.loadMoreBtn) {
+            this.loadMoreBtn.style.display = 'none';
+        }
+    }
+    
+    hidePaginationError() {
+        if (this.paginationError) {
+            this.paginationError.style.display = 'none';
+        }
     }
 
     // Helper methods

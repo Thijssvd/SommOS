@@ -2730,6 +2730,149 @@ p {
 }
 
 /* ============================================================================
+   Pagination Controls
+   ============================================================================ */
+
+.pagination-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-xl) var(--space-lg);
+    margin-top: var(--space-lg);
+}
+
+.items-counter {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-align: center;
+}
+
+.load-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-xl);
+    background: var(--burgundy-base);
+    color: var(--white);
+    border: 2px solid var(--burgundy-base);
+    border-radius: var(--radius-lg);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: 0 2px 8px rgba(139, 0, 0, 0.2);
+}
+
+.load-more-btn:hover:not(:disabled) {
+    background: var(--burgundy-light);
+    border-color: var(--burgundy-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 0, 0, 0.3);
+}
+
+.load-more-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(139, 0, 0, 0.2);
+}
+
+.load-more-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.load-more-btn.loading {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+/* Simple CSS Spinner */
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: var(--white);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.spinner.large {
+    width: 32px;
+    height: 32px;
+    border-width: 3px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.pagination-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xl);
+}
+
+.pagination-loading .spinner {
+    width: 24px;
+    height: 24px;
+    border-color: rgba(139, 0, 0, 0.3);
+    border-top-color: var(--burgundy-base);
+}
+
+.pagination-loading-text {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+}
+
+.pagination-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-xl);
+    text-align: center;
+}
+
+.pagination-error-message {
+    color: var(--error);
+    font-size: var(--text-sm);
+}
+
+.pagination-retry-btn {
+    padding: var(--space-sm) var(--space-lg);
+    background: transparent;
+    color: var(--burgundy-base);
+    border: 1px solid var(--burgundy-base);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.pagination-retry-btn:hover {
+    background: var(--burgundy-base);
+    color: var(--white);
+}
+
+@media (max-width: 768px) {
+    .pagination-controls {
+        padding: var(--space-lg) var(--space-md);
+    }
+    
+    .load-more-btn {
+        padding: var(--space-md) var(--space-lg);
+        font-size: var(--text-sm);
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ============================================================================
    Glossary Styles
    ============================================================================ */
 

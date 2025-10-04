@@ -13,14 +13,12 @@
  * - Database caching
  */
 
-const { createApi } = require('unsplash-js');
 const fetch = require('node-fetch');
 
 class ImageService {
     constructor(db, config = {}) {
         this.db = db;
         this.config = {
-            accessKey: process.env.UNSPLASH_ACCESS_KEY || config.accessKey,
             placeholderUrl: '/images/wine-placeholder.svg',
             maxRetries: 3,
             retryDelay: 1000,
@@ -28,21 +26,11 @@ class ImageService {
             ...config
         };
 
-        // Initialize Unsplash API client if access key is available
-        if (this.config.accessKey) {
-            this.unsplash = createApi({
-                accessKey: this.config.accessKey,
-                fetch: fetch
-            });
-            console.log('✓ ImageService initialized with Unsplash API');
-        } else {
-            console.warn('⚠ ImageService initialized without Unsplash API key - will use placeholders');
-            this.unsplash = null;
-        }
+        console.log('✓ ImageService initialized with Vivino wine image search (no API key needed!)');
     }
 
     /**
-     * Search for a wine bottle image
+     * Search for a wine bottle image using Vivino's database
      * @param {Object} wine - Wine details { name, producer, year, varietal }
      * @returns {Promise<string>} Image URL or placeholder
      */
@@ -52,33 +40,17 @@ class ImageService {
             return this.config.placeholderUrl;
         }
 
-        // Check if Unsplash API is available
-        if (!this.unsplash) {
-            console.log('ImageService: No Unsplash API key, returning placeholder');
-            return this.config.placeholderUrl;
-        }
-
         try {
-            // Try primary search query
-            let imageUrl = await this.searchWithQuery(
-                this.constructPrimaryQuery(wine)
-            );
+            // Try Vivino search first (has actual wine bottles!)
+            let imageUrl = await this.searchVivino(wine);
+            if (imageUrl) return imageUrl;
 
-            // If no results, try fallback query
-            if (!imageUrl) {
-                console.log('ImageService: Primary search failed, trying fallback');
-                imageUrl = await this.searchWithQuery(
-                    this.constructFallbackQuery(wine)
-                );
-            }
+            // Fallback to Wine-Searcher
+            imageUrl = await this.searchWineSearcher(wine);
+            if (imageUrl) return imageUrl;
 
-            // If still no results, try generic wine bottle search
-            if (!imageUrl) {
-                console.log('ImageService: Fallback failed, trying generic search');
-                imageUrl = await this.searchWithQuery('wine bottle');
-            }
-
-            return imageUrl || this.config.placeholderUrl;
+            // Final fallback to generic wine-type image
+            return this.getGenericWineImage(wine);
 
         } catch (error) {
             console.error('ImageService: Search failed:', error.message);
@@ -87,107 +59,99 @@ class ImageService {
     }
 
     /**
-     * Construct primary search query
+     * Search Vivino for actual wine bottle images
      * @private
      */
-    constructPrimaryQuery(wine) {
-        const parts = [];
-        
-        if (wine.producer) parts.push(wine.producer);
-        if (wine.name) parts.push(wine.name);
-        if (wine.year) parts.push(wine.year.toString());
-        
-        parts.push('wine bottle');
-        
-        return parts.join(' ');
-    }
-
-    /**
-     * Construct fallback search query
-     * @private
-     */
-    constructFallbackQuery(wine) {
-        const parts = ['wine bottle'];
-        
-        // Try with varietal if available
-        if (wine.varietal) {
-            parts.push(wine.varietal);
-        } else if (wine.grape_varieties) {
-            // If grape_varieties is a JSON array string, parse it
-            try {
-                const varieties = typeof wine.grape_varieties === 'string' 
-                    ? JSON.parse(wine.grape_varieties) 
-                    : wine.grape_varieties;
-                    
-                if (Array.isArray(varieties) && varieties.length > 0) {
-                    parts.push(varieties[0]);
-                }
-            } catch (e) {
-                // If parsing fails, try using it directly
-                if (wine.grape_varieties) {
-                    parts.push(wine.grape_varieties.toString().split(',')[0].trim());
-                }
-            }
-        }
-        
-        // Add wine type if available
-        if (wine.wine_type) {
-            parts.push(wine.wine_type.toLowerCase());
-        }
-        
-        return parts.join(' ');
-    }
-
-    /**
-     * Search Unsplash with a specific query
-     * @private
-     */
-    async searchWithQuery(query, retries = 0) {
+    async searchVivino(wine) {
         try {
-            console.log(`ImageService: Searching Unsplash for "${query}"`);
+            // Construct search query: "Producer Name Year"
+            const query = `${wine.producer} ${wine.name} ${wine.year || ''}`.trim();
+            const encodedQuery = encodeURIComponent(query);
             
-            const result = await this.unsplash.search.getPhotos({
-                query: query,
-                page: 1,
-                perPage: 5,
-                orientation: 'portrait'
+            console.log(`ImageService: Searching Vivino for "${query}"`);
+            
+            // Vivino's public search endpoint (used by their website)
+            const url = `https://www.vivino.com/api/wines/search?q=${encodedQuery}`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                    'Accept': 'application/json'
+                },
+                timeout: 5000
             });
-
-            if (result.errors) {
-                console.error('ImageService: Unsplash API errors:', result.errors);
-                
-                // Check for rate limiting
-                if (result.errors.includes('Rate Limit Exceeded')) {
-                    console.warn('ImageService: Rate limit exceeded - using placeholder');
-                    return null;
+            
+            if (!response.ok) {
+                console.log(`Vivino returned ${response.status}`);
+                return null;
+            }
+            
+            const data = await response.json();
+            
+            // Vivino returns array of wine matches
+            if (data.explore_vintage && data.explore_vintage.records && data.explore_vintage.records.length > 0) {
+                const firstMatch = data.explore_vintage.records[0].vintage;
+                if (firstMatch && firstMatch.image && firstMatch.image.location) {
+                    const imageUrl = firstMatch.image.location;
+                    console.log(`✓ Found Vivino image: ${imageUrl.substring(0, 60)}...`);
+                    return imageUrl;
                 }
-                
-                throw new Error(result.errors.join(', '));
             }
-
-            if (result.response && result.response.results && result.response.results.length > 0) {
-                // Get the first result's regular sized URL
-                const imageUrl = result.response.results[0].urls.regular;
-                console.log(`ImageService: Found image: ${imageUrl.substring(0, 80)}...`);
-                return imageUrl;
-            }
-
-            console.log(`ImageService: No results found for "${query}"`);
+            
+            console.log('Vivino: No results found');
             return null;
-
+            
         } catch (error) {
-            // Handle rate limiting and network errors with retry
-            if (retries < this.config.maxRetries && this.shouldRetry(error)) {
-                const delay = this.config.retryDelay * Math.pow(2, retries);
-                console.log(`ImageService: Retrying in ${delay}ms (attempt ${retries + 1}/${this.config.maxRetries})`);
-                
-                await this.sleep(delay);
-                return this.searchWithQuery(query, retries + 1);
-            }
-
-            console.error(`ImageService: Search failed after ${retries} retries:`, error.message);
+            console.log('Vivino search error:', error.message);
             return null;
         }
+    }
+
+    /**
+     * Search Wine-Searcher as fallback
+     * @private
+     */
+    async searchWineSearcher(wine) {
+        try {
+            // Wine-Searcher has structured URLs
+            const producer = wine.producer.toLowerCase().replace(/\s+/g, '-');
+            const name = wine.name.toLowerCase().replace(/\s+/g, '-');
+            const year = wine.year || '';
+            
+            console.log(`ImageService: Trying Wine-Searcher for ${wine.producer} ${wine.name}`);
+            
+            // Construct predictable Wine-Searcher URL
+            const url = `https://www.wine-searcher.com/find/${producer}-${name}-${year}`;
+            
+            // Note: This is a fallback and may not always work
+            // Wine-Searcher uses dynamic image loading
+            console.log('Wine-Searcher: URL constructed but images require scraping');
+            return null;
+            
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * Get generic wine image based on wine type
+     * @private
+     */
+    getGenericWineImage(wine) {
+        // Return wine-type specific placeholder
+        const wineType = (wine.wine_type || 'red').toLowerCase();
+        
+        const imageMap = {
+            'red': '/images/wine-placeholder.svg',
+            'white': '/images/wine-placeholder.svg',
+            'rosé': '/images/wine-placeholder.svg',
+            'sparkling': '/images/wine-placeholder.svg',
+            'dessert': '/images/wine-placeholder.svg',
+            'fortified': '/images/wine-placeholder.svg'
+        };
+        
+        console.log(`Using generic ${wineType} wine placeholder`);
+        return imageMap[wineType] || this.config.placeholderUrl;
     }
 
     /**

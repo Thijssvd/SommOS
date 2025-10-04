@@ -30,7 +30,7 @@ export class DashboardModule {
             const [stats, activity, inventory] = await Promise.all([
                 this.app.api.getSystemHealth(),
                 this.app.api.getRecentActivity(),
-                this.app.api.getInventory({ available_only: false })
+                this.app.api.getInventory({ available_only: false, limit: 50, offset: 0 })
             ]);
 
             this.displayStats(stats.data);

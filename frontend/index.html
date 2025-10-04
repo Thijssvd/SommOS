@@ -29,18 +29,6 @@
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/ui-enhancements.css">
     <link rel="stylesheet" href="/css/styles-logo-inspired.css">
-    <script>
-        window.__SOMMOS_API_BASE__ = window.__SOMMOS_API_BASE__ || (function () {
-            const { protocol, hostname, port } = window.location;
-            if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '3000') {
-                return `${protocol}//${hostname}:3001/api`;
-            }
-            const origin = window.location.origin.endsWith('/')
-                ? window.location.origin.slice(0, -1)
-                : window.location.origin;
-            return `${origin}/api`;
-        })();
-    </script>
 </head>
 <body>
     <!-- Skip to main content -->
@@ -196,7 +184,7 @@
                     Guest browsing is read-only. Contact the crew for upgrade.
                 </div>
                 <div class="nav-action-buttons">
-                    <button class="nav-action" id="help-btn" title="Help & Glossary" onclick="app.showGlossaryModal()" data-testid="nav-action-help">
+                    <button class="nav-action" id="help-btn" title="Help & Glossary" data-testid="nav-action-help">
                         <span>❓</span>
                     </button>
                     <button class="nav-action" id="sync-btn" title="Sync Data" data-role-allow="admin,crew" data-testid="nav-action-sync">
@@ -534,6 +522,26 @@
                         <p>Loading inventory...</p>
                     </div>
                 </div>
+                
+                <!-- Pagination Controls -->
+                <div id="inventory-pagination" class="pagination-controls" style="display: none;">
+                    <div class="items-counter" id="inventory-items-counter" aria-live="polite">
+                        Showing <span id="items-loaded">0</span> of <span id="items-total">0</span> items
+                    </div>
+                    <button 
+                        id="load-more-inventory" 
+                        class="load-more-btn" 
+                        data-testid="inventory-button-load-more"
+                        aria-label="Load more inventory items"
+                        style="display: none;">
+                        <span class="load-more-text">Load More</span>
+                        <span class="spinner" style="display: none;"></span>
+                    </button>
+                    <div id="pagination-error" class="pagination-error" style="display: none;">
+                        <p class="pagination-error-message" id="pagination-error-message">Failed to load more items.</p>
+                        <button class="pagination-retry-btn" id="pagination-retry-btn" aria-label="Retry loading more items">Try Again</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Other views would continue here... -->
@@ -571,15 +579,15 @@
                         </div>
                         
                         <div class="procurement-actions">
-                            <button class="btn primary" onclick="app.analyzeProcurementOpportunities()">
+                            <button class="btn primary" id="analyze-procurement-btn">
                                 <span class="btn-icon">🔍</span>
                                 Analyze Opportunities
                             </button>
-                            <button class="btn secondary" onclick="app.showPurchaseDecisionTool()">
+                            <button class="btn secondary" id="purchase-decision-btn">
                                 <span class="btn-icon">⚖️</span>
                                 Purchase Decision Tool
                             </button>
-                            <button class="btn secondary" onclick="app.generatePurchaseOrder()">
+                            <button class="btn secondary" id="generate-po-btn">
                                 <span class="btn-icon">📝</span>
                                 Create Purchase Order
                             </button>
@@ -610,7 +618,7 @@
                             
                             <input type="number" id="max-price-filter" placeholder="Max Price" min="0" step="1">
                             
-                            <button class="btn primary" onclick="app.filterProcurementOpportunities()">
+                            <button class="btn primary" id="filter-procurement-btn">
                                 <span class="btn-icon">🔍</span>
                                 Filter
                             </button>
@@ -771,6 +779,7 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Scripts -->
+    <script src="/js/config.js"></script>
     <script type="module" src="/js/main.js"></script>
 </body>
 </html>

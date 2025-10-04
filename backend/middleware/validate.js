@@ -48,8 +48,14 @@ const validators = {
           .enum(['name', 'year', 'available', 'quantity', 'quality_score', 'region'])
           .optional(),
         sort_order: z.enum(['asc', 'desc']).optional(),
-        limit: integerLike.optional(),
-        offset: integerLike.optional(),
+        limit: integerLike.optional()
+          .refine((val) => val === undefined || (val > 0 && val <= 100), {
+            message: 'Limit must be between 1 and 100.',
+          }),
+        offset: integerLike.optional()
+          .refine((val) => val === undefined || val >= 0, {
+            message: 'Offset must be zero or greater.',
+          }),
       })
       .passthrough(),
   },
@@ -64,8 +70,14 @@ const validators = {
           .enum(['name', 'year', 'available', 'quantity', 'quality_score', 'region'])
           .optional(),
         sort_order: z.enum(['asc', 'desc']).optional(),
-        limit: integerLike.optional(),
-        offset: integerLike.optional(),
+        limit: integerLike.optional()
+          .refine((val) => val === undefined || (val > 0 && val <= 100), {
+            message: 'Limit must be between 1 and 100.',
+          }),
+        offset: integerLike.optional()
+          .refine((val) => val === undefined || val >= 0, {
+            message: 'Offset must be zero or greater.',
+          }),
       })
       .passthrough(),
   },
@@ -167,8 +179,14 @@ const validators = {
           ])
           .optional(),
         sort_order: z.enum(['asc', 'desc']).optional(),
-        limit: integerLike.optional(),
-        offset: integerLike.optional(),
+        limit: integerLike.optional()
+          .refine((val) => val === undefined || (val > 0 && val <= 100), {
+            message: 'Limit must be between 1 and 100.',
+          }),
+        offset: integerLike.optional()
+          .refine((val) => val === undefined || val >= 0, {
+            message: 'Offset must be zero or greater.',
+          }),
       })
       .passthrough(),
   },
