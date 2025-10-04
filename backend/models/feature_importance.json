@@ -1,0 +1,94 @@
+{
+  "timestamp": "2025-10-03T22:52:35.016Z",
+  "feature_importance": [
+    {
+      "name": "guest_count",
+      "importance": 517.2943456161294,
+      "useCount": 30,
+      "avgImportancePerUse": 517.2943456161294
+    },
+    {
+      "name": "occasion",
+      "importance": 349.48708308178107,
+      "useCount": 30,
+      "avgImportancePerUse": 349.48708308178107
+    },
+    {
+      "name": "ranking",
+      "importance": 197.7688591492795,
+      "useCount": 30,
+      "avgImportancePerUse": 197.7688591492795
+    },
+    {
+      "name": "cuisine",
+      "importance": 126.72471510639961,
+      "useCount": 30,
+      "avgImportancePerUse": 126.72471510639961
+    },
+    {
+      "name": "intensity",
+      "importance": 116.93717016464,
+      "useCount": 29,
+      "avgImportancePerUse": 120.96948637721378
+    },
+    {
+      "name": "protein",
+      "importance": 66.65348942604328,
+      "useCount": 30,
+      "avgImportancePerUse": 66.65348942604328
+    },
+    {
+      "name": "season",
+      "importance": 66.6454324008953,
+      "useCount": 29,
+      "avgImportancePerUse": 68.94355075954685
+    },
+    {
+      "name": "wine_type",
+      "importance": 38.02396919131055,
+      "useCount": 30,
+      "avgImportancePerUse": 38.02396919131055
+    }
+  ],
+  "mappings": {
+    "cuisines": {
+      "0": "Latin",
+      "1": "Caribbean",
+      "2": "French",
+      "3": "Italian",
+      "4": "Spanish",
+      "5": "Greek",
+      "6": "International"
+    },
+    "proteins": {
+      "0": "seafood",
+      "1": "fish",
+      "2": "lamb",
+      "3": "poultry",
+      "4": "beef"
+    },
+    "intensities": {
+      "0": "light",
+      "1": "medium",
+      "2": "rich"
+    },
+    "wine_types": {
+      "0": "Red",
+      "1": "White",
+      "2": "Sparkling"
+    },
+    "occasions": {
+      "0": "cocktail",
+      "1": "lunch",
+      "2": "casual",
+      "3": "dinner",
+      "4": "celebration"
+    },
+    "seasons": {
+      "0": "caribbean_winter",
+      "1": "spring_transition",
+      "2": "mediterranean_summer",
+      "3": "fall_transition"
+    }
+  }
+}

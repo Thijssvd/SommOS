@@ -519,10 +519,59 @@ class CollaborativeFilteringEngine {
     }
 
     /**
-     * Get user ratings from database
+     * Get implicit ratings from consumption events
+     * Converts consumption frequency and quantity into ratings (1-5 scale)
      */
-    async getUserRatings(userId) {
-        const rows = await this.db.all(`
+    async getImplicitRatingsFromConsumption(userId) {
+        if (!userId) return [];
+
+        try {
+            const consumptionStats = await this.db.all(`
+                SELECT 
+                    lce.wine_id,
+                    COUNT(*) as consumption_count,
+                    SUM(lce.quantity) as total_quantity,
+                    AVG(lce.quantity) as avg_quantity,
+                    MAX(lce.created_at) as last_consumed
+                FROM LearningConsumptionEvents lce
+                WHERE lce.user_id = ? AND lce.event_type = 'consume'
+                  AND lce.wine_id IS NOT NULL
+                GROUP BY lce.wine_id
+                ORDER BY consumption_count DESC, total_quantity DESC
+            `, [userId]);
+
+            // Convert consumption patterns to implicit ratings
+            return consumptionStats.map(stat => {
+                // Base rating of 4.0 for any consumption (positive signal)
+                // Increase rating based on consumption frequency and quantity
+                // Cap at 5.0
+                const frequencyBonus = Math.min(0.5, stat.consumption_count * 0.1);
+                const quantityBonus = Math.min(0.3, (stat.total_quantity / 10) * 0.1);
+                const implicitRating = Math.min(5.0, 4.0 + frequencyBonus + quantityBonus);
+
+                return {
+                    wine_id: stat.wine_id,
+                    overall_rating: implicitRating,
+                    created_at: stat.last_consumed,
+                    context: null,
+                    is_implicit: true,
+                    consumption_count: stat.consumption_count,
+                    confidence: Math.min(1.0, stat.consumption_count / 5) // Higher with more data
+                };
+            });
+        } catch (error) {
+            console.warn('Failed to get implicit ratings from consumption:', error.message);
+            return [];
+        }
+    }
+
+    /**
+     * Get user ratings from database, enhanced with consumption data
+     * Combines explicit feedback with implicit consumption signals
+     */
+    async getUserRatings(userId, includeImplicitFromConsumption = true) {
+        // Get explicit ratings from feedback
+        const explicitRows = await this.db.all(`
             SELECT 
                 r.wine_id,
                 f.overall_rating,
@@ -534,12 +583,26 @@ class CollaborativeFilteringEngine {
             ORDER BY f.created_at DESC
         `, [userId]);
 
-        return rows.map(row => ({
+        const explicitRatings = explicitRows.map(row => ({
             wine_id: row.wine_id,
             overall_rating: row.overall_rating,
             created_at: row.created_at,
-            context: row.context ? JSON.parse(row.context) : null
+            context: row.context ? JSON.parse(row.context) : null,
+            is_implicit: false
         }));
+
+        // Optionally add implicit ratings from consumption
+        if (includeImplicitFromConsumption) {
+            const implicitRatings = await this.getImplicitRatingsFromConsumption(userId);
+            
+            // Merge ratings, preferring explicit over implicit for the same wine
+            const explicitWineIds = new Set(explicitRatings.map(r => r.wine_id));
+            const uniqueImplicitRatings = implicitRatings.filter(r => !explicitWineIds.has(r.wine_id));
+            
+            return [...explicitRatings, ...uniqueImplicitRatings];
+        }
+
+        return explicitRatings;
     }
 
     /**

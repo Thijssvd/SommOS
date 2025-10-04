@@ -119,12 +119,29 @@ async function loginAsCrew(page, email = null, password = null) {
   // Wait for member panel to be visible
   await page.waitForSelector('#member-login-panel.active', { timeout: 5000 });
   
-  // Fill in credentials
-  await page.fill('#login-email', credentials.email);
-  await page.fill('#login-password', credentials.password);
+  // Fill in credentials using JavaScript (form inputs are hidden)
+  await page.evaluate(({ email, password }) => {
+    const emailInput = document.getElementById('login-email');
+    const passwordInput = document.getElementById('login-password');
+    if (emailInput) {
+      emailInput.value = email;
+      emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+      emailInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (passwordInput) {
+      passwordInput.value = password;
+      passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+      passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }, { email: credentials.email, password: credentials.password });
   
-  // Click login button
-  await page.click('#login-submit');
+  // Submit login form using JavaScript (button is also hidden)
+  await page.evaluate(() => {
+    const form = document.getElementById('login-form');
+    if (form) {
+      form.requestSubmit();
+    }
+  });
   
   // Wait for loading screen and then for it to disappear
   await waitForLoadingScreen(page);
@@ -182,15 +199,29 @@ async function verifyCrewSession(page, expectedRole = 'CREW') {
  */
 async function clearSession(page) {
   // Clear any stored session data
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-  }).catch(() => {
+  try {
+    // Check if page is on a valid origin before clearing storage
+    const url = page.url();
+    if (url && !url.startsWith('about:') && !url.startsWith('data:')) {
+      await page.evaluate(() => {
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch (e) {
+          // Silently fail if storage is not accessible
+        }
+      });
+    }
+  } catch (error) {
     // Page might not be loaded yet, that's ok
-  });
+  }
   
   // Clear cookies
-  await page.context().clearCookies();
+  try {
+    await page.context().clearCookies();
+  } catch (error) {
+    // Ignore cookie clearing errors
+  }
 }
 
 /**

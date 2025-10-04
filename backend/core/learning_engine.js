@@ -303,7 +303,9 @@ class LearningEngine {
         quantity,
         location,
         event_type = 'consume',
-        metadata = {}
+        metadata = {},
+        user_id = null,
+        session_id = null
     }) {
         if (!vintage_id || !quantity) {
             return;
@@ -325,8 +327,10 @@ class LearningEngine {
                     quantity,
                     location,
                     event_type,
-                    metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    metadata,
+                    user_id,
+                    session_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 vintage_id,
                 wine?.wine_id || null,
@@ -334,7 +338,9 @@ class LearningEngine {
                 quantity,
                 location || null,
                 event_type,
-                JSON.stringify(metadata || {})
+                JSON.stringify(metadata || {}),
+                user_id,
+                session_id
             ]);
 
             await this.updateDemandModels();
@@ -410,6 +416,120 @@ class LearningEngine {
         } catch (error) {
             console.error('Failed to update demand models:', error.message);
         }
+    }
+
+    /**
+     * Update procurement weights based on feedback from recommendations
+     */
+    async updateProcurementWeightsFromFeedback() {
+        try {
+            // Query recent procurement feedback from Explainability table
+            const feedbackQuery = `
+                SELECT e.*, io.followed_recommendation, io.procurement_notes
+                FROM Explainability e
+                LEFT JOIN InventoryIntakeOrders io ON io.recommendation_id = e.id
+                WHERE e.request_type = 'procurement'
+                  AND e.created_at > datetime('now', '-90 days')
+                ORDER BY e.created_at DESC
+            `;
+            
+            const feedback = await this.db.all(feedbackQuery);
+            
+            if (feedback.length === 0) {
+                return { updated: false, message: 'No feedback data available' };
+            }
+
+            // Analyze acceptance patterns
+            const withOrderInfo = feedback.filter(f => f.followed_recommendation !== null);
+            const acceptanceRate = withOrderInfo.length > 0
+                ? withOrderInfo.filter(f => f.followed_recommendation === 1).length / withOrderInfo.length
+                : 0.5;
+
+            // Extract and analyze factors from successful recommendations
+            const successfulFactors = feedback
+                .filter(f => f.followed_recommendation === 1 && f.feedback_rating >= 4)
+                .map(f => {
+                    try {
+                        return JSON.parse(f.input_data);
+                    } catch (e) {
+                        return null;
+                    }
+                })
+                .filter(Boolean);
+
+            // Calculate weight adjustments based on success patterns
+            const weightAdjustments = this.calculateProcurementWeightAdjustments(
+                successfulFactors,
+                acceptanceRate
+            );
+
+            // Blend with default weights (70% default, 30% feedback-based)
+            const blendedWeights = {};
+            for (const [key, defaultWeight] of Object.entries(this.defaultProcurementWeights)) {
+                const adjustment = weightAdjustments[key] || defaultWeight;
+                blendedWeights[key] = 0.7 * defaultWeight + 0.3 * adjustment;
+            }
+
+            // Normalize to ensure weights sum to 1.0
+            const normalizedWeights = this.normalizeWeights(blendedWeights, this.defaultProcurementWeights);
+
+            // Store updated weights
+            await this.setParameter('procurement_weights', normalizedWeights);
+
+            return {
+                updated: true,
+                adjustments: normalizedWeights,
+                feedback_count: feedback.length,
+                acceptance_rate: acceptanceRate
+            };
+        } catch (error) {
+            console.error('Failed to update procurement weights from feedback:', error.message);
+            return { updated: false, error: error.message };
+        }
+    }
+
+    /**
+     * Calculate procurement weight adjustments based on successful factors
+     */
+    calculateProcurementWeightAdjustments(successfulFactors, acceptanceRate) {
+        if (successfulFactors.length === 0) {
+            return { ...this.defaultProcurementWeights };
+        }
+
+        // Analyze which factors lead to successful procurement decisions
+        const factorSuccess = {};
+        const factorKeys = Object.keys(this.defaultProcurementWeights);
+
+        // Initialize tracking for each factor
+        for (const key of factorKeys) {
+            factorSuccess[key] = { count: 0, totalWeight: 0 };
+        }
+
+        // Aggregate successful factor weights
+        successfulFactors.forEach(factors => {
+            if (!factors || typeof factors !== 'object') return;
+
+            Object.entries(factors).forEach(([key, value]) => {
+                if (factorSuccess[key] && typeof value === 'number') {
+                    factorSuccess[key].count++;
+                    factorSuccess[key].totalWeight += value;
+                }
+            });
+        });
+
+        // Calculate new weights based on success patterns
+        const adjustments = {};
+        for (const [key, data] of Object.entries(factorSuccess)) {
+            if (data.count > 0) {
+                const avgSuccessWeight = data.totalWeight / data.count;
+                // Apply acceptance rate as a multiplier
+                adjustments[key] = avgSuccessWeight * (0.5 + 0.5 * acceptanceRate);
+            } else {
+                adjustments[key] = this.defaultProcurementWeights[key] || 0.1;
+            }
+        }
+
+        return adjustments;
     }
 }
 

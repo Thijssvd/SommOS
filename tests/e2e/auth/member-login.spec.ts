@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { clearSession, TEST_USERS, verifyUserRole } from '../fixtures/auth';
+import { clearSession, TEST_USERS, verifyUserRole, fillLoginForm, submitLoginForm } from '../fixtures/auth';
 import { Selectors } from '../utils/selectors';
 import { waitForToast } from '../utils/helpers';
 
@@ -37,11 +37,10 @@ test.describe('Member Login - Authentication Flow', () => {
     await page.waitForSelector(Selectors.auth.memberPanel, { state: 'visible', timeout: 3000 });
     
     // Fill in admin credentials
-    await page.fill(Selectors.auth.emailInput, TEST_USERS.admin.email);
-    await page.fill(Selectors.auth.passwordInput, TEST_USERS.admin.password);
+    await fillLoginForm(page, TEST_USERS.admin.email, TEST_USERS.admin.password);
     
     // Submit login
-    await page.click(Selectors.auth.loginButton);
+    await submitLoginForm(page);
     
     // Wait for dashboard to load
     await expect(page.locator(Selectors.views.dashboard)).toBeVisible({ timeout: 15000 });
@@ -73,11 +72,10 @@ test.describe('Member Login - Authentication Flow', () => {
     await memberTab.click();
     
     // Fill in crew credentials
-    await page.fill(Selectors.auth.emailInput, TEST_USERS.crew.email);
-    await page.fill(Selectors.auth.passwordInput, TEST_USERS.crew.password);
+    await fillLoginForm(page, TEST_USERS.crew.email, TEST_USERS.crew.password);
     
     // Submit login
-    await page.click(Selectors.auth.loginButton);
+    await submitLoginForm(page);
     
     // Wait for dashboard to load
     await expect(page.locator(Selectors.views.dashboard)).toBeVisible({ timeout: 15000 });
@@ -96,11 +94,10 @@ test.describe('Member Login - Authentication Flow', () => {
     }
     
     // Fill in invalid credentials
-    await page.fill(Selectors.auth.emailInput, 'invalid@example.com');
-    await page.fill(Selectors.auth.passwordInput, 'wrongpassword');
+    await fillLoginForm(page, 'invalid@example.com', 'wrongpassword');
     
     // Submit login
-    await page.click(Selectors.auth.loginButton);
+    await submitLoginForm(page);
     
     // Should show error message
     const errorMsg = page.locator(Selectors.auth.loginError);
@@ -121,11 +118,10 @@ test.describe('Member Login - Authentication Flow', () => {
     }
     
     // Fill in valid email but wrong password
-    await page.fill(Selectors.auth.emailInput, TEST_USERS.admin.email);
-    await page.fill(Selectors.auth.passwordInput, 'wrongpassword123');
+    await fillLoginForm(page, TEST_USERS.admin.email, 'wrongpassword123');
     
     // Submit login
-    await page.click(Selectors.auth.loginButton);
+    await submitLoginForm(page);
     
     // Should show error message
     const errorMsg = page.locator(Selectors.auth.loginError);
@@ -145,7 +141,7 @@ test.describe('Member Login - Authentication Flow', () => {
     }
     
     // Try to submit without filling fields
-    await page.click(Selectors.auth.loginButton);
+    await submitLoginForm(page);
     
     // Should show validation error
     const errorMsg = page.locator(Selectors.auth.loginError);
@@ -175,9 +171,8 @@ test.describe('Member Login - Authentication Flow', () => {
     }
     
     // Login as admin
-    await page.fill(Selectors.auth.emailInput, TEST_USERS.admin.email);
-    await page.fill(Selectors.auth.passwordInput, TEST_USERS.admin.password);
-    await page.click(Selectors.auth.loginButton);
+    await fillLoginForm(page, TEST_USERS.admin.email, TEST_USERS.admin.password);
+    await submitLoginForm(page);
     
     // Wait for dashboard
     await expect(page.locator(Selectors.views.dashboard)).toBeVisible({ timeout: 15000 });
@@ -208,9 +203,8 @@ test.describe('Member Login - Logout Flow', () => {
       const isAuthVisible = await authScreen.evaluate((el) => !el.classList.contains('hidden')).catch(() => false);
       
       if (isAuthVisible) {
-        await page.fill(Selectors.auth.emailInput, TEST_USERS.admin.email);
-        await page.fill(Selectors.auth.passwordInput, TEST_USERS.admin.password);
-        await page.click(Selectors.auth.loginButton);
+        await fillLoginForm(page, TEST_USERS.admin.email, TEST_USERS.admin.password);
+        await submitLoginForm(page);
         await expect(page.locator(Selectors.views.dashboard)).toBeVisible({ timeout: 15000 });
       }
     }

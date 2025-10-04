@@ -1,0 +1,43 @@
+{
+  "timestamp": "2025-10-03T22:52:59.283Z",
+  "testSize": 1215,
+  "results": {
+    "linearRegression": {
+      "rmse": 2.5843336162169863,
+      "mae": 2.515742468156107,
+      "r2": -18.19959235380571,
+      "mape": 60.81233355950096,
+      "accuracyBands": {
+        "within_01": "0.0",
+        "within_025": "0.0",
+        "within_05": "0.0"
+      },
+      "errorDistribution": {
+        "median": -2.492026679701276,
+        "q1": -2.8504422905411646,
+        "q3": -2.011258362663952
+      }
+    },
+    "randomForest": {
+      "rmse": 0.14903397216587555,
+      "mae": 0.11052623120489241,
+      "r2": 0.9361493374981256,
+      "mape": 2.8603211148510077,
+      "accuracyBands": {
+        "within_01": "53.2",
+        "within_025": "92.4",
+        "within_05": "99.8"
+      },
+      "errorDistribution": {
+        "median": -0.026595170280594438,
+        "q1": -0.11511072211405882,
+        "q3": 0.06909444751655291
+      }
+    }
+  },
+  "recommendations": {
+    "needsMoreSimulation": true,
+    "deployRandomForest": true,
+    "dataQualityScore": -4.066360754076896
+  }
+}

@@ -157,6 +157,25 @@ class ExplainabilityService {
 
         return serializeMemory(created, 'crew');
     }
+
+    async updateFeedback(explainabilityId, feedbackData) {
+        const { rating, notes } = feedbackData;
+        
+        await this.db.run(
+            `UPDATE Explainability 
+             SET feedback_rating = ?, feedback_notes = ? 
+             WHERE id = ?`,
+            [rating || null, notes || null, explainabilityId]
+        );
+        
+        const updated = await this.db.get(
+            `SELECT id, request_type, feedback_rating, feedback_notes 
+             FROM Explainability WHERE id = ?`,
+            [explainabilityId]
+        );
+        
+        return updated;
+    }
 }
 
 module.exports = ExplainabilityService;

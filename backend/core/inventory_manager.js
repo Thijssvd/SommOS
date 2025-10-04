@@ -1087,7 +1087,9 @@ class InventoryManager {
                 quantity: Math.abs(event.quantity),
                 location: event.location,
                 event_type: event.event_type,
-                metadata: event.metadata || {}
+                metadata: event.metadata || {},
+                user_id: event.user_id || null,
+                session_id: event.session_id || null
             });
         } catch (error) {
             console.warn('Unable to record learning signal for inventory movement:', error.message);
@@ -1239,7 +1241,7 @@ class InventoryManager {
     /**
      * Consume wine with proper validation
      */
-    async consumeWine(vintage_id, location, quantity, notes = null, created_by = null, syncContext = {}) {
+    async consumeWine(vintage_id, location, quantity, notes = null, created_by = null, syncContext = {}, user_id = null, session_id = null) {
         try {
             // Validate quantity
             if (quantity < 0) {
@@ -1312,7 +1314,9 @@ class InventoryManager {
                 quantity,
                 location,
                 event_type: 'consume',
-                metadata: { notes, created_by }
+                metadata: { notes, created_by },
+                user_id,
+                session_id
             });
 
             return {
@@ -1332,7 +1336,7 @@ class InventoryManager {
     /**
      * Receive wine into inventory
      */
-    async receiveWine(vintage_id, location, quantity, unit_cost = null, reference_id = null, notes = null, created_by = null, syncContext = {}) {
+    async receiveWine(vintage_id, location, quantity, unit_cost = null, reference_id = null, notes = null, created_by = null, syncContext = {}, user_id = null, session_id = null) {
         try {
             // Validate quantity
             if (quantity <= 0) {
@@ -1381,7 +1385,9 @@ class InventoryManager {
                 quantity,
                 location,
                 event_type: 'receive',
-                metadata: { reference_id, notes, created_by }
+                metadata: { reference_id, notes, created_by },
+                user_id,
+                session_id
             });
 
             return {

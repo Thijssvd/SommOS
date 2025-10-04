@@ -1,0 +1,86 @@
+================================================================================
+SOMMOS YEAR-LONG SIMULATION SUMMARY REPORT
+================================================================================
+
+Generated: 2025-10-03T22:07:39.416Z
+Simulation Period: 2024-01-01 to 2028-12-31
+Random Seed: 42
+
+--------------------------------------------------------------------------------
+OPERATIONAL STATISTICS
+--------------------------------------------------------------------------------
+Total Days Simulated: 1827
+Days with Guests: 754 (41.3%)
+Pairing Sessions: 1141
+Feedback Records: 1141
+Bottles Consumed: 2693
+Procurement Orders: 220
+Deliveries Received: 220
+Audits Performed: 261
+
+--------------------------------------------------------------------------------
+GUEST TYPE BREAKDOWN
+--------------------------------------------------------------------------------
+Yacht Owner: 455 sessions
+Traditional Guest: 334 sessions
+Adventurous Guest: 352 sessions
+
+--------------------------------------------------------------------------------
+WINE TYPE CONSUMPTION
+--------------------------------------------------------------------------------
+White: 869 bottles
+Red: 1422 bottles
+Sparkling: 381 bottles
+Dessert: 21 bottles
+
+--------------------------------------------------------------------------------
+SEASONAL BREAKDOWN
+--------------------------------------------------------------------------------
+WINTER:
+  Days: 452
+  Guest Days: 45 (10.0%)
+  Pairing Sessions: 61
+SPRING:
+  Days: 460
+  Guest Days: 189 (41.1%)
+  Pairing Sessions: 278
+SUMMER:
+  Days: 460
+  Guest Days: 352 (76.5%)
+  Pairing Sessions: 546
+AUTUMN:
+  Days: 455
+  Guest Days: 168 (36.9%)
+  Pairing Sessions: 256
+
+--------------------------------------------------------------------------------
+DATABASE STATISTICS
+--------------------------------------------------------------------------------
+Pairing Sessions: 2259
+Recommendations: 9046
+Basic Feedback: 2259
+Enhanced Feedback: 2259
+Consumption Events: 3152
+Ledger Entries: 4425
+Intake Orders: 514
+Intake Items: 2870
+
+Average Overall Rating: 4.19/5.0
+
+--------------------------------------------------------------------------------
+TOP 10 CONSUMED WINES
+--------------------------------------------------------------------------------
+1. Roulot Meursault 1er Cru 2015 (Roulot) - 33 bottles
+2. Dauvissat Chablis Grand Cru Les Preuses 2019 (Dauvissat) - 28 bottles
+3. Krug Grande Cuvée 2016 (Krug) - 27 bottles
+4. Salon Le Mesnil Blanc de Blancs 2005 (Salon Le) - 24 bottles
+5. Domaine Leflaive Puligny‑Montrachet 1er Cru 2016 (Domaine) - 23 bottles
+6. Dauvissat Chablis Grand Cru Les Preuses 2016 (Dauvissat) - 23 bottles
+7. Château Carbonnieux Blanc 1999 (Château Carbonnieux Blanc 1999) - 23 bottles
+8. Sassicaia 2002 (Sassicaia) - 22 bottles
+9. Pierre‑Yves Colin‑Morey Chassagne‑Montrachet 1er Cru 2010 (Pierre‑Yves) - 22 bottles
+10. Bollinger La Grande Année 2018 (Bollinger La) - 22 bottles
+
+================================================================================
+END OF REPORT
+================================================================================

@@ -138,6 +138,15 @@ const validators = {
       notes: optionalNonEmptyString,
     }),
   },
+  procurementFeedback: {
+    body: passthroughObject({
+      recommendation_id: integerLike,
+      action_taken: z.enum(['accepted', 'rejected', 'modified']),
+      intake_order_id: integerLike.optional(),
+      outcome_rating: z.number().int().min(1).max(5).optional(),
+      feedback_notes: z.string().max(1000).optional(),
+    }),
+  },
   winesList: {
     query: z
       .object({

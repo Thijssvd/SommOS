@@ -568,7 +568,10 @@ router.post(
     ...requireAuthAndRole('admin', 'crew'),
     validate(validators.inventoryConsume),
     asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-        const { vintage_id, location, quantity, notes, created_by } = req.body;
+        const { vintage_id, location, quantity, notes, created_by, session_id } = req.body;
+        
+        // Extract user_id from authenticated request (JWT)
+        const user_id = req.user?.id || null;
 
         if (!vintage_id || !location || !quantity) {
             return sendError(
@@ -586,7 +589,9 @@ router.post(
                 quantity,
                 notes,
                 created_by,
-                req.body.sync || {}
+                req.body.sync || {},
+                user_id,
+                session_id || null
             );
 
             res.json({
@@ -612,7 +617,10 @@ router.post(
     ...requireAuthAndRole('admin', 'crew'),
     validate(validators.inventoryReceive),
     asyncHandler(withServices(async ({ inventoryManager }, req, res) => {
-        const { vintage_id, location, quantity, unit_cost, reference_id, notes, created_by } = req.body;
+        const { vintage_id, location, quantity, unit_cost, reference_id, notes, created_by, session_id } = req.body;
+        
+        // Extract user_id from authenticated request (JWT)
+        const user_id = req.user?.id || null;
 
         if (!vintage_id || !location || !quantity) {
             return sendError(
@@ -632,7 +640,9 @@ router.post(
                 reference_id,
                 notes,
                 created_by,
-                req.body.sync || {}
+                req.body.sync || {},
+                user_id,
+                session_id || null
             );
 
             res.json({
@@ -945,6 +955,68 @@ router.post(
             });
         } catch (error) {
             sendError(res, 500, 'PROCUREMENT_ORDER_FAILED', error.message || 'Failed to generate purchase order.');
+        }
+    }))
+);
+
+// POST /api/procurement/feedback
+// Submit feedback on procurement recommendations
+router.post(
+    '/procurement/feedback',
+    ...requireAuthAndRole('admin', 'crew'),
+    validate(validators.procurementFeedback),
+    asyncHandler(withServices(async ({ db, procurementEngine, learningEngine, explainabilityService }, req, res) => {
+        const { recommendation_id, action_taken, intake_order_id, outcome_rating, feedback_notes } = req.body;
+
+        try {
+            // Verify recommendation exists
+            const recommendation = await procurementEngine.getRecommendationById(recommendation_id);
+            if (!recommendation) {
+                return sendError(
+                    res,
+                    404,
+                    'RECOMMENDATION_NOT_FOUND',
+                    'Procurement recommendation not found'
+                );
+            }
+
+            // Update Explainability table with feedback
+            await explainabilityService.updateFeedback(recommendation_id, {
+                rating: outcome_rating,
+                notes: feedback_notes
+            });
+
+            // If order was placed, link to recommendation
+            if (intake_order_id) {
+                const updateQuery = `
+                    UPDATE InventoryIntakeOrders 
+                    SET recommendation_id = ?, 
+                        followed_recommendation = ?, 
+                        procurement_notes = ?
+                    WHERE id = ?
+                `;
+                await db.run(updateQuery, [
+                    recommendation_id,
+                    action_taken === 'accepted' ? 1 : 0,
+                    feedback_notes || null,
+                    intake_order_id
+                ]);
+            }
+
+            // Trigger learning weight adjustment
+            const weightUpdate = await learningEngine.updateProcurementWeightsFromFeedback();
+
+            res.json({
+                success: true,
+                data: {
+                    feedback_recorded: true,
+                    recommendation_id,
+                    action_taken,
+                    weight_update: weightUpdate
+                }
+            });
+        } catch (error) {
+            sendError(res, 500, 'PROCUREMENT_FEEDBACK_FAILED', error.message || 'Failed to record procurement feedback.');
         }
     }))
 );

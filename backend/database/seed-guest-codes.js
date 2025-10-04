@@ -26,8 +26,8 @@ async function seedGuestCodes() {
   try {
     await run(db, 'BEGIN TRANSACTION');
 
-    // Guest event code without PIN: YACHT2025
-    const guestToken1 = 'YACHT2025';
+    // Guest event code without PIN: YACHT2024
+    const guestToken1 = 'YACHT2024';
     const guestTokenHash1 = hashToken(guestToken1);
     const guestExpiresAt1 = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year
 
@@ -41,8 +41,8 @@ async function seedGuestCodes() {
 
     console.log(`✅ Created guest event code: ${guestToken1} (no PIN)`);
 
-    // Guest event code with PIN: VIP2025 / 123456
-    const guestToken2 = 'VIP2025';
+    // Guest event code with PIN: GUEST2024 / 123456
+    const guestToken2 = 'GUEST2024';
     const guestTokenHash2 = hashToken(guestToken2);
     const guestPin = '123456';
     const guestPinHash = await bcrypt.hash(guestPin, SALT_ROUNDS);

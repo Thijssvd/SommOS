@@ -366,7 +366,7 @@
                     <div class="pairing-form">
                         <div class="form-group">
                             <label for="dish-input">Dish Description</label>
-                            <textarea id="dish-input" placeholder="Describe the dish you're serving (e.g., grilled salmon with lemon herbs)" rows="3"></textarea>
+                            <textarea id="dish-input" data-testid="pairing-input-dish" placeholder="Describe the dish you're serving (e.g., grilled salmon with lemon herbs)" rows="3"></textarea>
                         </div>
 
                         <div class="form-group dish-builder" aria-describedby="dish-builder-helper">
@@ -456,7 +456,7 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="occasion-select">Occasion</label>
-                                <select id="occasion-select">
+                                <select id="occasion-select" data-testid="pairing-select-occasion">
                                     <option value="">Select occasion</option>
                                     <option value="casual">Casual Dining</option>
                                     <option value="formal">Formal Dinner</option>
@@ -467,24 +467,24 @@
                             
                             <div class="form-group">
                                 <label for="guest-count">Guest Count</label>
-                                <input type="number" id="guest-count" min="1" max="50" step="1" value="4">
+                                <input type="number" id="guest-count" data-testid="pairing-input-guests" min="1" max="50" step="1" value="4">
                             </div>
                         </div>
                         
                         <div class="form-group">
                             <label for="preferences-input">Guest Preferences (Optional)</label>
-                            <textarea id="preferences-input" placeholder="Any specific preferences, allergies, or dislikes?" rows="2"></textarea>
+                            <textarea id="preferences-input" data-testid="pairing-input-preferences" placeholder="Any specific preferences, allergies, or dislikes?" rows="2"></textarea>
                         </div>
                         
-                        <button id="get-pairings-btn" class="btn primary large" aria-label="Get wine pairing recommendations based on dish description and guest preferences">
+                        <button id="get-pairings-btn" data-testid="pairing-button-submit" class="btn primary large" aria-label="Get wine pairing recommendations based on dish description and guest preferences">
                             <span class="btn-icon" aria-hidden="true">🔍</span>
                             Get Wine Recommendations
                         </button>
                     </div>
                     
-                    <div id="pairing-results" class="pairing-results hidden">
+                    <div id="pairing-results" class="pairing-results hidden" data-testid="pairing-results-container">
                         <h3>Recommended Pairings</h3>
-                        <div id="pairing-list" class="pairing-list">
+                        <div id="pairing-list" class="pairing-list" data-testid="pairing-results-list">
                             <!-- Pairing results will be inserted here -->
                         </div>
                     </div>
@@ -500,19 +500,19 @@
                 
                 <div class="inventory-controls">
                     <div class="search-bar">
-                        <input type="text" id="inventory-search" placeholder="Search wines, producers, regions...">
-                        <button class="search-btn" aria-label="Search inventory">🔍</button>
+                        <input type="text" id="inventory-search" data-testid="inventory-search-input" placeholder="Search wines, producers, regions...">
+                        <button class="search-btn" data-testid="inventory-button-search" aria-label="Search inventory">🔍</button>
                     </div>
                     
                     <div class="filter-controls">
-                        <select id="location-filter">
+                        <select id="location-filter" data-testid="inventory-filter-location">
                             <option value="">All Locations</option>
                             <option value="main-cellar">Main Cellar</option>
                             <option value="service-bar">Service Bar</option>
                             <option value="deck-storage">Deck Storage</option>
                         </select>
                         
-                        <select id="type-filter">
+                        <select id="type-filter" data-testid="inventory-filter-type">
                             <option value="">All Types</option>
                             <option value="Red">Red Wine</option>
                             <option value="White">White Wine</option>
@@ -521,14 +521,14 @@
                             <option value="Dessert">Dessert Wine</option>
                         </select>
                         
-                        <button id="refresh-inventory" class="btn secondary">
+                        <button id="refresh-inventory" data-testid="inventory-button-refresh" class="btn secondary">
                             <span class="btn-icon">🔄</span>
                             Refresh
                         </button>
                     </div>
                 </div>
                 
-                <div id="inventory-grid" class="inventory-grid">
+                <div id="inventory-grid" class="inventory-grid" data-testid="inventory-grid">
                     <div class="inventory-placeholder">
                         <p>Loading inventory...</p>
                     </div>
@@ -645,7 +645,7 @@
                     <div class="catalog-controls">
                         <div class="catalog-search">
                             <input type="text" id="catalog-search" placeholder="Search wines, producers, regions, vintages...">
-                            <button class="search-btn" aria-label="Search inventory">🔍</button>
+                            <button class="search-btn" data-testid="inventory-button-search" aria-label="Search inventory">🔍</button>
                         </div>
                         
                         <div class="catalog-filters">
@@ -754,13 +754,13 @@
     </div>
 
     <!-- Modals and Overlays -->
-    <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div class="modal">
+    <div id="modal-overlay" class="modal-overlay hidden" data-testid="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal" data-testid="modal-container">
             <div class="modal-header">
-                <h3 id="modal-title">Modal Title</h3>
-                <button class="modal-close" aria-label="Close modal dialog">&times;</button>
+                <h3 id="modal-title" data-testid="modal-title">Modal Title</h3>
+                <button class="modal-close" data-testid="modal-button-close" aria-label="Close modal dialog">&times;</button>
             </div>
-            <div class="modal-body" id="modal-body">
+            <div class="modal-body" id="modal-body" data-testid="modal-body">
                 <!-- Modal content will be inserted here -->
             </div>
         </div>

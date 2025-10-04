@@ -4,11 +4,13 @@
  */
 
 const Database = require('../database/connection');
+const ExplainabilityService = require('./explainability_service');
 
 class ProcurementEngine {
     constructor(database, learningEngine = null) {
         this.db = database || Database.getInstance();
         this.learningEngine = learningEngine;
+        this.explainabilityService = new ExplainabilityService(this.db);
         this.defaultScoringWeights = {
             stock_urgency: 0.28,
             value_proposition: 0.23,
@@ -90,10 +92,33 @@ class ProcurementEngine {
             .sort((a, b) => b.score.total - a.score.total)
             .slice(0, 20);
 
+        // Store recommendation in Explainability table for future feedback
+        let recommendationId = null;
+        try {
+            const explanation = await this.explainabilityService.createExplanation({
+                entityType: 'procurement',
+                entityId: `session_${Date.now()}`,
+                summary: `Procurement recommendations based on ${ranked.length} opportunities`,
+                factors: JSON.stringify({
+                    criteria: normalizedCriteria,
+                    learning_context: learningContext,
+                    top_opportunities: ranked.slice(0, 5).map(r => ({
+                        wine: r.wine_name,
+                        vintage: r.year,
+                        score: r.score.total
+                    }))
+                })
+            });
+            recommendationId = explanation.id;
+        } catch (error) {
+            console.warn('Failed to store procurement recommendation for feedback:', error.message);
+        }
+
         return {
             criteria: normalizedCriteria,
             summary: this.buildOpportunitySummary(ranked, normalizedCriteria),
-            opportunities: ranked
+            opportunities: ranked,
+            recommendation_id: recommendationId
         };
     }
 
@@ -791,6 +816,22 @@ class ProcurementEngine {
         const variance = values.reduce((acc, val) => acc + Math.pow(val - average, 2), 0) / values.length;
         
         return Math.max(0.1, Math.min(1.0, average - Math.sqrt(variance)));
+    }
+
+    /**
+     * Retrieve a stored procurement recommendation by ID
+     */
+    async getRecommendationById(recommendationId) {
+        try {
+            const query = `
+                SELECT * FROM Explainability 
+                WHERE id = ? AND request_type = 'procurement'
+            `;
+            return await this.db.get(query, [recommendationId]);
+        } catch (error) {
+            console.error('Error retrieving recommendation:', error.message);
+            return null;
+        }
     }
 }
 

@@ -737,6 +737,149 @@ class EnhancedLearningEngine {
         return normalized;
     }
 
+    /**
+     * Get consumption feedback for a user as implicit ratings
+     * Consumption events are treated as positive signals (implicit rating ~4.0)
+     */
+    async getConsumptionFeedback(userId) {
+        if (!userId) return [];
+
+        try {
+            const consumptions = await this.db.all(`
+                SELECT 
+                    lce.*,
+                    v.wine_id,
+                    v.year as vintage_year,
+                    w.name as wine_name,
+                    w.wine_type,
+                    w.region,
+                    w.grape_varieties,
+                    w.producer
+                FROM LearningConsumptionEvents lce
+                JOIN Vintages v ON lce.vintage_id = v.id
+                JOIN Wines w ON v.wine_id = w.id
+                WHERE lce.user_id = ? AND lce.event_type = 'consume'
+                ORDER BY lce.created_at DESC
+            `, [userId]);
+
+            return consumptions;
+        } catch (error) {
+            console.warn('Failed to get consumption feedback:', error.message);
+            return [];
+        }
+    }
+
+    /**
+     * Get implicit ratings from consumption events
+     * Converts consumption frequency into implicit preference ratings (1-5 scale)
+     */
+    async getImplicitRatingsFromConsumption(userId) {
+        if (!userId) return [];
+
+        try {
+            const consumptionStats = await this.db.all(`
+                SELECT 
+                    lce.vintage_id,
+                    lce.wine_id,
+                    COUNT(*) as consumption_count,
+                    SUM(lce.quantity) as total_quantity,
+                    AVG(lce.quantity) as avg_quantity,
+                    MAX(lce.created_at) as last_consumed
+                FROM LearningConsumptionEvents lce
+                WHERE lce.user_id = ? AND lce.event_type = 'consume'
+                GROUP BY lce.vintage_id, lce.wine_id
+                ORDER BY consumption_count DESC, total_quantity DESC
+            `, [userId]);
+
+            // Convert consumption patterns to implicit ratings
+            return consumptionStats.map(stat => {
+                // Base rating of 4.0 for any consumption (positive signal)
+                // Increase rating based on consumption frequency and quantity
+                // Cap at 5.0
+                const frequencyBonus = Math.min(0.5, stat.consumption_count * 0.1);
+                const quantityBonus = Math.min(0.3, (stat.total_quantity / 10) * 0.1);
+                const implicitRating = Math.min(5.0, 4.0 + frequencyBonus + quantityBonus);
+
+                return {
+                    vintage_id: stat.vintage_id,
+                    wine_id: stat.wine_id,
+                    implicit_rating: implicitRating,
+                    consumption_count: stat.consumption_count,
+                    total_quantity: stat.total_quantity,
+                    confidence: Math.min(1.0, stat.consumption_count / 5), // Higher with more data
+                    last_consumed: stat.last_consumed
+                };
+            });
+        } catch (error) {
+            console.warn('Failed to get implicit ratings from consumption:', error.message);
+            return [];
+        }
+    }
+
+    /**
+     * Enhance user preference profile with consumption data
+     * Integrates implicit feedback from consumption into preference learning
+     */
+    async incorporateConsumptionIntoPreferences(userId) {
+        if (!userId) return;
+
+        try {
+            const consumptions = await this.getConsumptionFeedback(userId);
+            if (consumptions.length === 0) return;
+
+            // Aggregate consumption preferences by wine attributes
+            const wineTypePrefs = {};
+            const regionPrefs = {};
+            const grapePrefs = {};
+
+            for (const consumption of consumptions) {
+                // Weight by quantity consumed
+                const weight = consumption.quantity || 1;
+
+                // Track wine type preferences
+                if (consumption.wine_type) {
+                    wineTypePrefs[consumption.wine_type] = 
+                        (wineTypePrefs[consumption.wine_type] || 0) + weight;
+                }
+
+                // Track region preferences
+                if (consumption.region) {
+                    regionPrefs[consumption.region] = 
+                        (regionPrefs[consumption.region] || 0) + weight;
+                }
+
+                // Track grape variety preferences
+                if (consumption.grape_varieties) {
+                    try {
+                        const grapes = JSON.parse(consumption.grape_varieties);
+                        for (const grape of grapes) {
+                            grapePrefs[grape] = (grapePrefs[grape] || 0) + weight;
+                        }
+                    } catch (error) {
+                        // Skip if can't parse grape varieties
+                    }
+                }
+            }
+
+            // Store consumption-based preferences
+            await this.setParameter(`consumption_prefs_${userId}`, {
+                wine_types: wineTypePrefs,
+                regions: regionPrefs,
+                grapes: grapePrefs,
+                total_consumptions: consumptions.length,
+                last_updated: new Date().toISOString()
+            });
+
+            return {
+                wine_types: wineTypePrefs,
+                regions: regionPrefs,
+                grapes: grapePrefs
+            };
+        } catch (error) {
+            console.warn('Failed to incorporate consumption into preferences:', error.message);
+        }
+    }
+
     // Backward compatibility methods
     async getPairingWeights() {
         return await this.getEnhancedPairingWeights();

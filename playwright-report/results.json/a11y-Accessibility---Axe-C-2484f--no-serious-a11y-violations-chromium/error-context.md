@@ -1,0 +1,71 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - navigation "Main navigation" [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: 🍷
+        - generic [ref=e7]: SommOS
+      - menubar [ref=e8]:
+        - menuitem "Navigate to Dashboard - View wine inventory overview and key metrics" [ref=e9] [cursor=pointer]:
+          - generic [ref=e10] [cursor=pointer]: 📊
+          - generic [ref=e11] [cursor=pointer]: Dashboard
+        - menuitem "Navigate to Wine Pairing - Get AI-powered wine recommendations for dishes" [ref=e12] [cursor=pointer]:
+          - generic [ref=e13] [cursor=pointer]: 🍽️
+          - generic [ref=e14] [cursor=pointer]: Pairing
+        - menuitem "Navigate to Inventory Management" [active] [ref=e15] [cursor=pointer]:
+          - generic [ref=e16] [cursor=pointer]: 📦
+          - generic [ref=e17] [cursor=pointer]: Inventory
+        - menuitem "Navigate to Procurement" [ref=e18] [cursor=pointer]:
+          - generic [ref=e19] [cursor=pointer]: 🛒
+          - generic [ref=e20] [cursor=pointer]: Procurement
+        - menuitem "Navigate to Wine Catalog" [ref=e21] [cursor=pointer]:
+          - generic [ref=e22] [cursor=pointer]: 📚
+          - generic [ref=e23] [cursor=pointer]: Catalog
+        - menuitem "Navigate to Glossary - Learn wine terminology and system features" [ref=e24] [cursor=pointer]:
+          - generic [ref=e25] [cursor=pointer]: 📖
+          - generic [ref=e26] [cursor=pointer]: Glossary
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - generic [ref=e29]: ADMIN
+          - generic [ref=e30]: admin@sommos.local
+        - generic [ref=e31]:
+          - button "❓" [ref=e32] [cursor=pointer]:
+            - generic [ref=e33] [cursor=pointer]: ❓
+          - button "🔄" [ref=e34] [cursor=pointer]:
+            - generic [ref=e35] [cursor=pointer]: 🔄
+          - button "⚙️" [ref=e36] [cursor=pointer]:
+            - generic [ref=e37] [cursor=pointer]: ⚙️
+          - button "🚪" [ref=e38] [cursor=pointer]:
+            - generic [ref=e39] [cursor=pointer]: 🚪
+    - main "Main content area" [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - heading "Inventory Management" [level=1] [ref=e43]
+          - paragraph [ref=e44]: Track and manage your wine collection
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - textbox "Search wines, producers, regions..." [ref=e47]
+            - button "Search inventory" [ref=e48] [cursor=pointer]: 🔍
+          - generic [ref=e49]:
+            - combobox [ref=e50]:
+              - option "All Locations" [selected]
+              - option "Main Cellar"
+              - option "Service Bar"
+              - option "Deck Storage"
+            - combobox [ref=e51]:
+              - option "All Types" [selected]
+              - option "Red Wine"
+              - option "White Wine"
+              - option "Rosé"
+              - option "Sparkling"
+              - option "Dessert Wine"
+            - button "🔄 Refresh" [ref=e52] [cursor=pointer]:
+              - generic [ref=e53] [cursor=pointer]: 🔄
+              - text: Refresh
+        - paragraph [ref=e56]: Loading inventory...
+  - generic [ref=e57]: Auth disabled (dev mode) — all actions allowed
+```

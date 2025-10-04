@@ -13,6 +13,8 @@ const Database = require('../database/connection');
 const { getConfig } = require('../config/env');
 const CollaborativeFilteringEngine = require('./collaborative_filtering_engine');
 const EnsembleEngine = require('./ensemble_engine');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * @typedef {Object} Wine
@@ -100,6 +102,11 @@ class PairingEngine {
         this.collaborativeFilteringEngine = new CollaborativeFilteringEngine(database || this.db);
         this.ensembleEngine = new EnsembleEngine(database || this.db);
         
+        // Load Random Forest model if available
+        this.randomForestModel = null;
+        this.featureMappings = null;
+        this.loadRandomForestModel();
+        
         const config = getConfig();
         this.deepseek = config.deepSeek.apiKey ? new OpenAI({
             apiKey: config.deepSeek.apiKey,
@@ -126,6 +133,137 @@ class PairingEngine {
         
         // Initialize flavor mappings cache
         this._initializeFlavorMappings();
+    }
+
+    /**
+     * Load Random Forest model from disk
+     * @private
+     */
+    loadRandomForestModel() {
+        try {
+            const modelPath = path.join(__dirname, '../models/pairing_model_rf_v2.json');
+            const importancePath = path.join(__dirname, '../models/feature_importance.json');
+            
+            if (fs.existsSync(modelPath)) {
+                const modelData = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
+                this.randomForestModel = modelData;
+                console.log(`✅ Random Forest model loaded (${modelData.nTrees} trees)`);
+                
+                // Load feature mappings if available
+                if (fs.existsSync(importancePath)) {
+                    const importanceData = JSON.parse(fs.readFileSync(importancePath, 'utf8'));
+                    this.featureMappings = importanceData.mappings;
+                    console.log('✅ Feature mappings loaded');
+                }
+            } else {
+                console.log('ℹ️  Random Forest model not found, using rule-based scoring');
+            }
+        } catch (error) {
+            console.warn('Failed to load Random Forest model:', error.message);
+        }
+    }
+
+    /**
+     * Predict pairing score using Random Forest model
+     * @private
+     */
+    async predictWithRandomForest(wine, dishContext, preferences) {
+        if (!this.randomForestModel || !this.featureMappings) {
+            return null;
+        }
+
+        try {
+            // Build feature vector matching training format
+            const features = this.buildFeatureVector(wine, dishContext, preferences);
+            
+            // Make prediction using ensemble of trees
+            const predictions = this.randomForestModel.trees.map(tree => 
+                this.predictTree(tree, features)
+            );
+            
+            // Average predictions
+            const avgPrediction = predictions.reduce((a, b) => a + b, 0) / predictions.length;
+            
+            return avgPrediction;
+        } catch (error) {
+            console.warn('Random Forest prediction error:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Build feature vector for Random Forest prediction
+     * @private
+     */
+    buildFeatureVector(wine, dishContext, preferences) {
+        // Feature order: [cuisine, protein, intensity, wine_type, occasion, season, guest_count, ranking]
+        const context = dishContext || {};
+        const prefs = preferences || {};
+        
+        // Get encoded values (or default to 0)
+        const cuisineEncoded = this.encodeFeature('cuisines', context.cuisine);
+        const proteinEncoded = this.encodeFeature('proteins', context.protein);
+        const intensityEncoded = this.encodeFeature('intensities', context.intensity);
+        const wineTypeEncoded = this.encodeFeature('wine_types', wine.wine_type);
+        const occasionEncoded = this.encodeFeature('occasions', prefs.occasion || context.occasion || 'casual');
+        const seasonEncoded = this.encodeFeature('seasons', context.season || this.getCurrentSeason());
+        
+        // Normalized features
+        const guestCountNorm = (prefs.guest_count || prefs.guestCount || context.guest_count || 4) / 12;
+        const rankingNorm = 0.5; // Default middle ranking (will be determined by other features)
+        
+        return [
+            cuisineEncoded,
+            proteinEncoded,
+            intensityEncoded,
+            wineTypeEncoded,
+            occasionEncoded,
+            seasonEncoded,
+            guestCountNorm,
+            rankingNorm
+        ];
+    }
+
+    /**
+     * Encode categorical feature to numeric value
+     * @private
+     */
+    encodeFeature(category, value) {
+        if (!this.featureMappings || !value) {
+            return 0;
+        }
+        
+        const mapping = this.featureMappings[category];
+        if (!mapping) {
+            return 0;
+        }
+        
+        // Find the numeric code for this value
+        for (const [code, label] of Object.entries(mapping)) {
+            if (label.toLowerCase() === value.toLowerCase()) {
+                return parseInt(code, 10);
+            }
+        }
+        
+        return 0; // Default if not found
+    }
+
+    /**
+     * Recursively traverse decision tree to make prediction
+     * @private
+     */
+    predictTree(tree, features) {
+        // Leaf node - return value
+        if ('value' in tree) {
+            return tree.value;
+        }
+        
+        // Decision node - traverse based on feature value
+        if (features[tree.feature] <= tree.threshold) {
+            return this.predictTree(tree.left, features);
+        } else {
+            return this.predictTree(tree.right, features);
+        }
     }
 
     /**
@@ -511,16 +649,35 @@ class PairingEngine {
         // Apply guest preferences modifier
         const preferenceModifier = this.applyPreferences(wine, preferences);
         
-        // Calculate weighted total
+        // Try Random Forest model first, fallback to rule-based
         let total = 0;
-        for (const [category, score] of Object.entries(scores)) {
-            total += score * this.scoringWeights[category];
+        let usedML = false;
+        
+        if (this.randomForestModel && this.featureMappings) {
+            try {
+                const mlScore = await this.predictWithRandomForest(wine, dishContext, preferences);
+                if (mlScore !== null && mlScore >= 0) {
+                    // Normalize ML score from [0-5] to [0-1] range
+                    total = Math.min(1.0, Math.max(0, mlScore / 5.0));
+                    usedML = true;
+                }
+            } catch (error) {
+                console.warn('Random Forest prediction failed, using rule-based:', error.message);
+            }
+        }
+        
+        // Fallback to rule-based scoring
+        if (!usedML) {
+            for (const [category, score] of Object.entries(scores)) {
+                total += score * this.scoringWeights[category];
+            }
         }
 
         return {
             ...scores,
             total: Math.min(1.0, total * preferenceModifier),
-            confidence: this.calculateConfidence(scores)
+            confidence: this.calculateConfidence(scores),
+            ml_enhanced: usedML
         };
     }
 

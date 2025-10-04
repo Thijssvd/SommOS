@@ -75,6 +75,9 @@ const app = express();
 const PORT = env.port;
 const NODE_ENV = env.nodeEnv;
 
+// Trust first proxy (nginx) for rate limiting and client IP detection
+app.set('trust proxy', 1);
+
 // Apply enhanced security middleware
 app.use(helmet(helmetConfig));
 
