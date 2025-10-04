@@ -89,14 +89,47 @@ jest.mock('axios', () => ({
 
 // Mock parallel processing engine to prevent worker logging issues
 jest.mock('../backend/core/parallel_processing_engine', () => {
-  return jest.fn().mockImplementation(() => ({
-    start: jest.fn(),
-    stop: jest.fn(),
-    executeTask: jest.fn(() => Promise.resolve({ success: true, result: 'mocked' })),
-    getMetrics: jest.fn(() => ({ activeWorkers: 0, completedTasks: 0, failedTasks: 0 })),
-    on: jest.fn(),
-    emit: jest.fn()
-  }));
+  const EventEmitter = require('events');
+  
+  class ParallelProcessingEngine extends EventEmitter {
+    constructor(options = {}) {
+      super();
+      this.maxWorkers = options.maxWorkers || 4;
+      this.taskTimeout = options.taskTimeout || 5 * 60 * 1000;
+      this.tasks = new Map();
+      this.metrics = { totalTasks: 0, completedTasks: 0, failedTasks: 0, activeTasks: 0 };
+    }
+    async executeTask(taskType, data, options = {}) {
+      const taskId = `task_${Date.now()}_${Math.random()}`;
+      this.tasks.set(taskId, { type: taskType, data, status: 'completed', result: data });
+      this.metrics.totalTasks++;
+      this.metrics.completedTasks++;
+      return taskId;
+    }
+    async executeTasks(tasks) {
+      return Promise.all(tasks.map(task => this.executeTask(task.type, task.data, task.options)));
+    }
+    async waitForTask(taskId) {
+      const task = this.tasks.get(taskId);
+      return task ? task.result : null;
+    }
+    getMetrics() { return this.metrics; }
+    async shutdown() { this.tasks.clear(); }
+  }
+  
+  class SimilarityCalculationEngine extends ParallelProcessingEngine {
+    async calculateSimilarities(entities, algorithm, options = {}) {
+      return [];
+    }
+  }
+  
+  class MatrixProcessingEngine extends ParallelProcessingEngine {
+    async multiplyMatrices(matrixA, matrixB, options = {}) {
+      return [[1, 0], [0, 1]];
+    }
+  }
+  
+  return { ParallelProcessingEngine, SimilarityCalculationEngine, MatrixProcessingEngine };
 });
 
 // Console mocking for cleaner test output
@@ -125,10 +158,13 @@ afterEach(() => {
 });
 
 // Reset database instance between test suites
-afterEach(async () => {
-  const Database = require('../backend/database/connection');
-  await Database.resetInstance();
-});
+// Note: Database.resetInstance() doesn't exist - mocked databases handle their own cleanup
+// afterEach(async () => {
+//   const Database = require('../backend/database/connection');
+//   if (Database.resetInstance) {
+//     await Database.resetInstance();
+//   }
+// });
 
 // Global cleanup for parallel processing engines
 afterAll(async () => {

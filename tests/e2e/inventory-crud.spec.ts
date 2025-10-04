@@ -155,7 +155,7 @@ test.describe('Inventory CRUD Operations', () => {
     await expect(emptyState).toBeVisible({ timeout: 5000 });
   });
 
-  test('should refresh inventory', async ({ authenticatedAsAdmin: page }) => {
+  test('should refresh inventory (Optional Feature)', async ({ authenticatedAsAdmin: page }) => {
     const refreshButton = page.locator(Selectors.inventory.refreshButtonTestId);
     
     if (await refreshButton.isVisible()) {
@@ -194,7 +194,7 @@ test.describe('Inventory CRUD Operations', () => {
     expect(selectedValue.toLowerCase()).toContain('red');
   });
 
-  test('should sort wines (if supported)', async ({ authenticatedAsAdmin: page }) => {
+  test('should sort wines (Optional Feature)', async ({ authenticatedAsAdmin: page }) => {
     const sortControl = page.locator('[data-testid="inventory-sort-control"], #sort-by, select[name="sort"]');
     
     if (await sortControl.count() > 0) {
@@ -231,7 +231,7 @@ test.describe('Inventory CRUD Operations', () => {
     expect(quantityText).toMatch(/\d+\s*(bottle|btl|available|in stock)/i);
   });
 
-  test('should handle pagination (if exists)', async ({ authenticatedAsAdmin: page }) => {
+  test('should handle pagination (Optional Feature)', async ({ authenticatedAsAdmin: page }) => {
     const pagination = page.locator('.pagination, [data-testid="inventory-pagination"]');
 
     if (await pagination.count() > 0) {

@@ -96,7 +96,7 @@ describe('SommOS Performance Tests', () => {
         const types = ['Red', 'White', 'Sparkling', 'Rosé', 'Dessert'];
         const locations = ['main-cellar', 'service-bar', 'deck-storage', 'private-reserve', 'temperature-controlled'];
 
-        console.log(`Generating performance test dataset with ${datasetSize} wines...`);
+        // Generating performance test dataset
 
         await db.exec('BEGIN TRANSACTION;');
 
@@ -155,13 +155,11 @@ describe('SommOS Performance Tests', () => {
                 }
             }
 
-                if (i % Math.max(50, Math.floor(datasetSize / 4)) === 0) {
-                    console.log(`Generated ${i} wines...`);
-                }
+                // Progress tracking omitted for cleaner test output
             }
 
             await db.exec('COMMIT;');
-            console.log('Performance dataset generation complete!');
+            // Dataset generation complete
         } catch (error) {
             await db.exec('ROLLBACK;');
             throw error;
@@ -183,8 +181,7 @@ describe('SommOS Performance Tests', () => {
             expect(response.body.success).toBe(true);
             expect(response.body.data.length).toBeGreaterThanOrEqual(minExpectedInventory);
             expect(responseTime).toBeLessThan(8000); // Increased timeout for CI environments
-
-            console.log(`Inventory load time: ${responseTime}ms for ${response.body.data.length} items`);
+            // Performance: ${responseTime}ms for ${response.body.data.length} items
         }, 10000); // 10 second test timeout
 
         test('filtered inventory should respond quickly', async () => {
@@ -198,8 +195,7 @@ describe('SommOS Performance Tests', () => {
 
             expect(response.body.success).toBe(true);
             expect(responseTime).toBeLessThan(2000);
-
-            console.log(`Filtered inventory time: ${responseTime}ms for ${response.body.data.length} items`);
+            // Performance verified: response time within acceptable limits
         });
 
         test('wine catalog with search should be performant', async () => {
@@ -213,8 +209,7 @@ describe('SommOS Performance Tests', () => {
 
             expect(response.body.success).toBe(true);
             expect(responseTime).toBeLessThan(2000);
-
-            console.log(`Wine search time: ${responseTime}ms for ${response.body.data.length} results`);
+            // Search performance within acceptable limits
         });
 
         test('system health endpoint should respond quickly', async () => {
@@ -228,8 +223,7 @@ describe('SommOS Performance Tests', () => {
 
             expect(response.body.success).toBe(true);
             expect(responseTime).toBeLessThan(1200);
-
-            console.log(`System health time: ${responseTime}ms`);
+            // Health endpoint response time acceptable
         });
     });
 
@@ -252,8 +246,7 @@ describe('SommOS Performance Tests', () => {
 
             const avgResponseTime = totalTime / concurrentRequests;
             expect(avgResponseTime).toBeLessThan(4000);
-
-            console.log(`${concurrentRequests} concurrent requests completed in ${totalTime}ms (avg: ${avgResponseTime.toFixed(2)}ms)`);
+            // Concurrent load handled successfully
         });
 
         test('should handle mixed API load efficiently', async () => {
@@ -286,8 +279,7 @@ describe('SommOS Performance Tests', () => {
             // Adjusted expectation for more realistic load test timing
             // Multiple complex API calls with database operations can take longer
             expect(totalTime).toBeLessThan(40000); // 40 seconds for mixed load test
-
-            console.log(`Mixed API load test completed in ${totalTime}ms`);
+            // Mixed API load handled successfully
         }, 60000); // Increase timeout to 60 seconds for this long-running test
     });
 
@@ -310,9 +302,8 @@ describe('SommOS Performance Tests', () => {
             const memoryIncrease = (finalMemory.heapUsed - initialMemory.heapUsed) / 1024 / 1024; // MB
 
             expect(memoryIncrease).toBeLessThan(150);
-
-            console.log(`Memory usage increase: ${memoryIncrease.toFixed(2)}MB`);
-            console.log(`Heap used: ${(finalMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`);
+            expect(finalMemory.heapUsed).toBeGreaterThan(0);
+            // Memory usage remains stable
         });
     });
 
@@ -329,8 +320,7 @@ describe('SommOS Performance Tests', () => {
 
             expect(response.body.success).toBe(true);
             expect(queryTime).toBeLessThan(2500);
-
-            console.log(`Complex inventory query time: ${queryTime}ms`);
+            // Complex query optimization verified
         });
 
         test('ledger history queries should be efficient', async () => {
@@ -348,8 +338,7 @@ describe('SommOS Performance Tests', () => {
 
             expect(response.body.success).toBe(true);
             expect(queryTime).toBeLessThan(2000);
-
-            console.log(`Ledger history query time: ${queryTime}ms`);
+            // Ledger query performance acceptable
         });
     });
 
@@ -378,8 +367,7 @@ describe('SommOS Performance Tests', () => {
 
             expect(avgTime).toBeLessThan(1500);
             expect(maxTime).toBeLessThan(2500);
-
-            console.log(`Pagination performance - Avg: ${avgTime.toFixed(2)}ms, Max: ${maxTime}ms`);
+            // Pagination maintains consistent performance
         });
     });
 
@@ -406,11 +394,10 @@ describe('SommOS Performance Tests', () => {
 
                 expect(responseTime).toBeLessThan(1000);
             }
-
-            console.log('Static asset performance:');
-            results.forEach(({ file, time, size }) => {
-                console.log(`  ${file}: ${time}ms (${(size / 1024).toFixed(2)}KB)`);
-            });
+            
+            // Verify all assets served within acceptable time
+            const allFast = results.every(r => r.time < 1000);
+            expect(allFast).toBe(true);
         });
     });
 
@@ -440,10 +427,10 @@ describe('SommOS Performance Tests', () => {
             const laterRequests = times.slice(1);
             const avgLaterRequests = laterRequests.reduce((sum, time) => sum + time, 0) / laterRequests.length;
 
-            console.log(`Caching test - First: ${firstRequest}ms, Later avg: ${avgLaterRequests.toFixed(2)}ms`);
-
+            // Verify all requests completed successfully
+            expect(times.length).toBe(5);
+            expect(avgLaterRequests).toBeLessThan(1500);
             // Later requests should generally be faster (some caching benefit)
-            // Note: This might not always be true in tests, but provides visibility
         });
     });
 
@@ -459,8 +446,7 @@ describe('SommOS Performance Tests', () => {
 
             expect(response.body.success).toBe(false);
             expect(responseTime).toBeLessThan(500);
-
-            console.log(`404 error response time: ${responseTime}ms`);
+            // Error responses are fast
         });
 
         test('validation errors should be quick', async () => {
@@ -475,8 +461,7 @@ describe('SommOS Performance Tests', () => {
 
             expect(response.body.success).toBe(false);
             expect(responseTime).toBeLessThan(400);
-
-            console.log(`Validation error response time: ${responseTime}ms`);
+            // Validation errors respond quickly
         });
     });
 
@@ -495,12 +480,9 @@ describe('SommOS Performance Tests', () => {
                 "💡 Monitor and optimize N+1 query patterns in complex endpoints"
             ];
             
-            console.log('\n🚀 SommOS Performance Analysis Report:');
-            console.log('='.repeat(50));
-            recommendations.forEach(rec => console.log(rec));
-            console.log('='.repeat(50));
-            
-            expect(true).toBe(true); // Always passes, just for report generation
+            // Performance recommendations tracked
+            expect(recommendations.length).toBeGreaterThan(0);
+            // See PERFORMANCE_RECOMMENDATIONS.md for detailed suggestions
         });
     });
 });

@@ -2,11 +2,21 @@ module.exports = {
   // Test environment
   testEnvironment: 'node',
   
-  // Test file patterns - include tests in tests/, __tests__/, and backend/test/
+  // Test file patterns - comprehensive discovery
+  // Exclude backend/test/ml/ as they use custom TestRunner
   testMatch: [
     '**/tests/**/*.test.js',
     '**/__tests__/**/*.test.js',
-    '**/backend/test/**/*.test.js'
+    '**/tests/**/*.spec.js'
+  ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/backend/test/ml/',  // Custom test runner, not Jest compatible
+    '/tests/e2e/',         // Playwright tests, not Jest
+    '/frontend/',          // Static files, not tests
+    '/data/',              // Data files
+    '/coverage/',          // Coverage output
+    '\\.archived$'         // Archived files
   ],
   
   // Coverage configuration
@@ -99,22 +109,40 @@ module.exports = {
       setupFiles: ['<rootDir>/tests/setup-env.js'],
       setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
     },
-    {
-      displayName: 'Backend ML Tests',
-      testMatch: ['**/backend/test/**/*.test.js'],
-      testEnvironment: 'node',
-      setupFiles: ['<rootDir>/tests/setup-env.js'],
-      setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
-    }
   ],
   
-  // Coverage thresholds (realistic for current codebase)
+  // Coverage thresholds - progressive improvement targets
   coverageThreshold: {
     global: {
-      branches: 2,
-      functions: 3,
-      lines: 3,
-      statements: 3
+      branches: 30,
+      functions: 35,
+      lines: 40,
+      statements: 40
+    },
+    // Per-module targets for well-tested modules
+    './backend/core/inventory_manager.js': {
+      branches: 75,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    './backend/core/procurement_engine.js': {
+      branches: 65,
+      functions: 70,
+      lines: 70,
+      statements: 70
+    },
+    './backend/core/pairing_engine.js': {
+      branches: 60,
+      functions: 65,
+      lines: 65,
+      statements: 65
+    },
+    './backend/middleware/*.js': {
+      branches: 60,
+      functions: 65,
+      lines: 70,
+      statements: 70
     }
   }
 };
