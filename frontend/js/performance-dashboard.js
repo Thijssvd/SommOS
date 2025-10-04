@@ -12,7 +12,8 @@ class PerformanceDashboard {
             apiEndpoint: options.apiEndpoint || '/api/performance/rum',
             refreshInterval: options.refreshInterval || 30000, // 30 seconds
             charts: options.charts || ['webVitals', 'errors', 'sessions'],
-            theme: options.theme || 'light'
+            theme: options.theme || 'light',
+            api: options.api || null // SommOSAPI instance
         };
         
         this.charts = new Map();

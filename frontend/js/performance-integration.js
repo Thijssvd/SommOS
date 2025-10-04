@@ -7,7 +7,8 @@ import PerformanceMonitor from './performance-monitor.js';
 import PerformanceDashboard from './performance-dashboard.js';
 
 class PerformanceIntegration {
-    constructor() {
+    constructor(api = null) {
+        this.api = api; // SommOSAPI instance
         this.monitor = null;
         this.dashboard = null;
         this.isInitialized = false;
@@ -29,6 +30,7 @@ class PerformanceIntegration {
                 reportInterval: options.reportInterval || 30000,
                 endpoint: options.endpoint || '/api/performance/rum',
                 debug: options.debug || false,
+                api: this.api, // Pass API client to monitor
                 enableUserTiming: options.enableUserTiming !== false,
                 enableResourceTiming: options.enableResourceTiming !== false,
                 enableNavigationTiming: options.enableNavigationTiming !== false,
@@ -64,6 +66,7 @@ class PerformanceIntegration {
                 refreshInterval: options.refreshInterval || 30000,
                 charts: options.charts || ['webVitals', 'errors', 'sessions'],
                 theme: options.theme || 'light',
+                api: this.api, // Pass API client to dashboard
                 ...options
             });
             
@@ -371,22 +374,29 @@ class PerformanceIntegration {
      * Send alert to monitoring system
      */
     sendAlert(type, data) {
-        // Send to backend monitoring system
-        fetch('/api/performance/alerts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                type,
-                data,
-                timestamp: Date.now(),
-                url: window.location.href,
-                userAgent: navigator.userAgent
-            })
-        }).catch(error => {
-            console.error('Failed to send alert:', error);
-        });
+        // Use API client if available
+        if (this.api && typeof this.api.sendPerformanceAlert === 'function') {
+            this.api.sendPerformanceAlert(type, data).catch(error => {
+                console.error('Failed to send alert via API:', error.message || error);
+            });
+        } else {
+            // Fallback to direct fetch
+            fetch('/api/performance/alerts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type,
+                    data,
+                    timestamp: Date.now(),
+                    url: window.location.href,
+                    userAgent: navigator.userAgent
+                })
+            }).catch(error => {
+                console.error('Failed to send alert:', error);
+            });
+        }
         
         // Also emit local event
         window.dispatchEvent(new CustomEvent('performance-alert', {

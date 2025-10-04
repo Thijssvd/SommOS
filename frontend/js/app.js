@@ -1,7 +1,7 @@
 // SommOS Main Application JavaScript
 // Handles app initialization, navigation, and core functionality
 
-import { SommOSAPI } from './api.js';
+import { SommOSAPI, SommOSAPIError } from './api.js';
 import { SommOSUI, VirtualScroll } from './ui.js';
 import { SommOSSyncService } from './sync.js';
 import { RealTimeSync } from './realtime-sync.js';
@@ -702,6 +702,74 @@ export class SommOS {
         if (this.authElements.loginError) {
             this.authElements.loginError.textContent = '';
         }
+    }
+
+    /**
+     * Centralized API error handler
+     * Provides consistent error handling and user feedback for all API errors
+     */
+    handleAPIError(error, context = '', userMessage = null) {
+        console.error(`API Error [${context}]:`, error);
+        
+        // Check if this is a SommOSAPIError with details
+        if (error instanceof SommOSAPIError || error.name === 'SommOSAPIError') {
+            const { status, code, message, details } = error;
+            
+            // Determine user-friendly message based on error type
+            let displayMessage = userMessage || message;
+            let toastType = 'error';
+            
+            if (!navigator.onLine) {
+                displayMessage = 'You are offline. Changes will sync when connection is restored.';
+                toastType = 'warning';
+            } else if (error.message && error.message.includes('timeout')) {
+                displayMessage = 'Request timed out. The server may be slow or unavailable.';
+            } else if (error.message && /Failed to fetch|NetworkError|load failed/i.test(error.message)) {
+                displayMessage = 'Connection lost. Please check your internet connection.';
+            } else if (status >= 500) {
+                displayMessage = 'Server error occurred. Our team has been notified.';
+            } else if (status === 429) {
+                displayMessage = 'Too many requests. Please wait a moment and try again.';
+            } else if (status === 408) {
+                displayMessage = 'Request timeout. Please try again.';
+            } else if (status >= 400 && status < 500) {
+                // Use specific API error message for 4xx errors
+                displayMessage = message || `Request failed with status ${status}`;
+            }
+            
+            // Add retry information if error indicates retry exhaustion
+            if (error.message && error.message.includes('multiple attempts')) {
+                displayMessage += ' (After multiple retry attempts)';
+            }
+            
+            // Show toast notification
+            this.ui.showToast(displayMessage, toastType);
+            
+            // Log detailed error for debugging
+            console.group(`%c🚨 API Error Details [${context}]`, 'color: #ff6b6b; font-weight: bold');
+            console.log('Status:', status);
+            console.log('Code:', code);
+            console.log('Message:', message);
+            console.log('Details:', details);
+            console.log('Full Error:', error);
+            console.groupEnd();
+            
+            return {
+                handled: true,
+                status,
+                code,
+                message: displayMessage
+            };
+        }
+        
+        // Handle generic errors
+        const genericMessage = userMessage || error.message || 'An unexpected error occurred';
+        this.ui.showToast(genericMessage, 'error');
+        
+        return {
+            handled: true,
+            message: genericMessage
+        };
     }
 
     // Real-time WebSocket event handlers

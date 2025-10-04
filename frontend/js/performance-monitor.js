@@ -33,6 +33,9 @@ class PerformanceMonitor {
             // Reporting endpoint
             endpoint: options.endpoint || '/api/performance/rum',
             
+            // API client for resilient requests
+            api: options.api || null, // SommOSAPI instance
+            
             // Debug mode
             debug: options.debug || false
         };
@@ -553,13 +556,27 @@ class PerformanceMonitor {
                 isUnload
             };
             
-            // Use sendBeacon for unload events, fetch for regular reporting
+            // Use sendBeacon for unload events
             if (isUnload && 'sendBeacon' in navigator) {
                 navigator.sendBeacon(
                     this.config.endpoint,
                     JSON.stringify(payload)
                 );
+                this.log('Metrics sent via sendBeacon');
+                return;
+            }
+            
+            // Use API client if available, otherwise fall back to fetch
+            if (this.config.api && typeof this.config.api.reportPerformanceMetrics === 'function') {
+                try {
+                    await this.config.api.reportPerformanceMetrics(payload, false);
+                    this.log('Metrics reported successfully via API client');
+                } catch (apiError) {
+                    // SommOSAPIError or other error - log but don't block
+                    this.log('API client metrics reporting failed (non-critical):', apiError.message || apiError);
+                }
             } else {
+                // Fallback to direct fetch if API client not available
                 await fetch(this.config.endpoint, {
                     method: 'POST',
                     headers: {
@@ -567,11 +584,11 @@ class PerformanceMonitor {
                     },
                     body: JSON.stringify(payload)
                 });
+                this.log('Metrics reported successfully via fetch');
             }
-            
-            this.log('Metrics reported successfully');
         } catch (error) {
-            this.log('Failed to report metrics:', error);
+            // Log error but don't throw - performance monitoring should not break the app
+            this.log('Failed to report metrics (non-critical):', error.message || error);
         }
     }
     
