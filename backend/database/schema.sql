@@ -477,6 +477,66 @@ CREATE INDEX idx_users_role ON Users(role);
 CREATE INDEX idx_refresh_tokens_user ON RefreshTokens(user_id);
 CREATE INDEX idx_invites_email ON Invites(email);
 
+-- Real User Monitoring (RUM) Tables
+
+CREATE TABLE IF NOT EXISTS RumSessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    url TEXT,
+    user_agent TEXT,
+    connection TEXT, -- JSON object with connection info
+    is_unload BOOLEAN DEFAULT 0,
+    received_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+);
+
+CREATE TABLE IF NOT EXISTS RumMetrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    metric_type TEXT NOT NULL, -- 'webVital', 'custom', 'interaction', 'resource', 'navigation'
+    metric_name TEXT,
+    metric_value REAL,
+    metric_data TEXT, -- JSON object with full metric data
+    timestamp INTEGER NOT NULL,
+    processed_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+    FOREIGN KEY (session_id) REFERENCES RumSessions(session_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS RumErrors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    error_type TEXT NOT NULL,
+    error_message TEXT,
+    error_stack TEXT,
+    error_data TEXT, -- JSON object with full error data
+    timestamp INTEGER NOT NULL,
+    processed_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+    FOREIGN KEY (session_id) REFERENCES RumSessions(session_id) ON DELETE CASCADE
+);
+
+-- RUM Indexes for Performance
+CREATE INDEX IF NOT EXISTS idx_rum_sessions_session_id ON RumSessions(session_id);
+CREATE INDEX IF NOT EXISTS idx_rum_sessions_timestamp ON RumSessions(timestamp);
+CREATE INDEX IF NOT EXISTS idx_rum_sessions_created_at ON RumSessions(created_at);
+CREATE INDEX IF NOT EXISTS idx_rum_sessions_user_id ON RumSessions(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_rum_metrics_session_id ON RumMetrics(session_id);
+CREATE INDEX IF NOT EXISTS idx_rum_metrics_type ON RumMetrics(metric_type);
+CREATE INDEX IF NOT EXISTS idx_rum_metrics_name ON RumMetrics(metric_name);
+CREATE INDEX IF NOT EXISTS idx_rum_metrics_timestamp ON RumMetrics(timestamp);
+CREATE INDEX IF NOT EXISTS idx_rum_metrics_created_at ON RumMetrics(created_at);
+CREATE INDEX IF NOT EXISTS idx_rum_metrics_session_timestamp ON RumMetrics(session_id, timestamp);
+
+CREATE INDEX IF NOT EXISTS idx_rum_errors_session_id ON RumErrors(session_id);
+CREATE INDEX IF NOT EXISTS idx_rum_errors_type ON RumErrors(error_type);
+CREATE INDEX IF NOT EXISTS idx_rum_errors_timestamp ON RumErrors(timestamp);
+CREATE INDEX IF NOT EXISTS idx_rum_errors_created_at ON RumErrors(created_at);
+CREATE INDEX IF NOT EXISTS idx_rum_errors_session_timestamp ON RumErrors(session_id, timestamp);
+
 -- Views for Common Queries
 
 CREATE VIEW v_current_stock AS

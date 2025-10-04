@@ -38,6 +38,7 @@
     "spec:parity": "node scripts/check-spec-parity.js",
     "sbom:generate": "node scripts/generate-sbom.js",
     "test:weather": "node scripts/test-open-meteo.js",
+    "test:rum": "node scripts/test-rum-persistence.js",
     "simulate:year": "node scripts/simulate-year-data.js",
     "train:ml": "node scripts/train-ml-models.js"
   },
