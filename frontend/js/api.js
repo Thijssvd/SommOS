@@ -1071,6 +1071,55 @@ export class SommOSAPI {
             body: JSON.stringify(SommOSAPI.cleanPayload({ wine_id, dish_context }))
         });
     }
+
+    // Performance monitoring endpoints
+    async reportPerformanceMetrics(payload, useRetry = false) {
+        // Performance reporting should be fast and non-blocking
+        // Use requestWithoutRetry by default to avoid delays
+        if (useRetry) {
+            return this.request('/performance/metrics', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+        }
+        return this.requestWithoutRetry('/performance/metrics', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    }
+
+    async getPerformanceSummary() {
+        return this.request('/performance/summary');
+    }
+
+    async getPerformanceAnalytics(params = {}) {
+        const query = SommOSAPI.buildQuery(params);
+        return this.request(`/performance/analytics${query}`);
+    }
+
+    async getPerformanceErrors(params = {}) {
+        const query = SommOSAPI.buildQuery(params);
+        return this.request(`/performance/errors${query}`);
+    }
+
+    async getPerformanceSessions(params = {}) {
+        const query = SommOSAPI.buildQuery(params);
+        return this.request(`/performance/sessions${query}`);
+    }
+
+    async sendPerformanceAlert(type, data) {
+        // Alerts should be fire-and-forget to avoid blocking user experience
+        return this.requestWithoutRetry('/performance/alerts', {
+            method: 'POST',
+            body: JSON.stringify({
+                type,
+                data,
+                timestamp: Date.now(),
+                url: typeof window !== 'undefined' ? window.location.href : null,
+                userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+            })
+        });
+    }
 }
 
 if (typeof window !== 'undefined') {

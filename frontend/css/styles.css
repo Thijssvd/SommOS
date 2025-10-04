@@ -3125,3 +3125,181 @@ p {
         font-size: var(--text-lg);
     }
 }
+
+/* =============================================================================
+   Wine Image Styles
+   ============================================================================= */
+
+/* Image Containers */
+.wine-image-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+/* Aspect Ratios */
+.wine-image-container.aspect-3-2 {
+  padding-bottom: 66.67%; /* 2:3 = 66.67% */
+}
+
+.wine-image-container.aspect-16-9 {
+  padding-bottom: 56.25%; /* 9:16 = 56.25% */
+}
+
+.wine-image-container.aspect-thumbnail {
+  padding-bottom: 150%; /* 2:3 for thumbnails */
+  max-width: 80px;
+  flex-shrink: 0;
+}
+
+/* Wine Bottle Images */
+.wine-bottle-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0; /* Start hidden, ImageOptimizer will fade in */
+}
+
+.wine-bottle-image[data-loaded="true"] {
+  opacity: 1;
+}
+
+/* Hover Effects */
+.wine-card:hover .wine-bottle-image,
+.catalog-card:hover .wine-bottle-image {
+  transform: scale(1.05);
+}
+
+/* Skeleton Loading Animation */
+.image-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+.wine-bottle-image[data-loaded="true"] ~ .image-skeleton {
+  opacity: 0;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* List View Specific Styles */
+.wine-list-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.wine-list-item .wine-image-container {
+  flex-shrink: 0;
+  width: 80px;
+  height: 120px;
+  border-radius: 4px;
+}
+
+.wine-list-item .wine-basic-info {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+/* Card Adjustments for Images */
+.wine-card.simple-card,
+.wine-card.catalog-card {
+  overflow: hidden;
+}
+
+.wine-card .wine-header {
+  padding-top: 12px; /* Space after image */
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .wine-image-container.aspect-3-2 {
+    padding-bottom: 75%; /* Slightly less tall on mobile */
+  }
+  
+  .wine-list-item .wine-image-container {
+    width: 60px;
+    height: 90px;
+  }
+  
+  .wine-list-item {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .wine-image-container.aspect-3-2 {
+    padding-bottom: 80%; /* Even less tall on small mobile */
+  }
+}
+
+/* High DPI / Retina Displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .wine-bottle-image {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Loading State */
+.wine-card.loading .image-skeleton {
+  opacity: 1;
+}
+
+.wine-card.loading .wine-bottle-image {
+  opacity: 0;
+}
+
+/* Error State - subtle indication */
+.wine-bottle-image[data-error="true"] {
+  opacity: 0.7;
+  filter: grayscale(20%);
+}
+
+/* Virtual Scroll Optimization */
+.virtual-scroll-enabled .wine-image-container {
+  /* Ensure images don't cause layout shifts */
+  will-change: transform;
+}
+
+/* Accessibility - Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .wine-bottle-image,
+  .image-skeleton {
+    animation: none;
+    transition: none;
+  }
+  
+  .wine-card:hover .wine-bottle-image {
+    transform: none;
+  }
+}
