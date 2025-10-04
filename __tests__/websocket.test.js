@@ -149,8 +149,33 @@ describe('WebSocket Real-Time Sync', () => {
 
     afterEach(async () => {
         if (client) {
-            if (client.readyState === WebSocket.OPEN || client.readyState === WebSocket.CONNECTING) {
-                client.close();
+            try {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.close();
+                } else if (client.readyState === WebSocket.CONNECTING) {
+                    // Wait for connection to establish then close
+                    await new Promise((resolve) => {
+                        const timeout = setTimeout(() => {
+                            if (client.readyState !== WebSocket.CLOSED) {
+                                client.terminate();
+                            }
+                            resolve();
+                        }, 100);
+                        
+                        client.once('open', () => {
+                            clearTimeout(timeout);
+                            client.close();
+                            resolve();
+                        });
+                        
+                        client.once('error', () => {
+                            clearTimeout(timeout);
+                            resolve();
+                        });
+                    });
+                }
+            } catch (error) {
+                // Ignore cleanup errors
             }
             // Wait for cleanup
             await new Promise((resolve) => setTimeout(resolve, 50));
