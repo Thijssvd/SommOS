@@ -95,12 +95,16 @@ module.exports = {
     {
       displayName: 'ML Algorithm Tests',
       testMatch: ['**/__tests__/**/*.test.js'],
-      testEnvironment: 'node'
+      testEnvironment: 'node',
+      setupFiles: ['<rootDir>/tests/setup-env.js'],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
     },
     {
       displayName: 'Backend ML Tests',
       testMatch: ['**/backend/test/**/*.test.js'],
-      testEnvironment: 'node'
+      testEnvironment: 'node',
+      setupFiles: ['<rootDir>/tests/setup-env.js'],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
     }
   ],
   
