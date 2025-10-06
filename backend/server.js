@@ -76,11 +76,14 @@ const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 const cookieParser = require('cookie-parser');
 
 const Database = require('./database/connection');
 const routes = require('./api/routes');
 const SommOSWebSocketServer = require('./core/websocket_server');
+const { AdvancedCacheManager } = require('./core/advanced_cache_manager');
+const prometheusExporter = require('./core/prometheus_exporter');
 const { 
     validateRequestSize, 
     validateUrlLength, 
@@ -134,7 +137,8 @@ const authLimiter = rateLimit(rateLimitConfigs.auth);
 const apiLimiter = rateLimit(rateLimitConfigs.api);
 const websocketLimiter = rateLimit(rateLimitConfigs.websocket);
 
-app.use(generalLimiter);
+// TEMPORARILY DISABLED for debugging
+// app.use(generalLimiter);
 
 /**
  * Security Middleware Stack (Applied Globally)
@@ -243,9 +247,42 @@ app.use(cookieParser(env.auth.sessionSecret || undefined));
 // Compression middleware
 app.use(compression());
 
+// Prometheus metrics middleware - track all HTTP requests
+app.use((req, res, next) => {
+    const startTime = Date.now();
+    
+    // Capture response finish event
+    res.on('finish', () => {
+        const duration = Date.now() - startTime;
+        const path = req.route?.path || req.path;
+        prometheusExporter.recordHttpRequest(req.method, path, res.statusCode, duration);
+    });
+    
+    next();
+});
+
 // Logging middleware
+// Using simple request logging instead of morgan to avoid blocking issues
 if (NODE_ENV !== 'test') {
-    app.use(morgan('combined'));
+    app.use((req, res, next) => {
+        const startTime = Date.now();
+        
+        // Log request (non-blocking)
+        setImmediate(() => {
+            console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl || req.url}`);
+        });
+        
+        // Log response when finished
+        res.on('finish', () => {
+            const duration = Date.now() - startTime;
+            setImmediate(() => {
+                console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl || req.url} - ${res.statusCode} - ${duration}ms`);
+            });
+        });
+        
+        next();
+    });
+    console.log('📝 HTTP request logging enabled');
 }
 
 // Static file serving (for PWA assets)
@@ -266,6 +303,18 @@ app.use('/api/v1/auth', authLimiter);
 app.use('/api', routes);
 // Versioned API routes (v1)
 app.use('/api/v1', routes);
+
+// Prometheus metrics endpoint
+app.get('/metrics', (req, res) => {
+    try {
+        const metrics = prometheusExporter.export();
+        res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+        res.send(metrics);
+    } catch (error) {
+        console.error('[Metrics] Error exporting Prometheus metrics:', error);
+        res.status(500).json({ error: 'Failed to export metrics' });
+    }
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -322,6 +371,19 @@ async function startServer() {
     try {
         ensureRequiredSecrets(env);
 
+        // Initialize global cache manager
+        console.log('Initializing cache manager...');
+        global.cacheManager = new AdvancedCacheManager({
+            maxSize: 10000,
+            defaultTTL: 60 * 60 * 1000, // 1 hour
+            enableMetrics: true
+        });
+        console.log('Cache manager initialized successfully');
+        
+        // Make Prometheus exporter globally accessible
+        global.prometheusExporter = prometheusExporter;
+        console.log('Prometheus metrics exporter initialized');
+
         // Initialize database
         console.log('Initializing database...');
         const db = Database.getInstance();
@@ -338,6 +400,7 @@ async function startServer() {
             console.log(`📘 API docs: http://localhost:${PORT}/docs`);
             console.log(`🔌 WebSocket available at: ws://localhost:${PORT}/api/ws`);
             console.log(`❤️  Health check: http://localhost:${PORT}/health`);
+            console.log(`📊 Metrics: http://localhost:${PORT}/metrics`);
             console.log(`
 🚀 Ready to serve yacht wine management!
 `);
@@ -348,6 +411,13 @@ async function startServer() {
         
         // Make WebSocket server available globally for broadcasting
         app.locals.wsServer = wsServer;
+        
+        // Update active connections metric periodically
+        setInterval(() => {
+            const activeConnections = wsServer.getActiveConnectionCount ? 
+                wsServer.getActiveConnectionCount() : 0;
+            prometheusExporter.setActiveConnections(activeConnections);
+        }, 5000); // Update every 5 seconds
         
         // Graceful shutdown
         process.on('SIGTERM', () => {

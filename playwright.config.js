@@ -56,11 +56,13 @@ module.exports = defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: [
+  // Commenting out webServer config to test against Docker deployment
+  // Set reuseExistingServer to true to use already running server
+  webServer: process.env.DOCKER_TEST ? undefined : [
     {
       command: 'npm run dev:backend',
       url: 'http://localhost:3001/api/system/health',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       timeout: 120 * 1000,
       stdout: 'pipe',
       stderr: 'pipe',
@@ -68,7 +70,7 @@ module.exports = defineConfig({
     {
       command: 'cd frontend && npm start',
       url: 'http://localhost:3000',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       timeout: 120 * 1000,
       stdout: 'pipe',
       stderr: 'pipe',

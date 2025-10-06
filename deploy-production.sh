@@ -157,5 +157,5 @@ else
     echo "  • Stop:         Press Ctrl+C (if still running)"
 fi
 echo ""
-echo -e "${YELLOW}📖 See DEPLOYMENT_CHECKLIST.md for post-deployment tasks${NC}"
+echo -e "${YELLOW}📖 See docs/deployment/DEPLOYMENT_CHECKLIST.md for post-deployment tasks${NC}"
 echo ""

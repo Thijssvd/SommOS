@@ -1,0 +1,72 @@
+# Prometheus Configuration for SommOS
+# This configuration scrapes metrics from the SommOS backend
+
+global:
+  scrape_interval: 15s # Scrape metrics every 15 seconds
+  evaluation_interval: 15s # Evaluate rules every 15 seconds
+  scrape_timeout: 10s # Timeout for each scrape request
+
+  # Attach these labels to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager).
+  external_labels:
+    cluster: 'sommos-production'
+    environment: 'production'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - 'localhost:9093'
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+# rule_files:
+#   - "alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # SommOS Backend Metrics
+  - job_name: 'sommos-backend'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+    scheme: 'http'
+    
+    static_configs:
+      - targets: ['host.docker.internal:3001']
+        labels:
+          service: 'sommos-backend'
+          instance: 'backend-1'
+    
+    # Add basic auth if metrics endpoint is protected
+    # basic_auth:
+    #   username: 'prometheus'
+    #   password: 'secure_password'
+    
+    # Relabel configurations
+    relabel_configs:
+      # Keep only metrics from healthy targets
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: host.docker.internal:3001
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter (for system metrics - optional)
+  # - job_name: 'node'
+  #   scrape_interval: 15s
+  #   static_configs:
+  #     - targets: ['localhost:9100']
+
+  # PostgreSQL Exporter (for database metrics - optional)
+  # - job_name: 'postgres'
+  #   scrape_interval: 15s
+  #   static_configs:
+  #     - targets: ['localhost:9187']

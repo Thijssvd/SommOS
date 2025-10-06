@@ -1070,691 +1070,101 @@ class PairingEngine {
         const month = new Date().getMonth();
         if (month >= 2 && month <= 4) return 'spring';
         if (month >= 5 && month <= 7) return 'summer';
-        if (month >= 8 && month <= 10) return 'autumn';
+        if (month >= 8 && month <= 10) return 'fall';
         return 'winter';
     }
 
-    getWineStyle(wine) {
-        const type = wine.wine_type.toLowerCase();
-        const style = wine.style?.toLowerCase() || '';
-        
-        if (type === 'sparkling') return 'sparkling';
-        if (type === 'rosé') return 'rosé';
-        if (type === 'dessert') return 'dessert';
-        if (type === 'fortified') return 'fortified';
-        
-        if (type === 'white') {
-            if (style.includes('crisp')) return 'crisp_white';
-            if (style.includes('full')) return 'full_white';
-            return 'light_white';
-        }
-        
-        if (type === 'red') {
-            if (style.includes('light')) return 'light_red';
-            if (style.includes('full')) return 'full_red';
-            return 'medium_red';
-        }
-        
-        return 'medium_red';
-    }
-
     /**
-     * Get regional wine pairing traditions with caching
-     * @param {string} wineRegion - The wine region
-     * @param {string} cuisine - The cuisine type
-     * @returns {Object} Regional tradition match information
+     * Parse AI response with error recovery
+     * Handles markdown code blocks, extra whitespace, and malformed JSON
      * @private
      */
-    async getRegionalTraditions(wineRegion, cuisine) {
-        const cacheKey = `${wineRegion}-${cuisine}`;
-        
-        // Check cache first
-        if (this._cache.regionalTraditions.has(cacheKey)) {
-            return this._cache.regionalTraditions.get(cacheKey);
+    _parseAIResponse(content) {
+        if (!content || typeof content !== 'string') {
+            throw new Error('Invalid AI response: empty or non-string content');
         }
         
-        // Simplified regional tradition lookup
-        const traditions = {
-            'burgundy': { 'french': { perfect_match: true } },
-            'bordeaux': { 'french': { good_match: true } },
-            'loire valley': { 'french': { good_match: true } },
-            'provence': { 'french': { good_match: true } },
-            'tuscany': { 'italian': { perfect_match: true } },
-            'piedmont': { 'italian': { perfect_match: true } },
-            'rioja': { 'spanish': { perfect_match: true } },
-            'champagne': { 'french': { good_match: true }, 'international': { good_match: true } },
-            'mosel': { 'german': { perfect_match: true }, 'thai': { good_match: true } },
-            'alsace': { 'french': { good_match: true }, 'german': { acceptable_match: true } },
-            'douro': { 'portuguese': { perfect_match: true }, 'french': { acceptable_match: true } },
-            'california': { 'american': { good_match: true }, 'international': { acceptable_match: true } }
-        };
-
-        const result = traditions[wineRegion]?.[cuisine] || {};
+        // Remove markdown code blocks (```json ... ``` or ``` ... ```)
+        let cleaned = content.trim();
+        cleaned = cleaned.replace(/^```(?:json)?\s*\n?/gm, '');
+        cleaned = cleaned.replace(/\n?```\s*$/gm, '');
+        cleaned = cleaned.trim();
         
-        // Cache the result
-        this._cache.regionalTraditions.set(cacheKey, result);
+        // Try to find JSON array or object
+        const jsonMatch = cleaned.match(/[\[{][\s\S]*[\]}]/);
+        if (jsonMatch) {
+            cleaned = jsonMatch[0];
+        }
         
-        return result;
+        try {
+            return JSON.parse(cleaned);
+        } catch (error) {
+            console.error('[AI] JSON parse error:', error.message);
+            console.error('[AI] Raw content:', content.substring(0, 200));
+            throw new Error(`Failed to parse AI response as JSON: ${error.message}`);
+        }
     }
 
-    calculateConfidence(scores) {
-        const values = Object.values(scores);
-        const average = values.reduce((a, b) => a + b, 0) / values.length;
-        const variance = values.reduce((acc, val) => acc + Math.pow(val - average, 2), 0) / values.length;
-        
-        // Higher confidence when scores are consistently high
-        return Math.max(0.1, Math.min(1.0, average - Math.sqrt(variance)));
-    }
-    
     /**
-     * Parse natural language dish description using AI
+     * Validate and normalize AI pairing recommendation
+     * @private
      */
-    async parseNaturalLanguageDish(dish, context = {}) {
-        if (!this.deepseek) {
-            // Fallback to basic parsing for non-AI mode
-            return {
-                dish: dish,
-                cuisine: context.cuisine || 'international',
-                preparation: context.preparation || 'unknown',
-                intensity: context.intensity || 'medium',
-                dominant_flavors: context.dominant_flavors || []
-            };
-        }
-        
-        try {
-            const prompt = `Analyze this dish description and extract key pairing characteristics:
-            
-Dish: "${dish}"
-Context: ${JSON.stringify(context)}
-            
-Please respond with a JSON object containing:
-- cuisine: the cuisine type (e.g., french, italian, asian, etc.)
-- preparation: cooking method (e.g., grilled, roasted, braised, etc.)
-- intensity: flavor intensity (light, medium, heavy)
-- dominant_flavors: array of key flavor profiles (e.g., ["rich", "savory", "spicy"])
-- texture: dish texture (creamy, light, rich, etc.)
-            
-Respond only with valid JSON.`;
-            
-            const response = await this.deepseek.chat.completions.create({
-                model: 'deepseek-chat',
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.3,
-                max_tokens: 200
-            });
-            
-            const parsed = JSON.parse(response.choices[0].message.content);
-            return {
-                dish: dish,
-                cuisine: parsed.cuisine || 'international',
-                preparation: parsed.preparation || 'unknown',
-                intensity: parsed.intensity || 'medium',
-                dominant_flavors: parsed.dominant_flavors || [],
-                texture: parsed.texture || 'medium'
-            };
-            
-        } catch (error) {
-            console.error('Error parsing dish with AI:', error.message);
-            return {
-                dish: dish,
-                cuisine: 'international',
-                preparation: 'unknown',
-                intensity: 'medium',
-                dominant_flavors: []
-            };
-        }
-    }
-    
-    /**
-     * Call OpenAI for wine pairing recommendations
-     */
-    async callOpenAIForPairings(dish, context, wineInventory, preferences) {
-        if (!this.deepseek) {
-            throw new Error('DeepSeek not configured');
-        }
-        
-        const inventorySummary = wineInventory.slice(0, 50).map(wine => 
-            `${wine.name} (${wine.producer}) - ${wine.wine_type} from ${wine.region}, ${wine.year} - ${wine.quantity} bottles`
-        ).join('\n');
-        
-        const prompt = `You are an expert sommelier managing a luxury yacht wine cellar. Please recommend the best wine pairings from the available inventory.
-        
-Dish: "${dish}"
-Context: ${JSON.stringify(context)}
-Guest Preferences: ${JSON.stringify(preferences)}
-        
-Available Wine Inventory:
-${inventorySummary}
-        
-Please recommend up to 6 wines from this inventory that would pair excellently with the dish. For each recommendation, provide:
-1. The exact wine name and producer as listed
-2. A confidence score (0.0 to 1.0)
-3. Detailed reasoning explaining why this pairing works
-        
-Respond with a JSON array of recommendations in this format:
-[{
-  "wine_name": "exact name from inventory",
-  "producer": "exact producer from inventory",
-  "confidence_score": 0.95,
-  "reasoning": "Detailed explanation of why this pairing works, considering flavor profiles, texture, acidity, tannins, and classic pairing principles."
-}]
-        
-Focus on wines that create harmony or interesting contrasts with the dish. Consider the setting (luxury yacht), occasion, and guest preferences.`;
-        
-        try {
-            const response = await this.deepseek.chat.completions.create({
-                model: 'deepseek-chat',
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.4,
-                max_tokens: 1500
-            });
-            
-            const recommendations = JSON.parse(response.choices[0].message.content);
-            return Array.isArray(recommendations) ? recommendations : [];
-            
-        } catch (error) {
-            console.error('OpenAI API error:', error.message);
-            throw new Error('Failed to get AI recommendations: ' + error.message);
-        }
-    }
-    
-    /**
-     * Quick AI-powered pairing for immediate service
-     */
-    async quickPairing(dish, context = {}, ownerLikes = {}) {
-        await this.refreshAdaptiveWeights();
-
-        if (!this.deepseek) {
-            // Fallback to rule-based quick pairing
-            const availableWines = await this.getAvailableWines();
-            return availableWines.slice(0, 3).map(wine => ({
-                wine,
-                reasoning: 'Quick selection based on availability and general pairing rules',
-                confidence: 0.6
-            }));
-        }
-        
-        try {
-            const quickInventory = (await this.getAvailableWines()).slice(0, 20);
-            const recommendations = await this.callOpenAIForPairings(dish, {
-                ...context,
-                urgency: 'quick_service',
-                owner_preferences: ownerLikes
-            }, quickInventory, {});
-            
-            return recommendations.slice(0, 3).map(rec => ({
-                wine: quickInventory.find(w => w.name === rec.wine_name && w.producer === rec.producer),
-                reasoning: rec.reasoning,
-                confidence: rec.confidence_score
-            })).filter(p => p.wine);
-            
-        } catch (error) {
-            console.error('Quick pairing error:', error.message);
-            const availableWines = await this.getAvailableWines();
-            return availableWines.slice(0, 3).map(wine => ({
-                wine,
-                reasoning: 'Quick selection (AI unavailable)',
-                confidence: 0.5
-            }));
-        }
-    }
-
-    async refreshAdaptiveWeights() {
-        if (!this.learningEngine) {
-            return;
-        }
-
-        try {
-            const adaptiveWeights = await this.learningEngine.getPairingWeights();
-            if (adaptiveWeights) {
-                this.scoringWeights = adaptiveWeights;
-            }
-        } catch (error) {
-            console.warn('Failed to refresh adaptive pairing weights:', error.message);
-        }
-    }
-
-    async attachLearningMetadata(recommendations, sessionContext = {}) {
-        if (!this.learningEngine || !Array.isArray(recommendations) || recommendations.length === 0) {
-            return recommendations;
-        }
-
-        try {
-            const capture = await this.learningEngine.recordPairingSession({
-                dishDescription: sessionContext.dishDescription,
-                dishContext: sessionContext.dishContext,
-                preferences: sessionContext.preferences,
-                recommendations,
-                generatedByAI: sessionContext.generatedByAI
-            });
-
-            if (!capture?.sessionId) {
-                return recommendations;
-            }
-
-            return recommendations.map((recommendation, index) => ({
-                ...recommendation,
-                learning_session_id: capture.sessionId,
-                learning_recommendation_id: capture.recommendationIds?.[index] || null
-            }));
-        } catch (error) {
-            console.warn('Unable to attach learning metadata to pairing results:', error.message);
-            return recommendations;
-        }
-    }
-
-    buildPairingExplanation(recommendations, dishContext = {}, {
-        context = {},
-        preferences = {},
-        generatedByAI = false,
-        dishDescription = ''
-    } = {}) {
-        if (!Array.isArray(recommendations) || recommendations.length === 0) {
+    _validatePairingRecommendation(rec) {
+        if (!rec || typeof rec !== 'object') {
             return null;
         }
-
-        const primary = recommendations[0] || {};
-        const wine = primary.wine || {};
-        const normalizedDish = dishContext?.name
-            || dishContext?.title
-            || dishContext?.description
-            || dishDescription
-            || 'this dish';
-
-        const summaryParts = [];
-        if (primary.reasoning) {
-            summaryParts.push(primary.reasoning);
-        } else {
-            const wineLabel = [wine.name, wine.year].filter(Boolean).join(' ') || 'Selected wine';
-            summaryParts.push(`${wineLabel} balances ${normalizedDish}.`);
+        
+        // Required fields
+        if (!rec.wine_name || !rec.producer) {
+            console.warn('[AI] Invalid recommendation: missing wine_name or producer');
+            return null;
         }
-
-        const contextDetails = [];
-        if (context && typeof context === 'object') {
-            const occasion = context.occasion || context.event;
-            if (occasion) {
-                contextDetails.push(`occasion: ${occasion}`);
-            }
-            if (context.season) {
-                contextDetails.push(`season: ${context.season}`);
-            }
-            if (context.weather) {
-                contextDetails.push(`weather: ${context.weather}`);
-            }
-            if (context.guestCount || context.guest_count) {
-                const guests = context.guestCount || context.guest_count;
-                contextDetails.push(`${guests} guest${guests === 1 ? '' : 's'}`);
-            }
+        
+        // Normalize confidence score
+        let confidence = parseFloat(rec.confidence_score);
+        if (isNaN(confidence) || confidence < 0) {
+            confidence = 0.5; // Default moderate confidence
+        } else if (confidence > 1) {
+            confidence = confidence / 100; // Convert percentage to decimal
         }
-
-        if (contextDetails.length) {
-            summaryParts.push(`Context: ${contextDetails.join(', ')}.`);
-        }
-
-        const summary = summaryParts.join(' ').trim();
-
-        const factors = [];
-        const addFactor = (label, value) => {
-            if (!value) {
-                return;
-            }
-            const trimmed = typeof value === 'string' ? value.trim() : value;
-            if (trimmed && !factors.includes(`${label}: ${trimmed}`)) {
-                factors.push(`${label}: ${trimmed}`);
-            }
-        };
-
-        const dishFlavors = Array.isArray(dishContext?.dominant_flavors)
-            ? dishContext.dominant_flavors
-            : typeof dishContext?.dominant_flavors === 'string'
-                ? dishContext.dominant_flavors.split(',')
-                    .map((entry) => entry.trim())
-                    .filter(Boolean)
-                : [];
-
-        if (dishFlavors.length) {
-            addFactor('Dish highlights', dishFlavors.join(', '));
-        }
-
-        if (dishContext?.preparation) {
-            addFactor('Preparation', dishContext.preparation);
-        }
-
-        if (dishContext?.cuisine) {
-            addFactor('Cuisine', dishContext.cuisine);
-        }
-
-        const score = primary.score || {};
-        const numericScoreFactor = (label, value, descriptor) => {
-            if (typeof value !== 'number') {
-                return;
-            }
-            const percentage = Math.round(value * 100);
-            addFactor(label, `${percentage}% ${descriptor}`);
-        };
-
-        numericScoreFactor('Style balance', score.style_match, 'body alignment');
-        numericScoreFactor('Flavor harmony', score.flavor_harmony, 'flavor synergy');
-        numericScoreFactor('Texture balance', score.texture_balance, 'texture alignment');
-        numericScoreFactor('Regional tradition', score.regional_tradition, 'classic pairing heritage');
-        numericScoreFactor('Seasonal fit', score.seasonal_appropriateness, 'seasonal suitability');
-
-        if (typeof score.total === 'number') {
-            numericScoreFactor('Overall match', score.total, 'overall pairing confidence');
-        } else if (typeof primary.confidence === 'number') {
-            numericScoreFactor('Overall match', primary.confidence, 'overall pairing confidence');
-        }
-
-        if (generatedByAI) {
-            addFactor('AI assistance', 'Recommendations enhanced with AI pairing analysis');
-        }
-
-        if (preferences) {
-            if (typeof preferences === 'string' && preferences.trim()) {
-                addFactor('Guest notes', preferences.trim());
-            } else if (typeof preferences === 'object') {
-                if (Array.isArray(preferences.dietary_restrictions) && preferences.dietary_restrictions.length) {
-                    addFactor('Dietary considerations', preferences.dietary_restrictions.join(', '));
-                }
-                if (preferences.guest_preferences) {
-                    addFactor('Guest preferences', Array.isArray(preferences.guest_preferences)
-                        ? preferences.guest_preferences.join(', ')
-                        : String(preferences.guest_preferences));
-                }
-                if (preferences.budget_range) {
-                    addFactor('Budget range', preferences.budget_range);
-                }
-            }
-        }
-
-        const alternates = recommendations.slice(1, 3)
-            .map((entry) => entry?.wine?.name)
-            .filter(Boolean);
-        if (alternates.length) {
-            addFactor('Alternate pours', alternates.join(', '));
-        }
-
+        confidence = Math.max(0.1, Math.min(1.0, confidence));
+        
         return {
-            summary: summary || `${normalizedDish} pairing recommendations ready.`,
-            factors
+            wine_name: String(rec.wine_name).trim(),
+            producer: String(rec.producer).trim(),
+            confidence_score: confidence,
+            reasoning: rec.reasoning ? String(rec.reasoning).trim() : 'AI-recommended pairing'
         };
     }
 
-    buildRecommendationFactors(recommendation, explanation) {
-        const factors = [];
-
-        if (explanation?.factors) {
-            if (Array.isArray(explanation.factors)) {
-                factors.push(...explanation.factors);
-            } else if (typeof explanation.factors === 'object') {
-                Object.entries(explanation.factors)
-                    .forEach(([key, value]) => {
-                        if (value !== null && value !== undefined && value !== '') {
-                            factors.push(`${key}: ${value}`);
-                        }
-                    });
-            } else if (typeof explanation.factors === 'string') {
-                factors.push(explanation.factors);
-            }
-        }
-
-        const score = recommendation?.score || {};
-        const appendScore = (label, value, descriptor) => {
-            if (typeof value !== 'number') {
-                return;
-            }
-            const percentage = Math.round(value * 100);
-            const factorText = `${label}: ${percentage}% ${descriptor}`;
-            if (!factors.includes(factorText)) {
-                factors.push(factorText);
-            }
+    /**
+     * Generate a cache key for AI pairing requests
+     * Creates a stable hash based on dish, context, and available wine inventory
+     * @private
+     */
+    _generatePairingCacheKey(dish, context, wineInventory, preferences) {
+        const crypto = require('crypto');
+        
+        // Create a normalized representation
+        const normalized = {
+            dish: String(dish || '').toLowerCase().trim(),
+            context: {
+                cuisine: context?.cuisine || '',
+                occasion: context?.occasion || '',
+                season: context?.season || this.getCurrentSeason()
+            },
+            preferences: {
+                preferred_types: preferences?.guest_preferences?.preferred_types || [],
+                avoided_types: preferences?.guest_preferences?.avoided_types || []
+            },
+            // Use top 10 wines as inventory signature
+            inventory_signature: wineInventory.slice(0, 10).map(w => `${w.name}-${w.producer}-${w.year}`).join('|')
         };
-
-        appendScore('Overall match', score.total, 'overall pairing confidence');
-        appendScore('Style balance', score.style_match, 'body alignment');
-        appendScore('Flavor harmony', score.flavor_harmony, 'flavor synergy');
-        appendScore('Texture balance', score.texture_balance, 'texture alignment');
-
-        if (recommendation?.reasoning && !factors.includes(recommendation.reasoning)) {
-            factors.push(recommendation.reasoning);
-        }
-
-        return factors;
-    }
-
-    async persistPairingExplanation(recommendations, explanation) {
-        if (!this.explainabilityService || !explanation || !explanation.summary) {
-            return;
-        }
-
-        if (!Array.isArray(recommendations) || recommendations.length === 0) {
-            return;
-        }
-
-        const timestamp = new Date().toISOString();
-
-        const tasks = recommendations
-            .filter((recommendation) => recommendation?.learning_recommendation_id)
-            .map((recommendation) => {
-                const entityId = recommendation.learning_recommendation_id;
-                const summary = recommendation.reasoning || explanation.summary;
-                const factors = this.buildRecommendationFactors(recommendation, explanation);
-
-                return this.explainabilityService.createExplanation({
-                    entityType: 'pairing_recommendation',
-                    entityId,
-                    summary,
-                    factors,
-                    generatedAt: timestamp
-                }).catch((error) => {
-                    console.warn('Failed to persist pairing explanation:', error.message);
-                });
-            });
-
-        if (tasks.length > 0) {
-            await Promise.all(tasks);
-        }
-    }
-    
-    /**
-     * Get ML recommendations with fallback chain
-     */
-    async getMLRecommendations(userId, dishContext, availableWines, preferences = {}) {
-        let recommendations = [];
         
-        // Check if user has sufficient rating history
-        const userRatingCount = await this.getUserRatingCount(userId);
+        const hashInput = JSON.stringify(normalized);
+        const hash = crypto.createHash('md5').update(hashInput).digest('hex');
         
-        if (userRatingCount < 2) {
-            console.log(`User ${userId} has insufficient ratings (${userRatingCount}), skipping ML`);
-            return [];
-        }
-        
-        try {
-            // Try ensemble engine first (combines multiple algorithms)
-            console.log(`Attempting ensemble recommendations for user ${userId}`);
-            recommendations = await this.ensembleEngine.generateEnsembleRecommendations(
-                userId,
-                dishContext,
-                {
-                    limit: 10,
-                    algorithms: ['collaborative_filtering', 'content_based', 'rule_based', 'hybrid_cf'],
-                    dynamicWeighting: true,
-                    contextAware: true
-                }
-            );
-            
-            if (recommendations && recommendations.length > 0) {
-                console.log(`Ensemble engine returned ${recommendations.length} recommendations`);
-                // Convert ensemble recommendations to pairing format
-                return await this.convertMLToPairingFormat(recommendations, availableWines, dishContext, 'ensemble');
-            }
-        } catch (error) {
-            console.warn('Ensemble engine failed:', error.message);
-        }
-        
-        // Fallback to collaborative filtering only
-        try {
-            console.log('Falling back to collaborative filtering');
-            recommendations = await this.collaborativeFilteringEngine.getUserBasedRecommendations(
-                userId,
-                dishContext,
-                { limit: 10, minRating: 3, includeContext: true }
-            );
-            
-            if (recommendations && recommendations.length > 0) {
-                console.log(`Collaborative filtering returned ${recommendations.length} recommendations`);
-                return await this.convertMLToPairingFormat(recommendations, availableWines, dishContext, 'collaborative_filtering');
-            }
-        } catch (error) {
-            console.warn('Collaborative filtering failed:', error.message);
-        }
-        
-        // No ML recommendations available
-        return [];
-    }
-    
-    /**
-     * Get user rating count from database
-     */
-    async getUserRatingCount(userId) {
-        try {
-            const result = await this.db.get(`
-                SELECT COUNT(*) as count
-                FROM LearningPairingFeedbackEnhanced
-                WHERE user_id = ? AND overall_rating IS NOT NULL
-            `, [userId]);
-            
-            return result ? result.count : 0;
-        } catch (error) {
-            console.error('Failed to get user rating count:', error.message);
-            return 0;
-        }
-    }
-    
-    /**
-     * Convert ML recommendations to pairing format
-     */
-    async convertMLToPairingFormat(mlRecommendations, availableWines, dishContext, algorithm) {
-        const pairingRecommendations = [];
-        
-        for (const mlRec of mlRecommendations) {
-            const wineId = mlRec.wine_id;
-            
-            // Find the wine in available inventory
-            const wine = availableWines.find(w => w.id === wineId && w.quantity > 0);
-            
-            if (!wine) {
-                continue; // Wine not available or out of stock
-            }
-            
-            // ML score becomes primary component
-            const mlScore = mlRec.score || mlRec.final_score || mlRec.total_score || 0;
-            const mlConfidence = mlRec.confidence || mlRec.confidenceLevel || 0.7;
-            
-            pairingRecommendations.push({
-                wine,
-                score: {
-                    total: mlScore,
-                    ml_score: mlScore,
-                    confidence: mlConfidence,
-                    algorithm: algorithm,
-                    // Include original ML scoring details if available
-                    style_match: mlRec.style_match || 0.5,
-                    flavor_harmony: mlRec.flavor_harmony || 0.5,
-                    texture_balance: mlRec.texture_balance || 0.5,
-                    regional_tradition: mlRec.regional_tradition || 0.5,
-                    seasonal_appropriateness: mlRec.seasonal_appropriateness || 0.5
-                },
-                reasoning: mlRec.reasoning || mlRec.explanation || `ML-powered recommendation (${algorithm})`,
-                ai_enhanced: false,
-                ml_enhanced: true,
-                ml_algorithm: algorithm,
-                ml_metadata: {
-                    algorithms: mlRec.algorithms || [algorithm],
-                    scores: mlRec.scores || {},
-                    diversity_bonus: mlRec.diversity_bonus || 0,
-                    novelty_bonus: mlRec.novelty_bonus || 0
-                }
-            });
-        }
-        
-        return pairingRecommendations;
-    }
-    
-    /**
-     * Blend ML and rule-based recommendations with adaptive weighting
-     */
-    async blendRecommendations(mlRecommendations, ruleBasedRecommendations, userId) {
-        const userRatingCount = await this.getUserRatingCount(userId);
-        
-        // Adaptive weighting based on user experience
-        // New users (< 5 ratings): 30% ML, 70% rule-based
-        // Experienced users (>= 10 ratings): 70% ML, 30% rule-based
-        // Mid-range: interpolate
-        let mlWeight = 0.3;
-        if (userRatingCount >= 10) {
-            mlWeight = 0.7;
-        } else if (userRatingCount >= 5) {
-            mlWeight = 0.3 + (userRatingCount - 5) * 0.08; // Gradual increase
-        }
-        const ruleWeight = 1 - mlWeight;
-        
-        console.log(`Blending with weights: ML=${mlWeight.toFixed(2)}, Rule-based=${ruleWeight.toFixed(2)} (user has ${userRatingCount} ratings)`);
-        
-        // Create a combined map to avoid duplicates
-        const wineMap = new Map();
-        
-        // Add ML recommendations with weighted score
-        for (const mlRec of mlRecommendations) {
-            const wineKey = `${mlRec.wine.id}-${mlRec.wine.name}`;
-            const weightedScore = mlRec.score.total * mlWeight;
-            
-            wineMap.set(wineKey, {
-                ...mlRec,
-                score: {
-                    ...mlRec.score,
-                    ml_contribution: weightedScore,
-                    rule_contribution: 0,
-                    total: weightedScore,
-                    blend_weight: mlWeight
-                },
-                blended: true
-            });
-        }
-        
-        // Add or merge rule-based recommendations
-        for (const ruleRec of ruleBasedRecommendations) {
-            const wineKey = `${ruleRec.wine.id}-${ruleRec.wine.name}`;
-            const weightedScore = ruleRec.score.total * ruleWeight;
-            
-            if (wineMap.has(wineKey)) {
-                // Wine exists in ML recommendations, merge scores
-                const existing = wineMap.get(wineKey);
-                existing.score.rule_contribution = weightedScore;
-                existing.score.total = existing.score.ml_contribution + weightedScore;
-                existing.reasoning += ` | Rule-based: ${ruleRec.reasoning}`;
-            } else {
-                // Only in rule-based recommendations
-                wineMap.set(wineKey, {
-                    ...ruleRec,
-                    score: {
-                        ...ruleRec.score,
-                        ml_contribution: 0,
-                        rule_contribution: weightedScore,
-                        total: weightedScore,
-                        blend_weight: ruleWeight
-                    },
-                    blended: true
-                });
-            }
-        }
-        
-        // Convert map to array and sort by blended score
-        const blendedRecommendations = Array.from(wineMap.values())
-            .sort((a, b) => b.score.total - a.score.total);
-        
-        return blendedRecommendations;
+        return `pairing:${hash}`;
     }
 }
 

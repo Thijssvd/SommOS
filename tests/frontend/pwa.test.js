@@ -3,7 +3,7 @@ const fs = require('fs/promises');
 const vm = require('vm');
 
 const serviceWorkerPath = path.join(__dirname, '../../frontend/sw.js');
-const swRegistrationCore = require('../../frontend/js/sw-registration-core.cjs');
+const swRegistrationCore = require('../../frontend/js/sw-registration-core.js');
 
 async function evaluateServiceWorker(manifestEntries) {
   const code = await fs.readFile(serviceWorkerPath, 'utf8');

@@ -1,0 +1,4 @@
+frontend-specialist-sommos|created|["pwa-development", "service-worker-optimization", "offline-storage", "ui-performance", "web-vitals-monitoring", "responsive-design"]|2025-10-06T16:53:07.286010
+backend-specialist-sommos|created|["api-optimization", "database-tuning", "caching", "logging", "performance-profiling"]|2025-10-06T16:08:30.955191
+ai-integration-specialist-sommos|initialized|["ai-metrics-tracking","prompt-engineering","confidence-scoring","a-b-testing","fallback-mechanisms","ai-performance-monitoring","provider-management"]|2025-10-06T15:57:05.6N
+test-specialist-sommos|created|["unit-testing", "integration-testing", "e2e-testing", "performance-testing", "test-infrastructure", "coverage-analysis", "flaky-test-detection", "test-automation", "ci-cd-integration", "property-based-testing"]|2025-10-06T13:19:17.679294

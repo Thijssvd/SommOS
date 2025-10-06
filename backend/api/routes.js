@@ -1562,11 +1562,14 @@ router.post('/vintage/pairing-insight', requireRole('admin', 'crew'), validate(v
 // GET /api/system/health
 // System health check (public endpoint - no auth required)
 router.get('/system/health', validate(), asyncHandler(async (req, res) => {
+    const startTime = Date.now();
     try {
         const db = Database.getInstance();
 
         // Test database connection
+        const dbStart = Date.now();
         await db.get('SELECT 1');
+        const dbLatency = Date.now() - dbStart;
 
         // Get basic stats
         const stats = await db.all(`
@@ -1577,11 +1580,26 @@ router.get('/system/health', validate(), asyncHandler(async (req, res) => {
                 (SELECT COUNT(*) FROM Suppliers WHERE active = 1) as active_suppliers
         `);
 
+        // Get system metrics
+        const memUsage = process.memoryUsage();
+        const uptime = process.uptime();
+        
         res.json({
             success: true,
             status: 'healthy',
             timestamp: new Date().toISOString(),
-            data: stats[0]
+            data: stats[0],
+            system: {
+                uptime_seconds: Math.floor(uptime),
+                memory_usage: {
+                    heap_used_mb: Math.round(memUsage.heapUsed / 1024 / 1024),
+                    heap_total_mb: Math.round(memUsage.heapTotal / 1024 / 1024),
+                    rss_mb: Math.round(memUsage.rss / 1024 / 1024)
+                },
+                db_latency_ms: dbLatency,
+                response_time_ms: Date.now() - startTime,
+                node_version: process.version
+            }
         });
     } catch (error) {
         sendError(res, 500, 'SYSTEM_HEALTH_FAILED', error.message || 'Failed to retrieve system health.');
@@ -1718,6 +1736,88 @@ router.get('/system/activity', requireRole('admin', 'crew', 'guest'), validate(v
         data: activity
     });
 })));
+
+// GET /api/system/metrics
+// Comprehensive system metrics for monitoring and observability
+router.get('/system/metrics', requireRole('admin', 'crew'), validate(), asyncHandler(async (req, res) => {
+    const startTime = Date.now();
+    try {
+        const db = Database.getInstance();
+        const memUsage = process.memoryUsage();
+        const uptime = process.uptime();
+        
+        // Database metrics
+        const dbStart = Date.now();
+        const dbStats = await db.all(`
+            SELECT
+                (SELECT COUNT(*) FROM Wines) as total_wines,
+                (SELECT COUNT(*) FROM Vintages) as total_vintages,
+                (SELECT COALESCE(SUM(quantity), 0) FROM Stock) as total_bottles,
+                (SELECT COUNT(*) FROM Suppliers WHERE active = 1) as active_suppliers,
+                (SELECT COUNT(*) FROM Ledger WHERE created_at > datetime('now', '-24 hours')) as transactions_24h,
+                (SELECT COUNT(*) FROM Users WHERE active = 1) as active_users
+        `);
+        const dbLatency = Date.now() - dbStart;
+
+        // Calculate cache hit rate if cache is available
+        let cacheMetrics = null;
+        try {
+            const { AdvancedCacheManager } = require('../core/advanced_cache_manager');
+            if (global.cacheManager && global.cacheManager.getStats) {
+                cacheMetrics = global.cacheManager.getStats();
+            }
+        } catch (e) {
+            // Cache not available
+        }
+
+        // CPU usage (approximation)
+        const cpuUsage = process.cpuUsage();
+        
+        // AI metrics from tracker
+        let aiMetrics = null;
+        try {
+            const aiMetricsTracker = require('../core/ai_metrics_tracker');
+            aiMetrics = aiMetricsTracker.getSummary();
+        } catch (e) {
+            // AI metrics not available
+        }
+
+        res.json({
+            success: true,
+            timestamp: new Date().toISOString(),
+            metrics: {
+                system: {
+                    uptime_seconds: Math.floor(uptime),
+                    node_version: process.version,
+                    platform: process.platform,
+                    pid: process.pid
+                },
+                memory: {
+                    heap_used_mb: Math.round(memUsage.heapUsed / 1024 / 1024),
+                    heap_total_mb: Math.round(memUsage.heapTotal / 1024 / 1024),
+                    rss_mb: Math.round(memUsage.rss / 1024 / 1024),
+                    external_mb: Math.round(memUsage.external / 1024 / 1024),
+                    heap_usage_percent: Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100)
+                },
+                cpu: {
+                    user_microseconds: cpuUsage.user,
+                    system_microseconds: cpuUsage.system
+                },
+                database: {
+                    latency_ms: dbLatency,
+                    ...dbStats[0]
+                },
+                cache: cacheMetrics,
+                ai: aiMetrics,
+                performance: {
+                    response_time_ms: Date.now() - startTime
+                }
+            }
+        });
+    } catch (error) {
+        sendError(res, 500, 'METRICS_FAILED', error.message || 'Failed to retrieve system metrics.');
+    }
+}));
 
 // GET /api/system/spec
 // Serve the OpenAPI specification

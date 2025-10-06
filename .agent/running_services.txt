@@ -1,0 +1,190 @@
+═══════════════════════════════════════════════════════════════
+           AGENT-MCP SETUP COMPLETE - SERVICE INFO
+═══════════════════════════════════════════════════════════════
+
+✅ SETUP COMPLETED: 2025-10-06 18:20 CET
+
+═══════════════════════════════════════════════════════════════
+🔑 IMPORTANT CREDENTIALS
+═══════════════════════════════════════════════════════════════
+
+Admin Token: 807800461eda4e45a9d56ece19ac409a
+  • Stored in: /Users/thijs/Documents/SommOS/.agent/admin_token.txt
+  • Use this token for all admin operations
+  • Required for creating and managing agents
+
+Generated Token: See /Users/thijs/Documents/SommOS/.agent/admin_token.txt
+  • Backup token generated during automated setup
+  • Secondary admin access
+
+═══════════════════════════════════════════════════════════════
+🌐 RUNNING SERVICES
+═══════════════════════════════════════════════════════════════
+
+MCP Server:
+  • URL: http://localhost:8080
+  • Project: /Users/thijs/Documents/SommOS
+  • Log: /Users/thijs/Documents/SommOS/.agent/logs/mcp_server.log
+  • Status: ✅ Running
+  
+Dashboard:
+  • URL: http://localhost:3847
+  • Network: http://0.0.0.0:3847
+  • Status: ✅ Running
+  
+═══════════════════════════════════════════════════════════════
+📁 IMPORTANT FILES & DIRECTORIES
+═══════════════════════════════════════════════════════════════
+
+Configuration:
+  • Config: /Users/thijs/Documents/SommOS/.agent/config.json
+  • Admin Token: /Users/thijs/Documents/SommOS/.agent/admin_token.txt
+  • Environment: /Users/thijs/Documents/Agent-MCP/.env
+
+Databases:
+  • Agent State: /Users/thijs/Documents/SommOS/.agent/mcp_state.db
+  • Task Queue: /Users/thijs/Documents/SommOS/.agent/tasks.db
+  • Knowledge Base: /Users/thijs/Documents/SommOS/.agent/knowledge_base.json
+
+Logs:
+  • Server: /Users/thijs/Documents/SommOS/.agent/logs/mcp_server.log
+  • Dashboard: /Users/thijs/Documents/SommOS/.agent/logs/dashboard.log
+
+Backups:
+  • Location: /Users/thijs/Documents/SommOS/.agent/backup_20251006_181659/
+  • Contains: Previous database states
+
+File Locking:
+  • Lock Directory: /Users/thijs/Documents/SommOS/.agent/locks/
+
+═══════════════════════════════════════════════════════════════
+🤖 AGENT STATUS
+═══════════════════════════════════════════════════════════════
+
+Current Agents (5):
+  1. test-specialist-sommos (created)
+  2. backend-specialist-sommos (created)
+  3. frontend-specialist-sommos (created)
+  4. ai-integration-specialist-sommos (initialized)
+  5. devops-specialist-sommos (initialized)
+
+Note: Agents are created but may need activation through the dashboard
+
+═══════════════════════════════════════════════════════════════
+🔧 SYSTEM CONFIGURATION
+═══════════════════════════════════════════════════════════════
+
+Enabled Features:
+  ✅ File Locking (timeout: 30s, retry: 3)
+  ✅ Task Queue (max concurrent: 5, timeout: 300s)
+  ✅ Knowledge Base (initialized with SommOS docs)
+  ✅ Admin Token Authentication
+  ✅ Multi-agent Coordination
+
+API Keys Configured:
+  ✅ OPENAI_API_KEY (for embeddings)
+  ✅ DEEPSEEK_API_KEY (for AI operations)
+
+═══════════════════════════════════════════════════════════════
+🚀 QUICK ACTIONS
+═══════════════════════════════════════════════════════════════
+
+Open Dashboard:
+  open http://localhost:3847
+
+Check System Status:
+  /Users/thijs/Documents/SommOS/monitor_agents.sh
+
+View Server Logs:
+  tail -f /Users/thijs/Documents/SommOS/.agent/logs/mcp_server.log
+
+Stop All Services:
+  pkill -f "agent_mcp.cli"
+  pkill -f "npm run dev.*3847"
+
+Restart MCP Server:
+  cd /Users/thijs/Documents/Agent-MCP
+  uv run -m agent_mcp.cli --port 8080 --project-dir /Users/thijs/Documents/SommOS --no-tui &
+
+Restart Dashboard:
+  cd /Users/thijs/Documents/Agent-MCP/agent_mcp/dashboard
+  npm run dev -- --port 3847 &
+
+═══════════════════════════════════════════════════════════════
+📋 NEXT STEPS
+═══════════════════════════════════════════════════════════════
+
+1. Open Dashboard:
+   open http://localhost:3847
+
+2. Verify Connection:
+   • Dashboard should show "Connected" status
+   • Check that server appears in connection list
+
+3. Review Agents:
+   • Navigate to "Agents" tab
+   • Verify all 5 agents are listed
+   • Check agent status and capabilities
+
+4. Activate Agents (if needed):
+   • Use admin token to activate inactive agents
+   • Assign tasks to test agent coordination
+
+5. Initialize Knowledge Graph:
+   • Knowledge base already loaded with SommOS documentation
+   • Agents can query project context via RAG
+
+6. Monitor System:
+   • Run monitoring script: ./monitor_agents.sh
+   • Watch logs for any errors or issues
+   • Test agent communication
+
+═══════════════════════════════════════════════════════════════
+⚠️  IMPORTANT NOTES
+═══════════════════════════════════════════════════════════════
+
+Security:
+  • Admin token is sensitive - keep it secure
+  • Token files have restricted permissions (600)
+  • Never commit tokens to version control
+
+Database:
+  • Two databases were merged during setup
+  • Backups available in backup directory
+  • Main database: /Users/thijs/Documents/SommOS/.agent/mcp_state.db
+
+Performance:
+  • First dashboard load may be slow (building)
+  • Subsequent loads will be faster
+  • File system detected as slow - normal for network drives
+
+Known Issues:
+  • Health endpoint (/health) may not be implemented yet
+  • Agent activation may require dashboard interaction
+  • WebSocket connections depend on proper CORS configuration
+
+═══════════════════════════════════════════════════════════════
+📞 SUPPORT & TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════
+
+If services stop responding:
+
+1. Check if processes are running:
+   ps aux | grep -E "agent_mcp|npm.*3847"
+
+2. Check logs for errors:
+   tail -50 /Users/thijs/Documents/SommOS/.agent/logs/mcp_server.log
+
+3. Verify ports are not in use:
+   lsof -i :8080
+   lsof -i :3847
+
+4. Restart services using commands in "Quick Actions" section
+
+5. Review setup log:
+   cat /Users/thijs/Documents/SommOS/.agent/setup_fix.log
+
+═══════════════════════════════════════════════════════════════
+
+Generated: 2025-10-06 18:20 CET
+Last Updated: 2025-10-06 18:20 CET

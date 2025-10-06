@@ -53,6 +53,10 @@ class AdvancedCacheManager extends EventEmitter {
         if (!this.cache.has(cacheKey)) {
             this.metrics.misses++;
             this.emit('miss', key);
+            // Report to Prometheus if available
+            if (global.prometheusExporter) {
+                global.prometheusExporter.recordCacheOperation('get', 'miss');
+            }
             return null;
         }
         
@@ -61,6 +65,9 @@ class AdvancedCacheManager extends EventEmitter {
             this.delete(cacheKey);
             this.metrics.misses++;
             this.emit('miss', key);
+            if (global.prometheusExporter) {
+                global.prometheusExporter.recordCacheOperation('get', 'miss');
+            }
             return null;
         }
         
@@ -69,6 +76,11 @@ class AdvancedCacheManager extends EventEmitter {
         
         this.metrics.hits++;
         this.emit('hit', key, this.cache.get(cacheKey));
+        
+        // Report to Prometheus if available
+        if (global.prometheusExporter) {
+            global.prometheusExporter.recordCacheOperation('get', 'hit');
+        }
         
         return this.cache.get(cacheKey);
     }
@@ -93,6 +105,11 @@ class AdvancedCacheManager extends EventEmitter {
         this.metrics.sets++;
         this.metrics.size = this.cache.size;
         this.emit('set', key, value, expirationTime);
+        
+        // Report to Prometheus if available
+        if (global.prometheusExporter) {
+            global.prometheusExporter.recordCacheOperation('set', 'success');
+        }
         
         return true;
     }

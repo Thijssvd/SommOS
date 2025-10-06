@@ -109,7 +109,7 @@ async function runStructureTest() {
     }
     
     // Test 5: Verify documentation exists
-    const docsFile = path.join(rootPath, '..', 'AB_TESTING_API_DOCUMENTATION.md');
+    const docsFile = path.join(rootPath, '..', 'docs', 'features', 'AB_TESTING_API_DOCUMENTATION.md');
     if (fs.existsSync(docsFile)) {
         const content = fs.readFileSync(docsFile, 'utf8');
         const endpointCount = (content.match(/\*\*(GET|POST|PATCH|DELETE|PUT)\*\*/g) || []).length;

@@ -1,0 +1,15 @@
+Backup created: Mon Oct  6 20:53:27 CEST 2025
+Backup location: /Users/thijs/Documents/SommOS/.agent/backups/backup_20251006_205327
+
+Files backed up:
+- mcp_state.db (Agent states)
+- tasks.db (Task queue)
+- config.json (System configuration)
+- admin_token.txt (Admin authentication)
+- prompts/ (Agent initialization prompts)
+
+To restore:
+1. Stop all agents and MCP server
+2. Copy files back to /Users/thijs/Documents/SommOS/.agent/
+3. Restart MCP server
+4. Start agents using start_all_agents.sh

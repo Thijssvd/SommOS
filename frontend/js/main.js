@@ -3,8 +3,13 @@ import SommOS from './app';
 import { registerServiceWorker } from './sw-registration.mjs';
 import { ImageOptimizer } from './image-optimizer.js';
 import OptimizedWineCard from './wine-card-optimized.js';
+import { performanceMonitor } from './performance.js';
 
 function bootstrapApp() {
+  // Initialize performance monitoring
+  performanceMonitor.init();
+  console.log('📊 Performance monitoring initialized');
+  
   // Initialize image optimization system
   window.imageOptimizer = new ImageOptimizer({
     lazyLoadThreshold: 100,
@@ -23,6 +28,16 @@ function bootstrapApp() {
   // Initialize main app
   window.app = new SommOS();
   window.sommOS = window.app;
+  
+  // Make performance monitor available globally for debugging
+  window.performanceMonitor = performanceMonitor;
+  
+  // Log performance summary after initial load
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      console.log('📈 Performance Summary:', performanceMonitor.getSummary());
+    }, 2000);
+  });
 }
 
 if (document.readyState !== 'loading') {

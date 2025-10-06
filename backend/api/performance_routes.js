@@ -95,6 +95,63 @@ asyncEngine.registerJobHandler('model_training', async (data) => {
     };
 });
 
+// Performance Metrics Collection
+
+/**
+ * POST /api/performance/metrics
+ * Collect Web Vitals and custom performance metrics from frontend
+ */
+router.post('/metrics', (req, res) => {
+    try {
+        const { metrics, userAgent, viewport, connection } = req.body;
+        
+        if (!metrics || !Array.isArray(metrics)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Metrics array is required'
+            });
+        }
+        
+        // Log metrics for monitoring (in production, store in database or monitoring service)
+        console.log('[Performance Metrics]', {
+            count: metrics.length,
+            userAgent,
+            viewport,
+            connection,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Process each metric
+        metrics.forEach(metric => {
+            const { name, value, rating, url } = metric;
+            
+            // Track Web Vitals
+            if (['lcp', 'fid', 'cls', 'fcp', 'ttfb'].includes(name)) {
+                console.log(`[Web Vital] ${name.toUpperCase()}: ${value}ms (${rating}) on ${url}`);
+            }
+            
+            // Track custom metrics
+            if (name.startsWith('custom:')) {
+                const customName = name.replace('custom:', '');
+                console.log(`[Custom Metric] ${customName}: ${value}`);
+            }
+        });
+        
+        res.json({
+            success: true,
+            message: `Received ${metrics.length} metrics`,
+            processed: metrics.length
+        });
+        
+    } catch (error) {
+        console.error('[Performance Metrics] Error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Cache Management Routes
 
 /**

@@ -1,7 +1,7 @@
 {
   "name": "SommOS - Yacht Wine Management",
   "short_name": "SommOS",
-  "description": "AI-Powered Yacht Wine Management System",
+  "description": "AI-Powered Yacht Wine Management System with offline-first capabilities",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1a2e",
@@ -26,8 +26,37 @@
       "purpose": "any maskable"
     }
   ],
+  "shortcuts": [
+    {
+      "name": "Wine Pairing",
+      "short_name": "Pairing",
+      "description": "Get AI-powered wine pairing recommendations",
+      "url": "/?view=pairing",
+      "icons": [{ "src": "/icons/wine-glass.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Inventory",
+      "short_name": "Inventory",
+      "description": "Manage wine inventory and stock",
+      "url": "/?view=inventory",
+      "icons": [{ "src": "/icons/wine-glass.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View cellar overview and metrics",
+      "url": "/?view=dashboard",
+      "icons": [{ "src": "/icons/wine-glass.svg", "sizes": "192x192" }]
+    }
+  ],
   "categories": ["lifestyle", "productivity", "business"],
   "lang": "en",
   "scope": "/",
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "display_override": ["window-controls-overlay", "standalone"],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "related_applications": [],
+  "offline_enabled": true
 }
