@@ -3,13 +3,14 @@
  * Tracks Web Vitals (LCP, FID, CLS) and custom performance metrics
  */
 
-import { onLCP, onFID, onCLS, onFCP, onTTFB } from 'web-vitals';
+// Updated for web-vitals v5: onFID → onINP (Interaction to Next Paint)
+import { onLCP, onINP, onCLS, onFCP, onTTFB } from 'web-vitals';
 
 class PerformanceMonitor {
     constructor() {
         this.metrics = {
             lcp: null,
-            fid: null,
+            inp: null,  // Updated: FID → INP in web-vitals v5
             cls: null,
             fcp: null,
             ttfb: null,
@@ -18,7 +19,7 @@ class PerformanceMonitor {
         
         this.thresholds = {
             lcp: { good: 2500, needsImprovement: 4000 },
-            fid: { good: 100, needsImprovement: 300 },
+            inp: { good: 200, needsImprovement: 500 },  // Updated: FID → INP (web-vitals v5)
             cls: { good: 0.1, needsImprovement: 0.25 },
             fcp: { good: 1800, needsImprovement: 3000 },
             ttfb: { good: 800, needsImprovement: 1800 }
@@ -41,7 +42,7 @@ class PerformanceMonitor {
 
         // Track Core Web Vitals
         onLCP((metric) => this.handleMetric('lcp', metric));
-        onFID((metric) => this.handleMetric('fid', metric));
+        onINP((metric) => this.handleMetric('inp', metric));  // Updated: FID → INP (web-vitals v5)
         onCLS((metric) => this.handleMetric('cls', metric));
         onFCP((metric) => this.handleMetric('fcp', metric));
         onTTFB((metric) => this.handleMetric('ttfb', metric));

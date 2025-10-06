@@ -4,7 +4,8 @@
  */
 
 // Import web-vitals library
-import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
+// Updated for web-vitals v5: getFID → getINP (Interaction to Next Paint)
+import { getCLS, getINP, getFCP, getLCP, getTTFB } from 'web-vitals';
 
 class PerformanceMonitor {
     constructor(options = {}) {
@@ -12,7 +13,7 @@ class PerformanceMonitor {
             // Core Web Vitals thresholds
             thresholds: {
                 LCP: 2500,  // Largest Contentful Paint
-                FID: 100,   // First Input Delay
+                INP: 200,   // Interaction to Next Paint (web-vitals v5)
                 CLS: 0.1,   // Cumulative Layout Shift
                 FCP: 1800,  // First Contentful Paint
                 TTFB: 800   // Time to First Byte
@@ -119,14 +120,16 @@ class PerformanceMonitor {
             });
         });
         
-        // Track First Input Delay (FID)
-        getFID((metric) => {
-            this.recordWebVital('FID', metric.value, {
+        // Track Interaction to Next Paint (INP) - replaces FID in web-vitals v5
+        // INP measures responsiveness by observing the latency of all interactions
+        getINP((metric) => {
+            this.recordWebVital('INP', metric.value, {
                 eventType: metric.name,
-                target: metric.target?.tagName,
-                startTime: metric.startTime,
-                processingStart: metric.processingStart,
-                processingEnd: metric.processingEnd,
+                target: metric.entries?.[0]?.target?.tagName,
+                startTime: metric.entries?.[0]?.startTime,
+                processingStart: metric.entries?.[0]?.processingStart,
+                processingEnd: metric.entries?.[0]?.processingEnd,
+                duration: metric.entries?.[0]?.duration,
                 id: metric.id,
                 delta: metric.delta,
                 entries: metric.entries
