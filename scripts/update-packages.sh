@@ -68,20 +68,20 @@ DRY_RUN=false
 VERBOSE=false
 PRIORITY_1_ONLY=true
 
-# Package versions
-declare -A PRIORITY_1_PACKAGES=(
-    ["@playwright/test"]="1.56.0:dev"
-    ["@types/node"]="24.7.0:dev"
-    ["openai"]="6.1.0:prod"
-    ["zod"]="4.1.12:prod"
+# Package versions (bash 3.2 compatible - indexed arrays)
+PRIORITY_1_PACKAGES=(
+    "@playwright/test:1.56.0:dev"
+    "@types/node:24.7.0:dev"
+    "openai:6.1.0:prod"
+    "zod:4.1.12:prod"
 )
 
-declare -A PRIORITY_2_PACKAGES=(
-    ["web-vitals"]="5.1.0:prod:frontend"
+PRIORITY_2_PACKAGES=(
+    "web-vitals:5.1.0:prod:frontend"
 )
 
 # Status tracking
-declare -A UPDATE_STATUS
+UPDATE_STATUS=()
 ROLLBACK_REQUIRED=false
 EXIT_CODE=0
 
@@ -384,10 +384,10 @@ check_current_versions() {
     
     # Check Priority 1 packages
     info "Priority 1 Packages (Root):"
-    for package in "${!PRIORITY_1_PACKAGES[@]}"; do
+    for pkg_info in "${PRIORITY_1_PACKAGES[@]}"; do
+        local package=$(echo "${pkg_info}" | cut -d: -f1)
+        local target_version=$(echo "${pkg_info}" | cut -d: -f2)
         local current_version=$(npm list "${package}" --depth=0 2>/dev/null | grep "${package}" | awk -F@ '{print $NF}' || echo "not installed")
-        local target_info="${PRIORITY_1_PACKAGES[$package]}"
-        local target_version="${target_info%%:*}"
         log "  ${package}: ${current_version} → ${target_version}"
     done
     
@@ -395,10 +395,10 @@ check_current_versions() {
     if [[ "${INCLUDE_PRIORITY_2}" == "true" ]]; then
         info "Priority 2 Packages (Frontend):"
         cd "${FRONTEND_DIR}"
-        for package in "${!PRIORITY_2_PACKAGES[@]}"; do
+        for pkg_info in "${PRIORITY_2_PACKAGES[@]}"; do
+            local package=$(echo "${pkg_info}" | cut -d: -f1)
+            local target_version=$(echo "${pkg_info}" | cut -d: -f2)
             local current_version=$(npm list "${package}" --depth=0 2>/dev/null | grep "${package}" | awk -F@ '{print $NF}' || echo "not installed")
-            local target_info="${PRIORITY_2_PACKAGES[$package]}"
-            local target_version="${target_info%%:*}"
             log "  ${package}: ${current_version} → ${target_version}"
         done
     fi
@@ -418,16 +418,16 @@ update_priority_1() {
     cd "${PROJECT_ROOT}"
     log "Updating Priority 1 packages in: ${PROJECT_ROOT}"
     
-    for package in "${!PRIORITY_1_PACKAGES[@]}"; do
-        local package_info="${PRIORITY_1_PACKAGES[$package]}"
-        local version="${package_info%%:*}"
-        local dep_type="${package_info#*:}"
+    for pkg_info in "${PRIORITY_1_PACKAGES[@]}"; do
+        local package=$(echo "${pkg_info}" | cut -d: -f1)
+        local version=$(echo "${pkg_info}" | cut -d: -f2)
+        local dep_type=$(echo "${pkg_info}" | cut -d: -f3)
         
         log "Updating ${package} to ${version} (${dep_type})..."
         
         if [[ "${DRY_RUN}" == "true" ]]; then
             info "[DRY RUN] Would execute: npm install ${package}@${version}"
-            UPDATE_STATUS["${package}"]="dry-run"
+            UPDATE_STATUS+=("${package}:dry-run")
             continue
         fi
         
@@ -442,10 +442,10 @@ update_priority_1() {
         # Execute update with error handling
         if npm install "${package}@${version}" ${save_flag} >> "${LOG_FILE}" 2>&1; then
             success "✓ ${package}@${version} installed successfully"
-            UPDATE_STATUS["${package}"]="success"
+            UPDATE_STATUS+=("${package}:success")
         else
             error "✗ Failed to install ${package}@${version}"
-            UPDATE_STATUS["${package}"]="failed"
+            UPDATE_STATUS+=("${package}:failed")
             EXIT_CODE=1
             return 1
         fi
@@ -456,7 +456,7 @@ update_priority_1() {
             success "Verified: ${package}@${installed_version}"
         else
             error "Version mismatch: Expected ${version}, got ${installed_version}"
-            UPDATE_STATUS["${package}"]="version-mismatch"
+            UPDATE_STATUS+=("${package}:version-mismatch")
             EXIT_CODE=1
             return 1
         fi
@@ -528,24 +528,24 @@ update_priority_2() {
     
     ROLLBACK_REQUIRED=true
     
-    for package in "${!PRIORITY_2_PACKAGES[@]}"; do
-        local package_info="${PRIORITY_2_PACKAGES[$package]}"
-        local version="${package_info%%:*}"
+    for pkg_info in "${PRIORITY_2_PACKAGES[@]}"; do
+        local package=$(echo "${pkg_info}" | cut -d: -f1)
+        local version=$(echo "${pkg_info}" | cut -d: -f2)
         
         log "Updating ${package} to ${version}..."
         
         if [[ "${DRY_RUN}" == "true" ]]; then
             info "[DRY RUN] Would execute: npm install ${package}@${version}"
-            UPDATE_STATUS["${package}"]="dry-run"
+            UPDATE_STATUS+=("${package}:dry-run")
             continue
         fi
         
         if npm install "${package}@${version}" --save >> "${LOG_FILE}" 2>&1; then
             success "✓ ${package}@${version} installed successfully"
-            UPDATE_STATUS["${package}"]="success"
+            UPDATE_STATUS+=("${package}:success")
         else
             error "✗ Failed to install ${package}@${version}"
-            UPDATE_STATUS["${package}"]="failed"
+            UPDATE_STATUS+=("${package}:failed")
             EXIT_CODE=1
             return 1
         fi
@@ -735,12 +735,21 @@ generate_report() {
 |---------|---------------|--------|
 EOF
 
-    for package in "${!PRIORITY_1_PACKAGES[@]}"; do
-        local package_info="${PRIORITY_1_PACKAGES[$package]}"
-        local version="${package_info%%:*}"
-        local status="${UPDATE_STATUS[$package]:-pending}"
-        local status_icon
+    for pkg_info in "${PRIORITY_1_PACKAGES[@]}"; do
+        local package=$(echo "${pkg_info}" | cut -d: -f1)
+        local version=$(echo "${pkg_info}" | cut -d: -f2)
+        local status="pending"
         
+        # Find status in UPDATE_STATUS array
+        for status_info in "${UPDATE_STATUS[@]}"; do
+            local status_pkg=$(echo "${status_info}" | cut -d: -f1)
+            if [[ "${status_pkg}" == "${package}" ]]; then
+                status=$(echo "${status_info}" | cut -d: -f2)
+                break
+            fi
+        done
+        
+        local status_icon
         case "${status}" in
             success) status_icon="✅" ;;
             failed) status_icon="❌" ;;
@@ -762,12 +771,21 @@ EOF
 |---------|---------------|--------|
 EOF
 
-        for package in "${!PRIORITY_2_PACKAGES[@]}"; do
-            local package_info="${PRIORITY_2_PACKAGES[$package]}"
-            local version="${package_info%%:*}"
-            local status="${UPDATE_STATUS[$package]:-pending}"
-            local status_icon
+        for pkg_info in "${PRIORITY_2_PACKAGES[@]}"; do
+            local package=$(echo "${pkg_info}" | cut -d: -f1)
+            local version=$(echo "${pkg_info}" | cut -d: -f2)
+            local status="pending"
             
+            # Find status in UPDATE_STATUS array
+            for status_info in "${UPDATE_STATUS[@]}"; do
+                local status_pkg=$(echo "${status_info}" | cut -d: -f1)
+                if [[ "${status_pkg}" == "${package}" ]]; then
+                    status=$(echo "${status_info}" | cut -d: -f2)
+                    break
+                fi
+            done
+            
+            local status_icon
             case "${status}" in
                 success) status_icon="✅" ;;
                 failed) status_icon="❌" ;;
