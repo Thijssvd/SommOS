@@ -138,3 +138,19 @@ jest-results-*.json
 !frontend/README.md
 !frontend/IMAGE_OPTIMIZATION_README.md
 !frontend/RETRY_LOGIC_README.md
+
+# Re-ignore temporary report docs under docs/ (must be placed AFTER !docs/**/*.md)
+docs/**/*_REPORT.md
+docs/**/*_SUMMARY.md
+docs/**/*_COMPLETE.md
+docs/**/*_COMPLETION.md
+docs/**/*_PROGRESS*.md
+docs/**/*_STATUS*.md
+docs/**/*_EXECUTION*.md
+docs/**/*_AUDIT*.md
+docs/**/*_SESSION*.md
+docs/**/*_IMPLEMENTATION.md
+
+# Ignore SQLite sidecar files (repo-specific)
+*.db-wal
+*.db-shm
