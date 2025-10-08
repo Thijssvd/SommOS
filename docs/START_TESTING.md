@@ -176,12 +176,12 @@ git pull origin main
 uv sync
 ```
 
-### **Option B: Use MCP Tools Directly** (via Claude or another MCP client)
+### **Option B: Use MCP Tools in Windsurf**
 
-If you're using Claude Desktop or another MCP-compatible client:
+In Windsurf, the Agent-MCP SSE server is already configured. You can:
 
-1. Configure the MCP server in your client
-2. Use the `create_agent` MCP tool instead of the dashboard
+1. Use the Agent-MCP tools (e.g., `create_agent`) directly from Windsurf
+2. Skip the dashboard for creation and use it only for monitoring
 
 ### **Option C: Work Without the Agent Dashboard**
 
@@ -207,10 +207,9 @@ npx jest
 - Update to latest version
 - Report the 405 error as a bug
 
-**Path 3: Use MCP via Claude**
-- Configure Agent-MCP in Claude Desktop
-- Create agents via MCP tools
-- Monitor via dashboard
+**Path 3: Use MCP via Windsurf**
+- Use the Agent-MCP tools in Windsurf to create agents
+- Monitor via the Agent-MCP Dashboard
 
 ## 📚 **Resources Created for You**
 

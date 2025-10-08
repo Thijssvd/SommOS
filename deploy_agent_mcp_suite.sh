@@ -17,10 +17,13 @@ set -u  # Exit on undefined variable
 # Claude CLI flows are DISABLED by default. To enable legacy Claude-based agent
 # sessions at your own risk, export SOMMOS_ALLOW_CLAUDE=true
 ################################################################################
-if [ "${SOMMOS_ALLOW_CLAUDE:-false}" != "true" ]; then
+CLAUDE_ENABLED=false
+if [ "${SOMMOS_ALLOW_CLAUDE:-false}" = "true" ]; then
+  CLAUDE_ENABLED=true
+  echo "[SECURITY] Legacy Claude flow ENABLED via SOMMOS_ALLOW_CLAUDE=true"
+else
   echo "[SECURITY] Claude CLI usage is disabled (Windsurf-only setup)."
-  echo "[SECURITY] To enable legacy flow, export SOMMOS_ALLOW_CLAUDE=true (not recommended)."
-  exit 1
+  echo "[SECURITY] Legacy Claude flows will be skipped."
 fi
 
 ################################################################################
@@ -162,12 +165,16 @@ phase1_preflight() {
     print_success "$tool is installed"
   done
   
-  # Check Claude CLI (only when SOMMOS_ALLOW_CLAUDE=true)
-  print_step "Checking Claude CLI (legacy flow)..."
-  if ! command -v claude &> /dev/null; then
-    error_exit "Claude CLI not found but SOMMOS_ALLOW_CLAUDE=true. Install from https://claude.ai/code or unset SOMMOS_ALLOW_CLAUDE."
+  # Check Claude CLI (only when legacy flow enabled)
+  if [ "$CLAUDE_ENABLED" = "true" ]; then
+    print_step "Checking Claude CLI (legacy flow)..."
+    if ! command -v claude &> /dev/null; then
+      error_exit "Claude CLI not found but SOMMOS_ALLOW_CLAUDE=true. Install from https://claude.ai/code or unset SOMMOS_ALLOW_CLAUDE."
+    fi
+    print_success "Claude CLI is installed (legacy flow enabled)"
+  else
+    print_info "Skipping Claude CLI checks (Windsurf-only)."
   fi
-  print_success "Claude CLI is installed (legacy flow enabled)"
   
   # Check MCP server
   print_step "Verifying MCP server..."
@@ -543,6 +550,12 @@ start_single_agent() {
   local prompt_file=$2
   
   print_step "Starting $agent_id..."
+  
+  # If Claude is disabled, skip legacy tmux+Claude startup and return success
+  if [ "$CLAUDE_ENABLED" != "true" ]; then
+    print_info "Skipping legacy Claude startup for $agent_id (Windsurf-only)."
+    return 0
+  fi
   
   # Create tmux session
   if ! tmux new-session -d -s "$agent_id" -c "$SOMMOS_DIR" 2>/dev/null; then
@@ -962,6 +975,15 @@ fi
 
 AGENT_ID=$1
 SOMMOS_DIR="/Users/thijs/Documents/SommOS"
+ADMIN_TOKEN_FILE="$SOMMOS_DIR/.agent/admin_token.txt"
+
+# Security: Claude CLI is disabled by default. This project uses Windsurf-only.
+# To enable legacy Claude-based flows at your own risk, export SOMMOS_ALLOW_CLAUDE=true
+if [ "${SOMMOS_ALLOW_CLAUDE:-false}" != "true" ]; then
+  echo "[SECURITY] Claude CLI usage is disabled (Windsurf-only setup)."
+  echo "[SECURITY] Use the Agent-MCP Dashboard (http://localhost:3847) to restart agents, or enable SOMMOS_ALLOW_CLAUDE=true explicitly."
+  exit 1
+fi
 ADMIN_TOKEN_FILE="$SOMMOS_DIR/.agent/admin_token.txt"
 
 case "$AGENT_ID" in

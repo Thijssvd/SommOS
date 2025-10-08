@@ -13,6 +13,7 @@ const Database = require('../database/connection');
 const { getConfig } = require('../config/env');
 const CollaborativeFilteringEngine = require('./collaborative_filtering_engine');
 const EnsembleEngine = require('./ensemble_engine');
+const aiMetrics = require('./ai_metrics_tracker');
 const fs = require('fs');
 const path = require('path');
 
@@ -113,16 +114,34 @@ class PairingEngine {
         if (config.features.disableExternalCalls) {
             console.log('🚫 External calls disabled - AI pairing will use traditional algorithm only');
             this.deepseek = null;
-        } else if (config.deepSeek.apiKey) {
-            // Initialize AI client only if external calls are enabled and API key is configured
-            this.deepseek = new OpenAI({
-                apiKey: config.deepSeek.apiKey,
-                baseURL: 'https://api.deepseek.com/v1',
-            });
-            console.log('✅ AI pairing enabled with configured API key');
+            this.openai = null;
         } else {
-            this.deepseek = null;
-            console.log('ℹ️  No AI API keys configured - traditional pairing will be used');
+            // Initialize DeepSeek (primary)
+            if (config.deepSeek?.apiKey) {
+                this.deepseek = new OpenAI({
+                    apiKey: config.deepSeek.apiKey,
+                    baseURL: 'https://api.deepseek.com/v1',
+                    timeout: 30000,
+                });
+                console.log('✅ DeepSeek AI enabled');
+            } else {
+                this.deepseek = null;
+            }
+
+            // Initialize OpenAI (fallback)
+            if (config.openai?.apiKey) {
+                this.openai = new OpenAI({
+                    apiKey: config.openai.apiKey,
+                    timeout: 30000,
+                });
+                console.log('✅ OpenAI fallback enabled');
+            } else {
+                this.openai = null;
+            }
+
+            if (!this.deepseek && !this.openai) {
+                console.log('ℹ️  No AI API keys configured - traditional pairing will be used');
+            }
         }
         this.scoringWeights = {
             style_match: 0.25,
@@ -316,7 +335,9 @@ class PairingEngine {
                 dishContext
             );
         } else {
+            const reqCtxTrad = aiMetrics.startRequest('traditional');
             recommendations = await this.generateTraditionalPairings(dishContext, preferences);
+            aiMetrics.recordSuccess(reqCtxTrad, []);
         }
 
         const withMetadata = await this.attachLearningMetadata(recommendations, {
@@ -453,15 +474,15 @@ class PairingEngine {
 
         try {
             // Check if AI pairing was explicitly requested but no AI keys are configured
-            if (forceAI && !this.deepseek) {
+            if (forceAI && !(this.deepseek || this.openai)) {
                 throw new Error(
                     'AI_NOT_CONFIGURED: AI pairing was requested but no API keys are configured. ' +
                     'Please set DEEPSEEK_API_KEY or OPENAI_API_KEY in your environment configuration.'
                 );
             }
             
-            // If AI is not available and not explicitly required, fall back gracefully to traditional pairing
-            if (!this.deepseek && !forceAI) {
+            // If no AI is available and AI not explicitly required, fall back gracefully to traditional pairing
+            if (!(this.deepseek || this.openai) && !forceAI) {
                 console.warn('AI not available (no API keys configured), falling back to traditional pairing');
                 const fallbackDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
                 return await this.generateTraditionalPairings(fallbackDish, preferences);
@@ -501,16 +522,46 @@ class PairingEngine {
             }
             
             // Generate AI pairing recommendations with timeout handling
-            const aiRecommendations = await Promise.race([
-                this.callOpenAIForPairings(dish, context, wineInventory, preferences),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('AI pairing request timeout')), 30000)
-                )
-            ]);
-            
-            if (!Array.isArray(aiRecommendations) || aiRecommendations.length === 0) {
-                throw new Error('AI failed to generate pairing recommendations');
+            let aiRecommendations;
+            let lastError = null;
+
+            // Try DeepSeek first (primary)
+            if (this.deepseek) {
+                const reqCtx = aiMetrics.startRequest('deepseek');
+                try {
+                    aiRecommendations = await Promise.race([
+                        this.callDeepSeekForPairings(dish, context, wineInventory, preferences),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('AI pairing request timeout')), 30000))
+                    ]);
+                    aiMetrics.recordSuccess(reqCtx, aiRecommendations);
+                } catch (e) {
+                    lastError = e;
+                    aiMetrics.recordFailure(reqCtx, e);
+                    console.warn('[AI] DeepSeek failed, will attempt OpenAI fallback:', e.message);
+                }
             }
+
+            // If DeepSeek absent or failed, try OpenAI if available
+            if ((!aiRecommendations || !Array.isArray(aiRecommendations) || aiRecommendations.length === 0) && this.openai) {
+                const reqCtx = aiMetrics.startRequest('openai');
+                try {
+                    aiRecommendations = await Promise.race([
+                        this.callOpenAIForPairings(dish, context, wineInventory, preferences),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('AI pairing request timeout')), 30000))
+                    ]);
+                    aiMetrics.recordSuccess(reqCtx, aiRecommendations);
+                } catch (e) {
+                    lastError = e;
+                    aiMetrics.recordFailure(reqCtx, e);
+                    console.warn('[AI] OpenAI fallback failed:', e.message);
+                }
+            }
+
+            if (!Array.isArray(aiRecommendations) || aiRecommendations.length === 0) {
+                throw lastError || new Error('AI failed to generate pairing recommendations');
+            }
+            
+            // (validation moved above)
             
             // Combine AI insights with traditional scoring for enhanced accuracy
             const enhancedPairings = [];
@@ -582,7 +633,9 @@ class PairingEngine {
             // Attempt graceful fallback to traditional pairing
             try {
                 const fallbackDish = dishContext || await this.parseNaturalLanguageDish(dish, context);
+                const tradCtx = aiMetrics.startRequest('traditional');
                 const fallbackPairings = await this.generateTraditionalPairings(fallbackDish, preferences);
+                aiMetrics.recordSuccess(tradCtx, []);
                 
                 console.log(`Fallback successful: Generated ${fallbackPairings.length} traditional pairings`);
                 return fallbackPairings.slice(0, maxRecommendations);
@@ -1135,6 +1188,89 @@ class PairingEngine {
             confidence_score: confidence,
             reasoning: rec.reasoning ? String(rec.reasoning).trim() : 'AI-recommended pairing'
         };
+    }
+
+    /**
+     * Build an AI prompt to request structured pairing recommendations
+     * @private
+     */
+    _buildPairingPrompt(dish, context, wineInventory, preferences) {
+        const dishDesc = typeof dish === 'string' ? dish : JSON.stringify(dish);
+        const ownerLikes = preferences?.guest_preferences?.preferred_types || [];
+        const avoided = preferences?.guest_preferences?.avoided_types || [];
+        const inv = wineInventory.slice(0, 25); // cap to keep prompt size reasonable
+        const inventorySnippet = JSON.stringify(inv);
+
+        return (
+`You are a master sommelier. Given a dish and an onboard wine inventory, recommend 3-8 wines.
+Return ONLY JSON (no markdown code fences), an array of objects with fields:
+[
+  {"wine_name": string, "producer": string, "confidence_score": number (0-1), "reasoning": string}
+]
+Rules:
+- Only choose wines present in the provided inventory (match by name and producer)
+- Consider cuisine, preparation, intensity, flavors, season, and guest preferences
+- confidence_score must be between 0 and 1
+
+Dish: ${dishDesc}
+Context: ${JSON.stringify(context || {})}
+Guest Preferences: {"preferred_types": ${JSON.stringify(ownerLikes)}, "avoided_types": ${JSON.stringify(avoided)}}
+Inventory: ${inventorySnippet}
+`);
+    }
+
+    /**
+     * Call DeepSeek (primary) for pairing recommendations
+     */
+    async callDeepSeekForPairings(dish, context, wineInventory, preferences) {
+        if (!this.deepseek) {
+            throw new Error('DeepSeek client not initialized');
+        }
+
+        const prompt = this._buildPairingPrompt(dish, context, wineInventory, preferences);
+        const response = await this.deepseek.chat.completions.create({
+            model: 'deepseek-chat',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 1200,
+        });
+
+        const content = response?.choices?.[0]?.message?.content || '';
+        const parsed = this._parseAIResponse(content);
+        const list = Array.isArray(parsed) ? parsed : (parsed?.recommendations || []);
+        const normalized = [];
+        for (const item of list) {
+            const v = this._validatePairingRecommendation(item);
+            if (v) normalized.push(v);
+        }
+        return normalized;
+    }
+
+    /**
+     * Call OpenAI (fallback) for pairing recommendations
+     */
+    async callOpenAIForPairings(dish, context, wineInventory, preferences) {
+        if (!this.openai) {
+            throw new Error('OpenAI client not initialized');
+        }
+
+        const prompt = this._buildPairingPrompt(dish, context, wineInventory, preferences);
+        const response = await this.openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 1200,
+        });
+
+        const content = response?.choices?.[0]?.message?.content || '';
+        const parsed = this._parseAIResponse(content);
+        const list = Array.isArray(parsed) ? parsed : (parsed?.recommendations || []);
+        const normalized = [];
+        for (const item of list) {
+            const v = this._validatePairingRecommendation(item);
+            if (v) normalized.push(v);
+        }
+        return normalized;
     }
 
     /**

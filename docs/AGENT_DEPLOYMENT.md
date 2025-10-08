@@ -68,7 +68,7 @@ sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db \
 
 1. **Activate the Agent**: The agent is currently in "created" status. It needs to be activated to start working on tasks.
 
-2. **Launch Agent Session**: The agent can be launched in a tmux session using Claude or another AI assistant.
+2. **Launch Agent Session**: Use Windsurf MCP tools to initialize and interact with the agent (no Claude required).
 
 3. **Monitor Progress**: Track the agent's progress through:
     - Agent-MCP Dashboard (http://localhost:3847)

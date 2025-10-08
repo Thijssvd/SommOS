@@ -1,7 +1,5 @@
 # SommOS Production Deployment Guide
 
-This guide provides comprehensive instructions for deploying SommOS to production.
-
 ## 🚀 Quick Start
 
 For a quick deployment, follow these steps:
@@ -9,25 +7,20 @@ For a quick deployment, follow these steps:
 ### 1. Prerequisites
 - Docker & Docker Compose installed
 - Minimum 2GB available disk space
-- OpenAI API key
+- DeepSeek API key (recommended for AI features)
+- OpenAI API key (optional fallback)
 - Open-Meteo API key (optional, has fallback)
 
 ### 2. Configuration
 ```bash
-# Copy and configure environment variables
-cp .env.production .env
-nano .env  # Edit with your API keys
+# Configure production environment variables (authoritative file)
+nano deployment/.env  # Edit with your API keys and production settings
 ```
 
 ### 3. Deploy
 ```bash
 ./deployment/deploy.sh
 ```
-
-The application will be available at `http://localhost` after successful deployment.
-
----
-
 ## 📋 Detailed Deployment Instructions
 
 ### Prerequisites
@@ -75,14 +68,9 @@ The application will be available at `http://localhost` after successful deploym
 ### Configuration
 
 #### Environment Variables
-Copy the production environment template and configure:
+Configure `deployment/.env` with your production settings:
 ```bash
-cp .env.production .env
-```
-
-Edit `.env` with your configuration:
-```bash
-# AI (optional)
+# AI (DeepSeek primary)
 DEEPSEEK_API_KEY=sk-your-actual-deepseek-key-here
 # Optional fallback
 OPENAI_API_KEY=sk-your-actual-openai-key-here
@@ -92,12 +80,8 @@ OPEN_METEO_API_KEY=
 
 # Optional - Customize as needed
 NODE_ENV=production
-PORT=3001
+PORT=3000
 LOG_LEVEL=info
-```
-
-#### SSL/HTTPS Configuration (Optional)
-For production with SSL:
 1. Obtain SSL certificates
 2. Place them in `deployment/ssl/`
 3. Uncomment SSL configuration in `deployment/nginx.conf`

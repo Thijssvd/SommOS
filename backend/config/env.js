@@ -140,12 +140,13 @@ function enforceRuntimeGuards(parsed) {
             'CRITICAL SECURITY ERROR: JWT_SECRET must be at least 32 characters long in production.'
         );
     }
-    
+
     if (parsed.SESSION_SECRET.length < 32) {
         throw new Error(
             'CRITICAL SECURITY ERROR: SESSION_SECRET must be at least 32 characters long in production.'
         );
     }
+
 }
 
 function normalizeConfig(parsed) {
@@ -157,7 +158,10 @@ function normalizeConfig(parsed) {
             baseUrl: parsed.OPEN_METEO_BASE,
         },
         deepSeek: {
-            apiKey: parsed.DEEPSEEK_API_KEY || parsed.OPENAI_API_KEY || null,
+            apiKey: parsed.DEEPSEEK_API_KEY || null,
+        },
+        openai: {
+            apiKey: parsed.OPENAI_API_KEY || null,
         },
         database: {
             path: parsed.DATABASE_PATH || null,

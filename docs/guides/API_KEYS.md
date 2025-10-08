@@ -23,20 +23,15 @@ This guide explains how to obtain and configure the API keys needed for SommOS.
 **How to get it**:
 1. Visit [Open-Meteo](https://open-meteo.com/en/pricing)
 2. The free tier works without any key!
-3. For higher rate limits, sign up for a free account
-4. Get your API key from the dashboard
-
-**Cost**: FREE! 
-- No API key: 10,000 requests/day
-- Free account: 20,000 requests/day
-- Paid plans available for commercial use
-
 ## 📝 Configuration Steps
 
-### Step 1: Copy Environment File
-```bash
-cp .env.production .env
-```
+### Step 1: Choose Environment File
+- **Development (macOS):**
+  ```bash
+  cp .env.example .env
+  ```
+- **Production (Docker):**
+  Configure `deployment/.env` as the authoritative production environment file.
 
 ### Step 2: Edit .env File
 ```bash
@@ -44,7 +39,6 @@ nano .env
 # or
 code .env
 ```
-
 ### Step 3: Configure API Keys
 
 #### Minimal Configuration (DeepSeek only):
@@ -55,7 +49,6 @@ DEEPSEEK_API_KEY=sk-your-actual-deepseek-key-here
 # Optional - leave empty for free tier
 OPEN_METEO_API_KEY=
 ```
-
 #### Full Configuration (with Open-Meteo key):
 ```bash
 # Required for AI pairing
@@ -64,7 +57,6 @@ DEEPSEEK_API_KEY=sk-your-actual-deepseek-key-here
 # Optional - for higher rate limits
 OPEN_METEO_API_KEY=your-open-meteo-key-here
 ```
-
 ## 🧪 Testing API Keys
 
 ### Test DeepSeek Connection:
@@ -77,13 +69,11 @@ curl -X POST http://localhost:3001/api/pairing/recommend \
   -H "Content-Type: application/json" \
   -d '{"dish": "grilled salmon", "context": {"occasion": "casual"}}'
 ```
-
 ### Test Open-Meteo Connection:
 ```bash
 # Test weather intelligence endpoint  
 curl http://localhost:3001/api/vintage/analysis/1
 ```
-
 ## ⚠️ Security Best Practices
 
 ### 1. Keep API Keys Secret
@@ -99,7 +89,6 @@ echo ".env" >> .gitignore
 # Set restrictive permissions
 chmod 600 .env
 ```
-
 ### 3. Production Deployment
 - Use Docker secrets or cloud provider secret management
 - Never use development keys in production
@@ -146,20 +135,21 @@ chmod 600 .env
 
 ## 🚀 Quick Start
 
-For immediate testing with minimal setup:
+For immediate local testing (development):
 
-1. **Get DeepSeek key** (required for AI features)
-2. **Leave Open-Meteo empty** (uses free tier)
-3. **Deploy and test**
+1. **Copy dev env**
+   ```bash
+   cp .env.example .env
+   ```
+2. **Add DeepSeek key** (required for AI features)
+   ```bash
+   echo "DEEPSEEK_API_KEY=sk-your-key-here" >> .env
+   ```
+3. **Start the app and test**
+   ```bash
+   npm start
+   ```
 
-```bash
-# Quick setup
-cp .env.production .env
-echo "DEEPSEEK_API_KEY=sk-your-key-here" >> .env
-echo "OPEN_METEO_API_KEY=" >> .env
+For production, configure `deployment/.env` and run `./deployment/deploy.sh`.
 
-# Deploy
-./deployment/deploy.sh
-```
-
-Your SommOS will be fully functional with AI wine pairing and weather intelligence! 🍷
+Your SommOS will be fully functional with AI wine pairing (DeepSeek primary) and weather intelligence! 🍷

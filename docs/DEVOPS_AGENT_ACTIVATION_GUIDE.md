@@ -48,9 +48,9 @@ open http://localhost:3847
 
 ---
 
-## 🚀 Method 2: Using MCP Tools in Claude/Warp
+## 🚀 Method 2: Using MCP Tools in Windsurf
 
-If you have MCP tools available in your AI assistant (Claude Desktop, Warp with MCP), you can create the agent directly:
+If you are using Windsurf with MCP enabled, you can create the agent directly from Windsurf:
 
 ### Step 1: Call create_agent Tool
 ```
@@ -147,7 +147,7 @@ curl -X GET "http://localhost:8080/api/agents/devops-specialist-sommos?admin_tok
 
 ## 🤖 Initializing the DevOps Agent
 
-Once the agent is created in Agent-MCP, you need to initialize it in a new AI assistant conversation (Claude, Warp AI, etc.):
+Once the agent is created in Agent-MCP, initialize and interact with it via Windsurf MCP tools (preferred):
 
 ### Initialization Prompt
 
