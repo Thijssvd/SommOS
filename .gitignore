@@ -85,7 +85,9 @@ Thumbs.db
 ehthumbs.db
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
@@ -108,7 +110,6 @@ jest-run-*.json
 jest-quick-*.json
 playwright-run-*.json
 playwright-results-*.json
-jest-results-*.json
 
 # Temporary reports and summaries (Warp-generated)
 *_REPORT.md
@@ -151,6 +152,8 @@ docs/**/*_AUDIT*.md
 docs/**/*_SESSION*.md
 docs/**/*_IMPLEMENTATION.md
 
+# Agent local state (tokens, logs, runtime state)
+.agent/
 # Ignore SQLite sidecar files (repo-specific)
 *.db-wal
 *.db-shm

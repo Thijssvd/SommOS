@@ -13,6 +13,17 @@ set -e  # Exit on any error
 set -u  # Exit on undefined variable
 
 ################################################################################
+# SECURITY: Windsurf-only standard
+# Claude CLI flows are DISABLED by default. To enable legacy Claude-based agent
+# sessions at your own risk, export SOMMOS_ALLOW_CLAUDE=true
+################################################################################
+if [ "${SOMMOS_ALLOW_CLAUDE:-false}" != "true" ]; then
+  echo "[SECURITY] Claude CLI usage is disabled (Windsurf-only setup)."
+  echo "[SECURITY] To enable legacy flow, export SOMMOS_ALLOW_CLAUDE=true (not recommended)."
+  exit 1
+fi
+
+################################################################################
 # CONFIGURATION VARIABLES
 ################################################################################
 
@@ -151,12 +162,12 @@ phase1_preflight() {
     print_success "$tool is installed"
   done
   
-  # Check Claude CLI
-  print_step "Checking Claude CLI..."
+  # Check Claude CLI (only when SOMMOS_ALLOW_CLAUDE=true)
+  print_step "Checking Claude CLI (legacy flow)..."
   if ! command -v claude &> /dev/null; then
-    error_exit "Claude CLI not found. Install from https://claude.ai/code"
+    error_exit "Claude CLI not found but SOMMOS_ALLOW_CLAUDE=true. Install from https://claude.ai/code or unset SOMMOS_ALLOW_CLAUDE."
   fi
-  print_success "Claude CLI is installed"
+  print_success "Claude CLI is installed (legacy flow enabled)"
   
   # Check MCP server
   print_step "Verifying MCP server..."
@@ -274,8 +285,12 @@ phase3_devops_agent() {
   print_step "Checking DevOps agent status..."
   local agent_status=$(sqlite3 "$DB_PATH" "SELECT status FROM agents WHERE agent_id='$agent_id';" 2>/dev/null || echo "")
   
-  if [ "$agent_status" = "terminated" ]; then
-    print_warning "DevOps agent is terminated, recreating..."
+  if [ -z "$agent_status" ] || [ "$agent_status" = "terminated" ]; then
+    if [ -z "$agent_status" ]; then
+      print_warning "DevOps agent record missing, creating..."
+    else
+      print_warning "DevOps agent is terminated, recreating..."
+    fi
     
     # Delete terminated record
     print_step "Removing terminated record..."
@@ -286,27 +301,24 @@ phase3_devops_agent() {
     sleep 1
     
     # Create new agent via API
-    print_step "Creating new DevOps agent..."
-    local response=$(curl -s -w "\n%{http_code}" -X POST "$MCP_URL/api/agents" \
-      -H "Authorization: Bearer $admin_token" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "agent_id": "'"$agent_id"'",
-        "capabilities": [
+  print_step "Creating new DevOps agent..."
+  local response=$(curl -s -w "\n%{http_code}" -X POST "$MCP_URL/api/create-agent" \
+    -H "Content-Type: application/json" \
+    -d '{"token": "'"$admin_token"'", "agent_id": "'"$agent_id"'", "capabilities": [
           "monitoring-dashboards",
           "alerting-configuration",
           "ci-cd-automation",
           "docker-optimization",
+{{ ... }}
           "prometheus-grafana",
           "infrastructure-as-code"
-        ],
-        "auto_launch": false
+        ]
       }')
     
     local http_code=$(echo "$response" | tail -n1)
     
     if [ "$http_code" -ne 200 ] && [ "$http_code" -ne 201 ]; then
-      print_warning "Failed to create DevOps agent via API (HTTP $http_code)"
+        print_warning "Failed to create DevOps agent via API (HTTP $http_code)"
     else
       print_success "DevOps agent created via API"
     fi
@@ -359,7 +371,7 @@ phase4_prompts() {
 You are the BACKEND SPECIALIST worker agent for SommOS.
 
 Worker ID: backend-specialist-sommos
-Admin Token: 807800461eda4e45a9d56ece19ac409a
+Note: Admin token will be provided at runtime by the deployment script.
 
 Query the knowledge graph for:
 1. Backend architecture and API endpoints
@@ -389,7 +401,7 @@ EOF
 You are the FRONTEND SPECIALIST worker agent for SommOS.
 
 Worker ID: frontend-specialist-sommos
-Admin Token: 807800461eda4e45a9d56ece19ac409a
+Note: Admin token will be provided at runtime by the deployment script.
 
 Query the knowledge graph for:
 1. Frontend architecture and module structure
@@ -419,7 +431,7 @@ EOF
 You are the AI INTEGRATION SPECIALIST worker agent for SommOS.
 
 Worker ID: ai-integration-specialist-sommos
-Admin Token: 807800461eda4e45a9d56ece19ac409a
+Note: Admin token will be provided at runtime by the deployment script.
 
 Query the knowledge graph for:
 1. AI integration architecture (DeepSeek/OpenAI)
@@ -449,7 +461,7 @@ EOF
 You are the DEVOPS SPECIALIST worker agent for SommOS.
 
 Worker ID: devops-specialist-sommos
-Admin Token: 807800461eda4e45a9d56ece19ac409a
+Note: Admin token will be provided at runtime by the deployment script.
 
 Query the knowledge graph for:
 1. Docker deployment architecture
@@ -479,7 +491,7 @@ EOF
 You are the TEST SPECIALIST worker agent for SommOS.
 
 Worker ID: test-specialist-sommos
-Admin Token: 807800461eda4e45a9d56ece19ac409a
+Note: Admin token will be provided at runtime by the deployment script.
 
 Query the knowledge graph for:
 1. Current test coverage and gaps
@@ -550,9 +562,13 @@ start_single_agent() {
   tmux send-keys -t "$agent_id" "claude mcp list" Enter
   sleep $COMMAND_DELAY
   
-  # Start Claude
-  tmux send-keys -t "$agent_id" "claude --dangerously-skip-permissions" Enter
+  # Start Claude (legacy flow - permissions prompts allowed)
+  tmux send-keys -t "$agent_id" "claude" Enter
   sleep $CLAUDE_INIT_DELAY
+  # Inject admin token securely (do not persist in prompt files)
+  local admin_token=$(cat "$ADMIN_TOKEN_FILE")
+  tmux send-keys -t "$agent_id" "Admin Token: $admin_token" Enter
+  sleep $COMMAND_DELAY
   
   # Send initialization prompt
   cat "$prompt_file" | while IFS= read -r line; do
@@ -870,6 +886,7 @@ phase9_automation() {
 set -e
 
 SOMMOS_DIR="/Users/thijs/Documents/SommOS"
+ADMIN_TOKEN_FILE="$SOMMOS_DIR/.agent/admin_token.txt"
 LOG_FILE="$SOMMOS_DIR/.agent/logs/startup_$(date +%Y%m%d_%H%M%S).log"
 
 echo "=== Agent-MCP Unified Startup ===" | tee "$LOG_FILE"
@@ -887,8 +904,13 @@ start_agent() {
   sleep 1
   tmux send-keys -t "$agent_id" "claude mcp add -t sse AgentMCP http://localhost:8080/sse" Enter
   sleep 2
-  tmux send-keys -t "$agent_id" "claude --dangerously-skip-permissions" Enter
+  tmux send-keys -t "$agent_id" "claude" Enter
   sleep 5
+  
+  # Inject admin token securely (do not persist in prompt files)
+  local admin_token=$(cat "$ADMIN_TOKEN_FILE")
+  tmux send-keys -t "$agent_id" "Admin Token: $admin_token" Enter
+  sleep 2
   
   cat "$prompt_file" | while IFS= read -r line; do
     tmux send-keys -t "$agent_id" "$line"
@@ -940,6 +962,7 @@ fi
 
 AGENT_ID=$1
 SOMMOS_DIR="/Users/thijs/Documents/SommOS"
+ADMIN_TOKEN_FILE="$SOMMOS_DIR/.agent/admin_token.txt"
 
 case "$AGENT_ID" in
   backend-specialist-sommos)
@@ -978,8 +1001,13 @@ tmux send-keys -t "$AGENT_ID" "export MCP_AGENT_ID=$AGENT_ID" Enter
 sleep 1
 tmux send-keys -t "$AGENT_ID" "claude mcp add -t sse AgentMCP http://localhost:8080/sse" Enter
 sleep 2
-tmux send-keys -t "$AGENT_ID" "claude --dangerously-skip-permissions" Enter
+tmux send-keys -t "$AGENT_ID" "claude" Enter
 sleep 5
+ 
+# Inject admin token securely (do not persist in prompt files)
+admin_token=$(cat "$ADMIN_TOKEN_FILE")
+tmux send-keys -t "$AGENT_ID" "Admin Token: $admin_token" Enter
+sleep 2
 
 cat "$PROMPT_FILE" | while IFS= read -r line; do
   tmux send-keys -t "$AGENT_ID" "$line"

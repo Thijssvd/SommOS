@@ -1,0 +1,60 @@
+---
+trigger: always_on
+description: Frontend PWA Development Standards for SommOS
+globs: ["frontend/**/*.js", "frontend/**/*.html", "frontend/**/*.css"]
+---
+
+# Frontend PWA Development Rules
+
+## Architecture Principles
+- Maintain vanilla JavaScript approach - avoid introducing frameworks
+- Use the established class structure: SommOS, SommOSAPI, SommOSUI
+- Implement progressive enhancement - core features must work without JavaScript
+- Ensure all critical features work offline
+
+## API Communication
+- Use the SommOSAPI class for all backend communication
+- Implement proper error handling with user-friendly messages
+- Include loading states for all async operations
+- Handle network failures gracefully with offline fallbacks
+
+## Offline-First Patterns
+```javascript
+// Use IndexedDB for persistent storage
+const db = await openDB('SommOSDB', 1, {
+  upgrade(db) {
+    db.createObjectStore('wines', { keyPath: 'id' });
+    db.createObjectStore('inventory', { keyPath: 'id' });
+  }
+});
+```
+
+## Service Worker Implementation
+- Cache static assets with proper versioning
+- Implement network-first strategy for API calls
+- Use cache-first strategy for static resources
+- Handle cache updates and cleanup
+
+## UI/UX Standards
+- Use the SommOSUI class for consistent interactions
+- Implement proper loading states and feedback
+- Show toast notifications for user actions
+- Handle form validation with clear error messages
+
+## Responsive Design
+- Mobile-first approach for yacht environments
+- Touch-optimized controls for mobile devices
+- Proper viewport handling for different screen sizes
+- Accessible design following WCAG AA guidelines
+
+## Performance Optimization
+- Implement lazy loading for large datasets
+- Use debounced search with 300ms delay
+- Paginate large results (50-100 items per page)
+- Optimize images and assets for yacht bandwidth constraints
+
+## Wine Industry UI Patterns
+- Use proper wine type icons and color coding
+- Display wine information in established card format
+- Implement proper filtering and search interfaces
+- Show stock levels and location information clearly

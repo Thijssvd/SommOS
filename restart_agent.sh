@@ -15,6 +15,14 @@ fi
 AGENT_ID=$1
 SOMMOS_DIR="/Users/thijs/Documents/SommOS"
 
+# Security: Claude CLI is disabled by default. This project uses Windsurf-only.
+# To enable legacy Claude-based flows at your own risk, export SOMMOS_ALLOW_CLAUDE=true
+if [ "${SOMMOS_ALLOW_CLAUDE:-false}" != "true" ]; then
+  echo "[SECURITY] Claude CLI usage is disabled (Windsurf-only setup)."
+  echo "[SECURITY] Use the Agent-MCP Dashboard (http://localhost:3847) to restart agents, or enable SOMMOS_ALLOW_CLAUDE=true explicitly."
+  exit 1
+fi
+
 case "$AGENT_ID" in
   backend-specialist-sommos)
     PROMPT_FILE="$SOMMOS_DIR/.agent/prompts/backend_prompt.txt"
@@ -52,7 +60,7 @@ tmux send-keys -t "$AGENT_ID" "export MCP_AGENT_ID=$AGENT_ID" Enter
 sleep 1
 tmux send-keys -t "$AGENT_ID" "claude mcp add -t sse AgentMCP http://localhost:8080/sse" Enter
 sleep 2
-tmux send-keys -t "$AGENT_ID" "claude --dangerously-skip-permissions" Enter
+tmux send-keys -t "$AGENT_ID" "claude" Enter
 sleep 5
 
 cat "$PROMPT_FILE" | while IFS= read -r line; do

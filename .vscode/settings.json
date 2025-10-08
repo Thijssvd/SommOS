@@ -1,0 +1,129 @@
+{
+  "workbench.experimental.cloudChanges.autoStore": "onShutdown",
+  "git.autofetch": true,
+  "eslint.validate": ["javascript", "javascriptreact"],
+  "gitlens.codeLens.enabled": true,
+  "gitlens.currentLine.enabled": true,
+
+  // File Explorer - Hide ephemeral files
+  "files.exclude": {
+    "**/*.db": true,
+    "playwright-report/": true,
+    "test-results/": true,
+    "test-results.json/": true,
+    "**/node_modules": true,
+    "**/.DS_Store": true,
+    "**/*.db-journal": true,
+    "**/coverage": true,
+    "**/.agent": true
+  },
+
+  // File Watcher Exclusions (improves performance)
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/playwright-report/**": true,
+    "**/test-results/**": true,
+    "**/test-results.json/**": true,
+    "**/*.db": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/coverage/**": true
+  },
+
+  // Search Exclusions
+  "search.exclude": {
+    "**/node_modules": true,
+    "playwright-report/": true,
+    "test-results/": true,
+    "test-results.json/": true,
+    "coverage/": true,
+    "**/*.db": true,
+    "**/package-lock.json": true,
+    "**/.agent": true,
+    "frontend/dist/**": true,
+    "frontend/build/**": true
+  },
+
+  // Jest
+  "jest.autoRun": "off",
+  "jest.showCoverageOnLoad": false,
+
+  // Editor Settings
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll": "explicit"
+  },
+
+  // JavaScript/TypeScript
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+
+  // File Associations
+  "files.associations": {
+    "*.mdc": "markdown",
+    ".cursorrules": "markdown",
+    ".env*": "properties"
+  },
+
+  // Docker
+  "docker.dockerComposeBuild": true,
+  "docker.dockerComposeDetached": true,
+
+  // Database
+  "sqltools.connections": [
+    {
+      "name": "SommOS SQLite",
+      "driver": "SQLite",
+      "database": "${workspaceFolder}/data/sommos.db"
+    }
+  ],
+
+  // Terminal
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "terminal.integrated.env.osx": {
+    "NODE_ENV": "development"
+  },
+
+  // Prettier (if installed)
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "es5",
+  "prettier.tabWidth": 2,
+
+  "cSpell.words": [
+    "sommos",
+    "sommelier",
+    "vintages",
+    "pairing",
+    "pairings",
+    "grapes",
+    "deepseek",
+    "openai",
+    "meteo",
+    "cellar",
+    "ledger",
+    "procurement",
+    "indexeddb",
+    "vite",
+    "playwright",
+    "eslintrc",
+    "prettierrc",
+    "composefile"
+  ],
+  "inlineChat.lineEmptyHint": true,
+  "inlineChat.notebookAgent": true,
+  "interactiveMcp.serverPath": "/sse",
+  "interactiveMcp.serverPort": 8080
+}
