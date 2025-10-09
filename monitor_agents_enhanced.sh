@@ -39,21 +39,26 @@ echo "🤖 Agent Status (Database):"
 sqlite3 "$DB_PATH" "SELECT agent_id, status, substr(updated_at, 1, 19) as last_update FROM agents WHERE agent_id != 'Admin' ORDER BY agent_id;" 2>/dev/null | column -t -s '|'
 
 echo ""
-echo "📺 Tmux Sessions:"
-for agent in backend-specialist-sommos frontend-specialist-sommos ai-integration-specialist-sommos devops-specialist-sommos test-specialist-sommos; do
-  if tmux has-session -t "$agent" 2>/dev/null; then
-    echo -e "   ${GREEN}✅${NC} $agent"
-  else
-    echo -e "   ${RED}❌${NC} $agent"
-  fi
-done
+if [ "${SOMMOS_ALLOW_CLAUDE:-false}" = "true" ]; then
+  echo "📺 Tmux Sessions:"
+  for agent in backend-specialist-sommos frontend-specialist-sommos ai-integration-specialist-sommos devops-specialist-sommos test-specialist-sommos; do
+    if tmux has-session -t "$agent" 2>/dev/null; then
+      echo -e "   ${GREEN}✅${NC} $agent"
+    else
+      echo -e "   ${RED}❌${NC} $agent"
+    fi
+  done
 
-echo ""
-SESSION_COUNT=$(tmux list-sessions 2>/dev/null | grep -c "specialist.*sommos" || echo "0")
-if [ "$SESSION_COUNT" -eq 5 ]; then
-  echo -e "📊 Session Status: ${GREEN}$SESSION_COUNT/5 active${NC}"
+  echo ""
+  SESSION_COUNT=$(tmux list-sessions 2>/dev/null | grep -c "specialist.*sommos" || echo "0")
+  if [ "$SESSION_COUNT" -eq 5 ]; then
+    echo -e "📊 Session Status: ${GREEN}$SESSION_COUNT/5 active${NC}"
+  else
+    echo -e "📊 Session Status: ${YELLOW}$SESSION_COUNT/5 active${NC} (⚠️ Some agents may be down)"
+  fi
 else
-  echo -e "📊 Session Status: ${YELLOW}$SESSION_COUNT/5 active${NC} (⚠️ Some agents may be down)"
+  echo "📺 Tmux Sessions: (skipped)"
+  echo -e "   ${YELLOW}ℹ${NC} Tmux/Claude flow disabled (Windsurf-only). Use DB status above and Dashboard UI."
 fi
 
 echo ""

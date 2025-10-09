@@ -10,7 +10,8 @@
 
 ### Currently Installed Extensions
 
-#### From `vscode-extensions.json`:
+#### From `vscode-extensions.json`
+
 1. **dbaeumer.vscode-eslint** ✅ KEEP
    - **Purpose**: JavaScript linting
    - **Relevance**: Critical for code quality in Node.js/Express backend
@@ -41,7 +42,8 @@
    - **Relevance**: Critical E2E workflows tested with Playwright
    - **Status**: Essential
 
-#### From `settings.json` (Implicitly Installed):
+#### From `settings.json` (Implicitly Installed)
+
 7. **redhat.vscode-yaml** ✅ KEEP
    - **Purpose**: YAML language support
    - **Relevance**: Docker Compose files, GitHub Actions workflows
@@ -69,8 +71,10 @@
 ### Critical for SommOS Development
 
 #### 1. REST Client Testing
+
 **Extension**: `humao.rest-client`  
 **Why**: Test REST API endpoints directly in IDE without Postman
+
 - SommOS has 20+ API endpoints (`/api/auth`, `/api/inventory`, `/api/pairing`, etc.)
 - Quick testing during development
 - Can save request collections as `.http` files in project
@@ -78,8 +82,10 @@
 **Alternative**: `rangav.vscode-thunder-client` (GUI-based)
 
 #### 2. Node.js Development
+
 **Extension**: `dbaeumer.vscode-node-debug2` (usually bundled)  
 **Why**: Enhanced Node.js debugging
+
 - Backend debugging for Express server
 - Breakpoints in backend routes
 - Variable inspection during development
@@ -87,22 +93,28 @@
 **Check**: May already be included in Windsurf
 
 #### 3. Environment Variables
+
 **Extension**: `mikestead.dotenv`  
 **Why**: Syntax highlighting for `.env` files
+
 - Project uses `.env.example`, `.env.secrets-template`
 - Better visibility of environment configuration
 - Helps prevent configuration errors
 
 #### 4. TODO Highlights
+
 **Extension**: `wayou.vscode-todo-highlight`  
 **Why**: Highlight TODO, FIXME comments
+
 - Helps track technical debt
 - Useful for agent task management
 - Quick navigation to pending work
 
 #### 5. Path Intellisense
+
 **Extension**: `christian-kohler.path-intellisense`  
 **Why**: Autocomplete for file paths
+
 - Large project with many modules (`backend/api/`, `frontend/js/modules/`)
 - Reduces import errors
 - Speeds up development
@@ -110,29 +122,37 @@
 ### Highly Recommended for Quality
 
 #### 6. Error Lens
+
 **Extension**: `usernamehw.errorlens`  
 **Why**: Inline error and warning display
+
 - Shows ESLint errors directly in code
 - Improves code quality awareness
 - Faster debugging
 
 #### 7. Better Comments
+
 **Extension**: `aaron-bond.better-comments`  
 **Why**: Color-coded comment categories
+
 - Distinguish TODO, FIXME, NOTE, etc.
 - Better documentation visibility
 - Helps with agent coordination
 
 #### 8. Import Cost
+
 **Extension**: `wix.vscode-import-cost`  
 **Why**: Display import size inline
+
 - PWA optimization (target <200KB bundle)
 - Monitor bundle size impact
 - Prevent bloat in frontend code
 
 #### 9. Code Spell Checker
+
 **Extension**: `streetsidesoftware.code-spell-checker`  
 **Why**: Catch typos in code and comments
+
 - Professional documentation quality
 - Prevent embarrassing typos in production
 - Supports wine terminology with custom dictionary
@@ -140,15 +160,19 @@
 ### Nice to Have
 
 #### 10. Markdown All in One
+
 **Extension**: `yzhang.markdown-all-in-one`  
 **Why**: Enhanced Markdown editing
+
 - Project has extensive docs (`SOMMOS_MCD.md`, `README.md`, etc.)
 - TOC generation
 - Link checking
 
 #### 11. Live Server (Development)
+
 **Extension**: `ritwickdey.liveserver`  
 **Why**: Quick static file serving
+
 - Test frontend without full backend
 - Rapid prototyping
 - Alternative to Vite dev server
@@ -156,7 +180,9 @@
 **Note**: May be redundant since Vite handles this
 
 #### 12. GitLens++ Features
+
 **Extension**: Already installed, ensure features enabled
+
 - Blame annotations
 - Code authorship tracking
 - Commit history in editor
@@ -168,27 +194,35 @@
 ### Not Relevant for SommOS
 
 #### 1. React/Vue/Angular Extensions
+
 **Why**: Project uses Vanilla JavaScript (no framework)
+
 - `vscode-react`
 - `vetur` (Vue)
 - `angular.ng-template`
 
 #### 2. TypeScript Extensions (Beyond Basic)
+
 **Why**: Project is pure JavaScript (ES6+), not TypeScript
+
 - Advanced TypeScript tools not needed
 - Basic TypeScript support already in VS Code
 
 **Exception**: Keep if considering TypeScript migration
 
 #### 3. Python Extensions
+
 **Why**: No Python code in SommOS (only Agent-MCP uses Python)
+
 - `ms-python.python`
 - `ms-python.vscode-pylance`
 
 **Exception**: Keep if working on Agent-MCP tooling
 
 #### 4. Heavy Framework Extensions
+
 **Why**: Bloat without benefit
+
 - JetBrains tools (redundant with native IDE features)
 - Full-stack framework extensions
 - GraphQL tools (project uses REST)
@@ -305,17 +339,20 @@ Create `.vscode/extensions.json` in SommOS root:
 ## 📋 Priority Installation Order
 
 ### Phase 1: Critical (Install Now)
+
 1. `humao.rest-client` - API testing
 2. `mikestead.dotenv` - Environment file support
 3. `usernamehw.errorlens` - Code quality visibility
 
 ### Phase 2: Quality Improvements (Install This Week)
+
 4. `christian-kohler.path-intellisense` - Faster development
 5. `wayou.vscode-todo-highlight` - Task tracking
 6. `aaron-bond.better-comments` - Documentation
 7. `streetsidesoftware.code-spell-checker` - Quality
 
 ### Phase 3: Nice to Have (Optional)
+
 8. `wix.vscode-import-cost` - Bundle optimization
 9. `yzhang.markdown-all-in-one` - Documentation
 10. `ritwickdey.liveserver` - Quick testing
@@ -375,17 +412,21 @@ After installing recommended extensions:
 ## 📊 Summary
 
 ### Keep (10 extensions)
+
 All currently installed extensions are relevant and should be kept.
 
 ### Add (10 extensions)
+
 - **Critical (3)**: REST Client, DotEnv, Error Lens
 - **Recommended (4)**: Path Intellisense, TODO Highlight, Better Comments, Spell Checker
 - **Optional (3)**: Import Cost, Markdown All in One, Live Server
 
 ### Remove (0 extensions)
+
 No extensions need removal. Current setup is lean and relevant.
 
 ### Total Recommended: 20 extensions
+
 This maintains a lightweight IDE while providing essential tools for SommOS development.
 
 ---
@@ -430,6 +471,7 @@ code --install-extension streetsidesoftware.code-spell-checker
 ---
 
 **Next Steps**:
+
 1. Review and approve recommended extensions
 2. Install Phase 1 (Critical) extensions
 3. Update `.vscode/extensions.json` with recommendations

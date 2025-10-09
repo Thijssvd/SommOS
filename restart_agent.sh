@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
-if [ $# -eq 0 ]; then
-  echo "Usage: $0 <agent-id>"
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <agent-id> [task_id]"
   echo ""
   echo "Valid agent IDs:"
   echo "  - backend-specialist-sommos"
@@ -13,14 +13,13 @@ if [ $# -eq 0 ]; then
 fi
 
 AGENT_ID=$1
+TASK_ID_OVERRIDE=$2
 SOMMOS_DIR="/Users/thijs/Documents/SommOS"
 
 # Security: Claude CLI is disabled by default. This project uses Windsurf-only.
-# To enable legacy Claude-based flows at your own risk, export SOMMOS_ALLOW_CLAUDE=true
+# If you really need the legacy Claude-based flow, export SOMMOS_ALLOW_CLAUDE=true
 if [ "${SOMMOS_ALLOW_CLAUDE:-false}" != "true" ]; then
-  echo "[SECURITY] Claude CLI usage is disabled (Windsurf-only setup)."
-  echo "[SECURITY] Use the Agent-MCP Dashboard (http://localhost:3847) to restart agents, or enable SOMMOS_ALLOW_CLAUDE=true explicitly."
-  exit 1
+  echo "[SECURITY] Claude CLI disabled (Windsurf-only). Using MCP HTTP API for restart."
 fi
 
 case "$AGENT_ID" in
@@ -45,34 +44,62 @@ case "$AGENT_ID" in
     ;;
 esac
 
-echo "=== Restarting $AGENT_ID ==="
+echo "=== Restarting $AGENT_ID via MCP API ==="
 echo ""
 
-if tmux has-session -t "$AGENT_ID" 2>/dev/null; then
-  echo "Terminating existing session..."
-  tmux kill-session -t "$AGENT_ID"
-  sleep 2
+# Get live admin token from API; fallback to file
+ADMIN_TOKEN=""
+if command -v jq >/dev/null 2>&1; then
+  ADMIN_TOKEN=$(curl -s http://localhost:8080/api/tokens | jq -r '.admin_token' 2>/dev/null)
+fi
+if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "null" ]; then
+  ADMIN_TOKEN_FILE="$SOMMOS_DIR/.agent/admin_token.txt"
+  ADMIN_TOKEN=$(cat "$ADMIN_TOKEN_FILE" 2>/dev/null)
+fi
+if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "null" ]; then
+  echo "❌ Admin token not available (API and file fallback failed)"
+  exit 1
 fi
 
-echo "Starting new session..."
-tmux new-session -d -s "$AGENT_ID" -c "$SOMMOS_DIR"
-tmux send-keys -t "$AGENT_ID" "export MCP_AGENT_ID=$AGENT_ID" Enter
-sleep 1
-tmux send-keys -t "$AGENT_ID" "claude mcp add -t sse AgentMCP http://localhost:8080/sse" Enter
-sleep 2
-tmux send-keys -t "$AGENT_ID" "claude" Enter
-sleep 5
-
-cat "$PROMPT_FILE" | while IFS= read -r line; do
-  tmux send-keys -t "$AGENT_ID" "$line"
-done
-tmux send-keys -t "$AGENT_ID" Enter
-
-sleep 5
-
-if tmux has-session -t "$AGENT_ID" 2>/dev/null; then
-  echo "✅ $AGENT_ID restarted successfully"
+# Terminate existing agent via API (ok if not found)
+TERMINATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "http://localhost:8080/api/terminate-agent" \
+  -H "Content-Type: application/json" \
+  -d '{"token": "'"$ADMIN_TOKEN"'", "agent_id": "'"$AGENT_ID"'"}')
+TERMINATE_CODE=$(echo "$TERMINATE_RESPONSE" | tail -n1)
+if [ "$TERMINATE_CODE" = "200" ] || [ "$TERMINATE_CODE" = "404" ]; then
+  echo "✓ Terminate step (HTTP $TERMINATE_CODE)"
 else
-  echo "❌ Failed to restart $AGENT_ID"
+  echo "⚠️  Terminate step returned HTTP $TERMINATE_CODE (continuing)"
+fi
+
+sleep 1
+
+# Resolve task_id: use override or pick first available created/unassigned
+TASK_ID="$TASK_ID_OVERRIDE"
+if [ -z "$TASK_ID" ]; then
+  if command -v sqlite3 >/dev/null 2>&1; then
+    TASK_ID=$(sqlite3 "$SOMMOS_DIR/.agent/mcp_state.db" "SELECT task_id FROM tasks WHERE (status='created' OR status='unassigned') AND (assigned_to IS NULL OR assigned_to='') ORDER BY created_at DESC LIMIT 1;")
+  fi
+fi
+
+if [ -z "$TASK_ID" ]; then
+  echo "❌ No available task found to assign to $AGENT_ID. Create a task first."
+  exit 1
+fi
+
+# Create agent via API (with task_ids)
+PAYLOAD='{"token": '"'"$ADMIN_TOKEN"'"', "agent_id": '"'"$AGENT_ID"'"', "task_ids": [ '"'"$TASK_ID"'"' ]}'
+CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "http://localhost:8080/api/create-agent" \
+  -H "Content-Type: application/json" \
+  -d "$PAYLOAD")
+CREATE_CODE=$(echo "$CREATE_RESPONSE" | tail -n1)
+if [ "$CREATE_CODE" = "200" ] || [ "$CREATE_CODE" = "201" ]; then
+  echo "✅ $AGENT_ID restarted successfully via MCP API"
+  exit 0
+elif [ "$CREATE_CODE" = "409" ]; then
+  echo "✅ $AGENT_ID already exists (HTTP 409) — proceeding"
+  exit 0
+else
+  echo "❌ Failed to create $AGENT_ID via MCP API (HTTP $CREATE_CODE)"
   exit 1
 fi

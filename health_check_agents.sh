@@ -26,24 +26,28 @@ else
 fi
 
 echo ""
-echo "Checking agent sessions..."
+if [ "${SOMMOS_ALLOW_CLAUDE:-false}" = "true" ]; then
+  echo "Checking agent sessions (tmux)..."
 
-AGENTS=(
-  "backend-specialist-sommos"
-  "frontend-specialist-sommos"
-  "ai-integration-specialist-sommos"
-  "devops-specialist-sommos"
-  "test-specialist-sommos"
-)
+  AGENTS=(
+    "backend-specialist-sommos"
+    "frontend-specialist-sommos"
+    "ai-integration-specialist-sommos"
+    "devops-specialist-sommos"
+    "test-specialist-sommos"
+  )
 
-for agent in "${AGENTS[@]}"; do
-  if ! tmux has-session -t "$agent" 2>/dev/null; then
-    echo "❌ Missing session: $agent"
-    EXIT_CODE=1
-  else
-    echo "✅ Session active: $agent"
-  fi
-done
+  for agent in "${AGENTS[@]}"; do
+    if ! tmux has-session -t "$agent" 2>/dev/null; then
+      echo "❌ Missing session: $agent"
+      EXIT_CODE=1
+    else
+      echo "✅ Session active: $agent"
+    fi
+  done
+else
+  echo "Tmux/Claude flow disabled (Windsurf-only). Skipping tmux session checks."
+fi
 
 echo ""
 if [ $EXIT_CODE -eq 0 ]; then
