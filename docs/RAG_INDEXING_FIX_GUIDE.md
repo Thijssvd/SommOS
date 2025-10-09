@@ -42,7 +42,7 @@ OpenAI embedding API error in batch starting at X: Error code: 404 -
 The `.env` file has been updated to separate OpenAI (for embeddings) and DeepSeek (for chat):
 
 ```bash
-# Current configuration in /Users/thijs/Documents/Agent-MCP/.env:
+# Current configuration in /Users/thijs/Documents/SommOS/Agent-MCP/.env:
 
 # OpenAI API Key - required for embeddings (RAG system)
 # Get your key from: https://platform.openai.com/api-keys
@@ -66,7 +66,7 @@ Replace `<YOUR_OPENAI_API_KEY_HERE>` with your actual OpenAI API key.
 pkill -f agent_mcp.cli
 
 # Start the server with the new configuration
-cd /Users/thijs/Documents/Agent-MCP
+cd /Users/thijs/Documents/SommOS/Agent-MCP
 uv run -m agent_mcp.cli --port 8080 --project-dir /Users/thijs/Documents/SommOS &
 
 # Wait 20 seconds for indexing to complete
@@ -86,7 +86,7 @@ Expected result: Count should be > 0 (likely 100-500+ chunks depending on SommOS
 If you want to proceed without the knowledge graph, you can start the server with the `--no-index` flag:
 
 ```bash
-cd /Users/thijs/Documents/Agent-MCP
+cd /Users/thijs/Documents/SommOS/Agent-MCP
 uv run -m agent_mcp.cli --port 8080 --project-dir /Users/thijs/Documents/SommOS --no-index &
 ```
 
@@ -230,7 +230,7 @@ Agent-MCP supports OpenAI-compatible embedding APIs:
 - Test Specialist agent created
 - 10 tasks defined (3 assigned)
 - Project context loaded (4 entries)
-- Admin Token: `807800461eda4e45a9d56ece19ac409a`
+- Admin Token: `<use token from .agent/admin_token.txt>`
 
 ### ❌ What's Blocked
 
@@ -281,7 +281,7 @@ OPENAI_BASE_URL=https://api-inference.huggingface.co/models/sentence-transformer
 
 **The Fix:**
 1. Get OpenAI API key from https://platform.openai.com/api-keys
-2. Add it to `/Users/thijs/Documents/Agent-MCP/.env`
+2. Add it to `/Users/thijs/Documents/SommOS/Agent-MCP/.env`
 3. Restart Agent-MCP server
 4. Wait for automatic indexing (20 seconds)
 5. Verify chunks in database

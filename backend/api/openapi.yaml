@@ -710,6 +710,94 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /pairing/health:
+    get:
+      tags: [Pairing]
+      summary: Check AI pairing provider health.
+      description: Returns the health status of AI providers used for wine pairing.
+      security:
+        - accessTokenCookie: []
+      responses:
+        '200':
+          description: Providers healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: [healthy, degraded]
+                      providers:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                      checked_at:
+                        type: string
+                        format: date-time
+        '206':
+          description: Providers degraded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Providers unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /pairing/cache/clear:
+    post:
+      tags: [Pairing]
+      summary: Clear pairing cache.
+      description: Clears the enhanced pairing engine cache. Admin role required.
+      security:
+        - accessTokenCookie: []
+      responses:
+        '200':
+          description: Cache cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: object
+                    properties:
+                      cache_cleared:
+                        type: boolean
+                      cleared_at:
+                        type: string
+                        format: date-time
+        '401':
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin privileges required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to clear cache.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /explanations/{entity_type}/{entity_id}:
     get:
       tags: [Explainability]

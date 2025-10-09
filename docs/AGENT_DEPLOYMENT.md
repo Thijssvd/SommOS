@@ -112,7 +112,7 @@ sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db \
 
 ### Agent not appearing in dashboard?
  - Refresh the dashboard page
- - Check Agent-MCP server logs: `tail -f /Users/thijs/Documents/Agent-MCP/agent-mcp.log`
+ - Check Agent-MCP server logs: `tail -f /Users/thijs/Documents/SommOS/Agent-MCP/agent-mcp.log`
  - Verify agent in database: `sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db "SELECT * FROM agents;"`
 
 ### Tasks not assigned?

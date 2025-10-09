@@ -554,7 +554,7 @@ docker logs sommos-backend --tail 100 -f
 
 ### Communication
 - **Knowledge Graph**: `/Users/thijs/Documents/SommOS/.agent/mcp_state.db`
-- **Admin Token**: `807800461eda4e45a9d56ece19ac409a`
+- **Admin Token**: `<use token from .agent/admin_token.txt>`
 - **Agent Messages**: Stored in `agent_messages` table
 
 ### File Locking
@@ -575,7 +575,7 @@ docker logs sommos-backend --tail 100 -f
 You are the DEVOPS SPECIALIST worker agent for SommOS.
 
 Worker ID: devops-worker
-Admin Token: 807800461eda4e45a9d56ece19ac409a
+Admin Token: <use token from .agent/admin_token.txt>
 MCP Server: http://localhost:8080
 
 Query the project knowledge graph to understand:
@@ -624,4 +624,4 @@ AUTO --worker --memory
 
 **Agent Signature**: DevOps Specialist  
 **Initialization Date**: 2025-10-06  
-**Admin Token**: `807800461eda4e45a9d56ece19ac409a`
+**Admin Token**: `<use token from .agent/admin_token.txt>`

@@ -281,6 +281,6 @@ const searchState = {
 
 ---
 
-**Admin Token**: `807800461eda4e45a9d56ece19ac409a`  
+**Admin Token**: `<use token from .agent/admin_token.txt>`  
 **MCP Server**: `http://localhost:8080`  
 **Frontend Dev Server**: `http://localhost:5173`

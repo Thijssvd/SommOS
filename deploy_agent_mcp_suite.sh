@@ -32,7 +32,7 @@ fi
 
 # Project paths
 SOMMOS_DIR="/Users/thijs/Documents/SommOS"
-AGENT_MCP_DIR="/Users/thijs/Documents/Agent-MCP"
+AGENT_MCP_DIR="/Users/thijs/Documents/SommOS/Agent-MCP"
 AGENT_DIR="${SOMMOS_DIR}/.agent"
 DB_PATH="${AGENT_DIR}/mcp_state.db"
 PROMPTS_DIR="${AGENT_DIR}/prompts"

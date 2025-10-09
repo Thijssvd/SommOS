@@ -279,7 +279,7 @@ update_project_context:
 - **Verification Report**: `AGENT_SETUP_VERIFICATION.md`
 
 ### Agent-MCP Documentation
-- **Agent-MCP Root**: `/Users/thijs/Documents/Agent-MCP`
+- **Agent-MCP Root**: `/Users/thijs/Documents/SommOS/Agent-MCP`
 - **Setup Guide**: `agent-mcp-thijsinfo.md`
 - **MCD Guide**: `docs/mcd-guide.md`
 - **Getting Started**: `docs/getting-started.md`

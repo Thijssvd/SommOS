@@ -7,7 +7,7 @@ This guide configures the agent-mcp-sommos server to work with Windsurf IDE, ena
 ## Prerequisites
 
 - Windsurf IDE installed
-- Agent-MCP installed at `/Users/thijs/Documents/Agent-MCP`
+- Agent-MCP installed at `/Users/thijs/Documents/SommOS/Agent-MCP`
 - Python environment with `uv` package manager
 - SommOS project at `/Users/thijs/Documents/SommOS`
 
@@ -30,7 +30,7 @@ Create or edit `~/.config/windsurf/mcp_servers.json`:
       "command": "uv",
       "args": [
         "--project",
-        "/Users/thijs/Documents/Agent-MCP",
+        "/Users/thijs/Documents/SommOS/Agent-MCP",
         "run",
         "-m",
         "agent_mcp.cli",
@@ -176,7 +176,7 @@ Tokens are managed by the Agent-MCP system and passed automatically by Windsurf.
 
 2. **Manually start the server:**
    ```bash
-   cd /Users/thijs/Documents/Agent-MCP
+   cd /Users/thijs/Documents/SommOS/Agent-MCP
    uv run -m agent_mcp.cli --port 8080 --transport sse --project-dir /Users/thijs/Documents/SommOS --no-tui
    ```
 
@@ -201,6 +201,7 @@ If you see "SSE stream terminated" errors:
 2. Kill and restart the MCP server:
    ```bash
    pkill -f agent_mcp.cli
+   cd /Users/thijs/Documents/SommOS/Agent-MCP
    uv run -m agent_mcp.cli --port 8080 --transport sse --project-dir /Users/thijs/Documents/SommOS --no-tui &
    ```
 

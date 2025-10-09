@@ -171,7 +171,7 @@ The dashboard has a 405 error because the backend doesn't support the REST API m
 
 ### **Option A: Update Agent-MCP** (if there's a newer version)
 ```bash
-cd /Users/thijs/Documents/Agent-MCP
+cd /Users/thijs/Documents/SommOS/Agent-MCP
 git pull origin main
 uv sync
 ```

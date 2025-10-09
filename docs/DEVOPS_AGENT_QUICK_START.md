@@ -7,7 +7,7 @@
 ## ✅ Files Created
 
 ```
-/Users/thijs/Documents/Agent-MCP/
+/Users/thijs/Documents/SommOS/Agent-MCP/
 ├── create-devops-agent.json              (5.1K) - Agent config
 ├── DEVOPS_AGENT_ACTIVATION_GUIDE.md      (12K)  - Full guide
 ├── DEVOPS_AGENT_SUMMARY.md               (7.3K) - Overview
@@ -23,7 +23,7 @@
 
 ### Step 1: Copy the Configuration (15 seconds)
 ```bash
-cat /Users/thijs/Documents/Agent-MCP/create-devops-agent.json
+cat /Users/thijs/Documents/SommOS/Agent-MCP/create-devops-agent.json
 ```
 
 ### Step 2: Open Dashboard (5 seconds)
@@ -44,7 +44,7 @@ You are the DEVOPS SPECIALIST worker agent for SommOS.
 
 Worker ID: devops-worker
 Worker Token: [YOUR_TOKEN_FROM_STEP_3]
-Admin Token: 807800461eda4e45a9d56ece19ac409a
+Admin Token: <use token from .agent/admin_token.txt>
 MCP Server: http://localhost:8080
 
 Read docs/DEVOPS_SPECIALIST_INIT.md for your complete mission.
@@ -69,7 +69,7 @@ AUTO --worker --memory
 | **ID** | `devops-specialist-sommos` |
 | **Type** | Worker Agent |
 | **Role** | DevOps |
-| **Admin Token** | `807800461eda4e45a9d56ece19ac409a` |
+| **Admin Token** | `<use token from .agent/admin_token.txt>` |
 
 ---
 
@@ -118,7 +118,7 @@ open http://localhost:3847
 **Can't find admin token?**
 ```bash
 cat /Users/thijs/Documents/SommOS/.agent/WORKER_AGENTS_INIT.md | grep "Admin Token"
-# Token: 807800461eda4e45a9d56ece19ac409a
+# Token: <use token from .agent/admin_token.txt>
 ```
 
 ---
@@ -149,4 +149,4 @@ When agent is active:
 
 **Total Setup Time**: ~3 minutes  
 **Full Documentation**: See DEVOPS_AGENT_ACTIVATION_GUIDE.md  
-**Admin Token**: `807800461eda4e45a9d56ece19ac409a`
+**Admin Token**: `<use token from .agent/admin_token.txt>`

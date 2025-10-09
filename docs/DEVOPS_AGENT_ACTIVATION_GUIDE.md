@@ -3,7 +3,7 @@
 **Date**: 2025-10-06  
 **Project**: SommOS  
 **Agent-MCP Server**: http://localhost:8080  
-**Admin Token**: `807800461eda4e45a9d56ece19ac409a`
+**Admin Token**: `<use token from .agent/admin_token.txt>`
 
 ---
 
@@ -17,7 +17,7 @@ This guide walks through activating the DevOps Specialist agent in the Agent-MCP
 - [x] SommOS project at `/Users/thijs/Documents/SommOS`
 - [x] Admin token available
 - [x] Agent configuration files created:
-  - `/Users/thijs/Documents/Agent-MCP/create-devops-agent.json`
+  - `/Users/thijs/Documents/SommOS/Agent-MCP/create-devops-agent.json`
   - `/Users/thijs/Documents/SommOS/docs/DEVOPS_SPECIALIST_INIT.md`
 
 ---
@@ -34,13 +34,13 @@ open http://localhost:3847
 2. Click "Create New Agent" button
 
 ### Step 3: Load Configuration
-1. Upload the configuration file: `/Users/thijs/Documents/Agent-MCP/create-devops-agent.json`
+1. Upload the configuration file: `/Users/thijs/Documents/SommOS/Agent-MCP/create-devops-agent.json`
 2. Or manually enter agent details:
    - **Name**: DevOps Specialist
    - **ID**: `devops-specialist-sommos`
    - **Type**: worker
    - **Role**: devops
-   - **Admin Token**: `807800461eda4e45a9d56ece19ac409a`
+   - **Admin Token**: `<use token from .agent/admin_token.txt>`
 
 ### Step 4: Verify Creation
 - Check the agent appears in the agent list
@@ -63,7 +63,7 @@ Use the create_agent MCP tool with the following configuration:
   "role": "devops",
   "specialization": "Infrastructure, monitoring, CI/CD, and observability",
   "project_path": "/Users/thijs/Documents/SommOS",
-  "admin_token": "807800461eda4e45a9d56ece19ac409a",
+  "admin_token": "<use token from .agent/admin_token.txt>",
   "capabilities": [
     "monitoring-dashboards",
     "alerting-configuration",
@@ -88,14 +88,14 @@ import requests
 import json
 
 # Load agent configuration
-with open('/Users/thijs/Documents/Agent-MCP/create-devops-agent.json', 'r') as f:
+with open('/Users/thijs/Documents/SommOS/Agent-MCP/create-devops-agent.json', 'r') as f:
     agent_config = json.load(f)
 
 # Create agent via MCP API
 response = requests.post(
     'http://localhost:8080/api/agents/create',
     json={
-        'admin_token': '807800461eda4e45a9d56ece19ac409a',
+        'admin_token': '<use token from .agent/admin_token.txt>',
         'agent_config': agent_config['agent']
     },
     headers={'Content-Type': 'application/json'}
@@ -118,7 +118,7 @@ else:
 curl -X POST http://localhost:8080/api/agents/create \
   -H "Content-Type: application/json" \
   -d '{
-    "admin_token": "807800461eda4e45a9d56ece19ac409a",
+    "admin_token": "<use token from .agent/admin_token.txt>",
     "name": "DevOps Specialist",
     "id": "devops-specialist-sommos",
     "type": "worker",
@@ -137,10 +137,10 @@ curl -X POST http://localhost:8080/api/agents/create \
 ### Step 2: Verify Agent Creation
 ```bash
 # List all agents
-curl -X GET "http://localhost:8080/api/agents/list?admin_token=807800461eda4e45a9d56ece19ac409a"
+curl -X GET "http://localhost:8080/api/agents/list?admin_token=<use token from .agent/admin_token.txt>"
 
 # Check specific agent
-curl -X GET "http://localhost:8080/api/agents/devops-specialist-sommos?admin_token=807800461eda4e45a9d56ece19ac409a"
+curl -X GET "http://localhost:8080/api/agents/devops-specialist-sommos?admin_token=<use token from .agent/admin_token.txt>"
 ```
 
 ---
@@ -158,7 +158,7 @@ You are the DEVOPS SPECIALIST worker agent for SommOS.
 
 Worker ID: devops-worker
 Worker Token: [INSERT_TOKEN_FROM_AGENT_CREATION]
-Admin Token: 807800461eda4e45a9d56ece19ac409a
+Admin Token: <use token from .agent/admin_token.txt>
 MCP Server: http://localhost:8080
 Project Path: /Users/thijs/Documents/SommOS
 
@@ -247,13 +247,13 @@ open http://localhost:3847
 ### Via API Calls
 ```bash
 # Check agent status
-curl "http://localhost:8080/api/agents/devops-specialist-sommos/status?admin_token=807800461eda4e45a9d56ece19ac409a"
+curl "http://localhost:8080/api/agents/devops-specialist-sommos/status?admin_token=<use token from .agent/admin_token.txt>"
 
 # View agent tasks
-curl "http://localhost:8080/api/tasks?agent_id=devops-specialist-sommos&admin_token=807800461eda4e45a9d56ece19ac409a"
+curl "http://localhost:8080/api/tasks?agent_id=devops-specialist-sommos&admin_token=<use token from .agent/admin_token.txt>"
 
 # Check agent messages
-curl "http://localhost:8080/api/messages?agent_id=devops-specialist-sommos&admin_token=807800461eda4e45a9d56ece19ac409a"
+curl "http://localhost:8080/api/messages?agent_id=devops-specialist-sommos&admin_token=<use token from .agent/admin_token.txt>"
 ```
 
 ---
@@ -280,7 +280,7 @@ Use the assign_task MCP tool:
     "monitoring/alert-rules.yml",
     "monitoring/docker-compose.monitoring.yml"
   ],
-  "admin_token": "807800461eda4e45a9d56ece19ac409a"
+  "admin_token": "<use token from .agent/admin_token.txt>"
 }
 ```
 
@@ -289,7 +289,7 @@ Use the assign_task MCP tool:
 curl -X POST http://localhost:8080/api/tasks/assign \
   -H "Content-Type: application/json" \
   -d '{
-    "admin_token": "807800461eda4e45a9d56ece19ac409a",
+    "admin_token": "<use token from .agent/admin_token.txt>",
     "agent_id": "devops-specialist-sommos",
     "task": {
       "title": "Set up AlertManager for Prometheus alerts",
@@ -368,7 +368,7 @@ tail -f /tmp/agent-mcp.log
 curl http://localhost:8080/health
 
 # Check admin token is correct
-# Token: 807800461eda4e45a9d56ece19ac409a
+# Token: <use token from .agent/admin_token.txt>
 ```
 
 ### Agent Not Appearing in Dashboard
@@ -377,7 +377,7 @@ curl http://localhost:8080/health
 open http://localhost:3847
 
 # Query agents via API
-curl "http://localhost:8080/api/agents/list?admin_token=807800461eda4e45a9d56ece19ac409a"
+curl "http://localhost:8080/api/agents/list?admin_token=<use token from .agent/admin_token.txt>"
 ```
 
 ### Agent Cannot Access Files
@@ -403,13 +403,13 @@ sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db ".tables"
 ## 📚 Additional Resources
 
 ### Configuration Files
-- `/Users/thijs/Documents/Agent-MCP/create-devops-agent.json` - Agent configuration
+- `/Users/thijs/Documents/SommOS/Agent-MCP/create-devops-agent.json` - Agent configuration
 - `/Users/thijs/Documents/SommOS/docs/DEVOPS_SPECIALIST_INIT.md` - Complete initialization guide
 - `/Users/thijs/Documents/SommOS/.agent/WORKER_AGENTS_INIT.md` - All worker agent profiles
 
 ### Documentation
-- `/Users/thijs/Documents/Agent-MCP/agent-mcp-thijsinfo.md` - Complete Agent-MCP guide
-- `/Users/thijs/Documents/Agent-MCP/README.md` - Agent-MCP documentation
+- `/Users/thijs/Documents/SommOS/Agent-MCP/agent-mcp-thijsinfo.md` - Complete Agent-MCP guide
+- `/Users/thijs/Documents/SommOS/Agent-MCP/README.md` - Agent-MCP documentation
 - `/Users/thijs/Documents/SommOS/SOMMOS_MCD.md` - SommOS project architecture
 
 ### Monitoring
@@ -444,4 +444,4 @@ After successful activation:
 
 **Status**: ✅ Configuration Complete - Ready for Activation  
 **Last Updated**: 2025-10-06  
-**Admin Token**: `807800461eda4e45a9d56ece19ac409a`
+**Admin Token**: `<use token from .agent/admin_token.txt>`

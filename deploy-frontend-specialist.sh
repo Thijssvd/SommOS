@@ -20,7 +20,7 @@ set -o pipefail  # Exit on pipe failures
 ################################################################################
 
 SOMMOS_DIR="/Users/thijs/Documents/SommOS"
-AGENT_MCP_DIR="/Users/thijs/Documents/Agent-MCP"
+AGENT_MCP_DIR="/Users/thijs/Documents/SommOS/Agent-MCP"
 AGENT_ID="frontend-specialist-sommos"
 AGENT_MCP_PORT="8080"
 AGENT_MCP_URL="http://localhost:${AGENT_MCP_PORT}"

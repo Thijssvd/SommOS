@@ -253,7 +253,7 @@ Test Specialist for SommOS wine management system
 | MCD Context | ✅ Loaded | In RAG system |
 | OpenAI API | ✅ Working | Embeddings functional |
 | Project Context | ✅ 4 entries | Including MCD |
-| Admin Token | ✅ Available | 807800461eda4e45a9d56ece19ac409a |
+| Admin Token | ✅ Available | <use token from .agent/admin_token.txt> |
 
 ### ⏳ Minor Gaps (Optional enhancements)
 

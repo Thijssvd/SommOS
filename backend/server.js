@@ -135,6 +135,7 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit(rateLimitConfigs.auth);
 const apiLimiter = rateLimit(rateLimitConfigs.api);
+const aiLimiter = rateLimit(rateLimitConfigs.ai);
 const websocketLimiter = rateLimit(rateLimitConfigs.websocket);
 
 // TEMPORARILY DISABLED for debugging
@@ -298,6 +299,10 @@ app.use('/api/auth', authLimiter);
 // Versioned API rate limiters
 app.use('/api/v1', apiLimiter);
 app.use('/api/v1/auth', authLimiter);
+
+// AI-powered pairing endpoints rate limiter (stricter)
+app.use('/api/pairing', aiLimiter);
+app.use('/api/v1/pairing', aiLimiter);
 
 // API routes
 app.use('/api', routes);

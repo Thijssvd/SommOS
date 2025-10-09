@@ -76,6 +76,19 @@ const rateLimitConfigs = {
             }
         }
     },
+    ai: {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 120, // Stricter limit for AI-powered endpoints
+        standardHeaders: 'draft-7',
+        legacyHeaders: false,
+        message: {
+            success: false,
+            error: {
+                code: 'AI_RATE_LIMIT_EXCEEDED',
+                message: 'Too many AI pairing requests from this IP, please try again later.'
+            }
+        }
+    },
     auth: {
         windowMs: 15 * 60 * 1000, // 15 minutes
         max: 100, // Limit each IP to 100 auth requests per windowMs (increased for dev)

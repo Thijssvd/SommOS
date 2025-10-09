@@ -68,7 +68,8 @@ The dashboard at http://localhost:3847 should have an interface to:
 1. **Navigate to "Agents" tab**
 2. **Click on an agent** (e.g., "test-specialist-sommos")
 3. **Look for "Activate" or "Initialize" button**
-4. **Enter admin token when prompted**: `807800461eda4e45a9d56ece19ac409a`
+4. **Enter admin token when prompted**: Read from `/.agent/admin_token.txt`.
+   - Example: `cat /Users/thijs/Documents/SommOS/.agent/admin_token.txt`
 5. **Confirm activation**
 6. **Repeat for all 5 agents**
 
@@ -96,26 +97,26 @@ If the dashboard doesn't have activation buttons, you can initialize agents manu
 
 4. **AI Integration Specialist:**
    - Should be ready to activate via dashboard
-   - Use admin token: `807800461eda4e45a9d56ece19ac409a`
+   - Use the admin token from `/.agent/admin_token.txt`
 
 5. **DevOps Specialist:**
    - Should be ready to activate via dashboard
-   - Use admin token: `807800461eda4e45a9d56ece19ac409a`
+   - Use admin token: `<use token from .agent/admin_token.txt>`
 
 ### Option 3: Check MCP Server API
 
-The MCP server might have an API endpoint to activate agents:
 
 ```bash
 # Check available endpoints
 curl -s http://localhost:8080/api/agents | jq .
 
-# Try to activate an agent (example - may not work yet)
+#2. **Try to activate an agent (example - may not work yet)
+# Read the admin token from .agent/admin_token.txt
+TOKEN=$(cat /Users/thijs/Documents/SommOS/.agent/admin_token.txt)
 curl -X POST http://localhost:8080/api/agents/test-specialist-sommos/activate \
-  -H "Authorization: Bearer 807800461eda4e45a9d56ece19ac409a"
+  -H "Authorization: Bearer $TOKEN"
 ```
-
----
+{{ ... }}
 
 ## Quick Diagnostic Commands
 
@@ -196,7 +197,7 @@ tail -50 /Users/thijs/Documents/SommOS/.agent/logs/mcp_server.log
 
 **Common Issues:**
 1. **Admin token incorrect** - Verify: `cat /Users/thijs/Documents/SommOS/.agent/admin_token.txt`
-2. **Server not responding** - Restart: `pkill -f agent_mcp.cli && cd /Users/thijs/Documents/Agent-MCP && uv run -m agent_mcp.cli --port 8080 --project-dir /Users/thijs/Documents/SommOS --no-tui &`
+2. **Server not responding** - Restart: `pkill -f agent_mcp.cli && cd /Users/thijs/Documents/SommOS/Agent-MCP && uv run -m agent_mcp.cli --port 8080 --project-dir /Users/thijs/Documents/SommOS --no-tui &`
 3. **Database locked** - Wait a moment and retry
 4. **Dashboard disconnected** - Refresh browser at http://localhost:3847
 
@@ -218,7 +219,7 @@ If agents are stuck in "initialized" state:
 3. **Restart MCP server to reload agents:**
    ```bash
    pkill -f agent_mcp.cli
-   cd /Users/thijs/Documents/Agent-MCP
+   cd /Users/thijs/Documents/SommOS/Agent-MCP
    uv run -m agent_mcp.cli --port 8080 --project-dir /Users/thijs/Documents/SommOS --no-tui &
    ```
 
@@ -236,14 +237,14 @@ If agents are stuck in "initialized" state:
 
 1. ✅ **Check Dashboard** - Open http://localhost:3847
 2. ✅ **Look for Activation Interface** - Find agent activation buttons
-3. ✅ **Use Admin Token** - `807800461eda4e45a9d56ece19ac409a`
+3. ✅ **Use Admin Token** - from `/.agent/admin_token.txt`
 4. ✅ **Activate All 5 Agents** - One by one
 5. ✅ **Verify Status** - Run `./monitor_agents.sh` to see "active" status
 6. ✅ **Test With Simple Task** - Assign task to test-specialist-sommos
 
 ---
 
-**Admin Token**: `807800461eda4e45a9d56ece19ac409a`  
+**Admin Token**: Stored in `/.agent/admin_token.txt`  
 **Dashboard**: http://localhost:3847  
 **Monitor**: `./monitor_agents.sh`
 

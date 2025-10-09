@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "sommos-agent-mcp": {
+    "Sommos-mcp": {
       "url": "http://localhost:8080/sse"
     }
   }

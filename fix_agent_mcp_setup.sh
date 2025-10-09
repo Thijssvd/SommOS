@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 
 # Paths
 SOMMOS_DIR="/Users/thijs/Documents/SommOS"
-AGENT_MCP_DIR="/Users/thijs/Documents/Agent-MCP"
+AGENT_MCP_DIR="/Users/thijs/Documents/SommOS/Agent-MCP"
 AGENT_DIR="${SOMMOS_DIR}/.agent"
 BACKUP_DIR="${AGENT_DIR}/backup_$(date +%Y%m%d_%H%M%S)"
 
@@ -211,14 +211,13 @@ print_success "Task queue database initialized"
 # STEP 6: Create file locking directory
 # ============================================================================
 print_step "STEP 6: Setting up file locking..."
-
 mkdir -p "${AGENT_DIR}/locks"
 chmod 755 "${AGENT_DIR}/locks"
 print_success "File locking directory created"
 
-# ============================================================================
+# =========================================================================
 # STEP 7: Verify Agent-MCP Python module
-# ============================================================================
+# =========================================================================
 print_step "STEP 7: Verifying Agent-MCP installation..."
 
 cd "${AGENT_MCP_DIR}"
@@ -308,7 +307,7 @@ from pathlib import Path
 import json
 
 # Add Agent-MCP to path
-sys.path.insert(0, '/Users/thijs/Documents/Agent-MCP')
+sys.path.insert(0, '/Users/thijs/Documents/SommOS/Agent-MCP')
 
 def init_knowledge_graph():
     """Initialize knowledge graph with SommOS documentation."""

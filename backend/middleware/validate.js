@@ -29,6 +29,12 @@ const validators = {
   pairingQuick: {
     body: quickPairingSchema,
   },
+  pairingHealth: {
+    // No params/body to validate; present for consistency
+  },
+  pairingCacheClear: {
+    // Admin-protected; no body expected
+  },
   pairingFeedback: {
     body: passthroughObject({
       recommendation_id: nonEmptyString,

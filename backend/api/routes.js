@@ -4,7 +4,7 @@
 const express = require('express');
 const path = require('path');
 const router = express.Router();
-const PairingEngine = require('../core/pairing_engine');
+const EnhancedPairingEngine = require('../core/enhanced_pairing_engine');
 const InventoryManager = require('../core/inventory_manager');
 const ProcurementEngine = require('../core/procurement_engine');
 const LearningEngine = require('../core/learning_engine');
@@ -31,8 +31,6 @@ const {
     serializeIntakeSummary,
     serializeIntakeReceive,
     serializeIntakeStatus,
-    serializePairings,
-    serializePairingResult,
     serializeProcurementRecommendations,
     serializeProcurementAnalysis,
     serializePurchaseOrder,
@@ -51,6 +49,7 @@ const performanceRouter = require('./performance_routes');
 const rumRouter = require('./rum_routes');
 const agentRouter = require('./agent_routes');
 const experimentRouter = require('./experiment_routes');
+const pairingRouter = require('./pairing_routes');
 
 let servicesPromise = null;
 
@@ -95,7 +94,7 @@ async function createServices() {
         advancedWeighting,
         modelManager,
         ensembleEngine,
-        pairingEngine: new PairingEngine(db, enhancedLearningEngine, explainabilityService),
+        enhancedPairingEngine: new EnhancedPairingEngine(db),
         inventoryManager: new InventoryManager(db, enhancedLearningEngine),
         procurementEngine: new ProcurementEngine(db, enhancedLearningEngine),
         vintageIntelligenceService: new VintageIntelligenceService(db),
@@ -173,6 +172,7 @@ router.use('/performance', performanceRouter);
 router.use('/performance', rumRouter);
 router.use('/agent', agentRouter);
 router.use('/experiments', experimentRouter);
+router.use('/pairing', pairingRouter);
 
 const requireAuthAndRole = (...roles) => [requireAuth(), requireRole(...roles)];
 
@@ -255,81 +255,10 @@ function formatInventoryItemByRole(item, role) {
     });
 }
 
-// ============================================================================
-// PAIRING ENDPOINTS
-// ============================================================================
-
-// POST /api/pairing/recommend
-// Generate wine pairing recommendations
-router.post('/pairing/recommend', ...requireAuthAndRole('admin', 'crew'), validate(validators.pairingRecommend), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
-    const { dish, context, guestPreferences, options } = req.body;
-
-    if (!dish) {
-        return sendError(res, 400, 'MISSING_DISH', 'Dish information is required.');
-    }
-
-    try {
-        const pairingResult = await pairingEngine.generatePairings(
-            dish,
-            context || {},
-            guestPreferences || {},
-            options || {}
-        );
-
-        const sanitized = serializePairingResult(pairingResult);
-        const responsePayload = {
-            success: true,
-            data: sanitized
-        };
-
-        const sessionId = sanitized?.recommendations?.[0]?.learning_session_id;
-        if (sessionId) {
-            responsePayload.meta = { learning_session_id: sessionId };
-        }
-
-        res.json(responsePayload);
-    } catch (error) {
-        sendError(res, 500, 'PAIRING_RECOMMENDATION_FAILED', error.message || 'Failed to generate recommendations.');
-    }
-}))); 
-
-// POST /api/pairing/quick
-// Quick pairing for immediate service
-router.post('/pairing/quick', ...requireAuthAndRole('admin', 'crew'), validate(validators.pairingQuick), asyncHandler(withServices(async ({ pairingEngine }, req, res) => {
-    const { dish, context, ownerLikes } = req.body;
-
-    try {
-        const quickPairings = await pairingEngine.quickPairing(dish, context, ownerLikes);
-
-        res.json({
-            success: true,
-            data: serializePairings(quickPairings)
-        });
-    } catch (error) {
-        sendError(res, 500, 'PAIRING_QUICK_FAILED', error.message || 'Failed to generate quick pairing.');
-    }
-}))); 
-
-// POST /api/pairing/feedback
-// Capture owner feedback to improve future pairings
-router.post('/pairing/feedback', ...requireAuthAndRole('admin', 'crew'), validate(validators.pairingFeedback), asyncHandler(withServices(async ({ learningEngine }, req, res) => {
-    const { recommendation_id, rating, notes, selected = true } = req.body || {};
-
-    if (!recommendation_id || !rating) {
-        return sendError(res, 400, 'MISSING_FEEDBACK_FIELDS', 'recommendation_id and rating are required.');
-    }
-
-    try {
-        await learningEngine.recordPairingFeedback(recommendation_id, rating, notes, selected);
-
-        res.json({
-            success: true,
-            message: 'Feedback recorded'
-        });
-    } catch (error) {
-        sendError(res, 500, 'PAIRING_FEEDBACK_FAILED', error.message || 'Failed to record feedback.');
-    }
-})));
+// =========================================================================
+// PAIRING ENDPOINTS are defined in modular router: `backend/api/pairing_routes.js`
+// Mounted at: /api/pairing
+// =========================================================================
 
 // GET /api/explanations/:entity_type/:entity_id
 // Retrieve explainability records linked to recommendations in a guest-safe format

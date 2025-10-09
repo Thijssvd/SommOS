@@ -1,7 +1,7 @@
 # Frontend Specialist Agent - Initialization Context
 
 **Agent ID**: frontend-specialist-sommos  
-**Admin Token**: 807800461eda4e45a9d56ece19ac409a  
+**Admin Token**: <use token from .agent/admin_token.txt>  
 **Status**: Created (Ready for Activation)  
 **Created**: 2025-10-06  
 **Working Directory**: /Users/thijs/Documents/SommOS
@@ -774,7 +774,7 @@ update_project_context:
 - **Frontend Files**: `frontend/` directory
 
 ### Agent-MCP Documentation
-- **Agent-MCP Root**: `/Users/thijs/Documents/Agent-MCP`
+- **Agent-MCP Root**: `/Users/thijs/Documents/SommOS/Agent-MCP`
 - **README**: `README.md` - Agent-MCP overview
 - **Quick Start**: `SOMMOS_QUICK_START.md`
 
@@ -809,5 +809,5 @@ Remember:
 ---
 
 **Agent-MCP Dashboard**: http://localhost:3847  
-**Admin Token**: 807800461eda4e45a9d56ece19ac409a  
+**Admin Token**: <use token from .agent/admin_token.txt>  
 **SommOS Frontend**: http://localhost:3000 (dev)

@@ -1,0 +1,9 @@
+{
+  ...
+  "scripts": {
+    ...
+    "analyze:flakiness": "node scripts/analyze-flakiness.js",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  }
+}

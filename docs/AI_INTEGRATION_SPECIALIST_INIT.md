@@ -1,7 +1,7 @@
 # AI Integration Specialist - Initialization Context
 
 **Agent ID**: `ai-integration-specialist-sommos`  
-**Admin Token**: `807800461eda4e45a9d56ece19ac409a`  
+**Admin Token**: `<use token from .agent/admin_token.txt>`  
 **Status**: Created (Ready for Activation)  
 **Created**: 2025-10-06  
 **Working Directory**: `/Users/thijs/Documents/SommOS`
@@ -149,5 +149,5 @@ Start with **Task 1: OpenAI Fallback** for quick reliability improvement.
 ---
 
 **Dashboard**: http://localhost:3847  
-**Admin Token**: 807800461eda4e45a9d56ece19ac409a  
+**Admin Token**: <use token from .agent/admin_token.txt>  
 **MCP Server**: http://localhost:8080

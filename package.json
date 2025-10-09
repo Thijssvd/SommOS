@@ -1,9 +1,68 @@
 {
-  ...
+  "name": "sommos",
+  "version": "1.0.0",
+  "description": "SommOS - Luxury Yacht Wine Management System",
+  "main": "index.js",
   "scripts": {
-    ...
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "analyze:flakiness": "node scripts/analyze-flakiness.js",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "dev": "node backend/server.js",
+    "build": "echo 'No build step required for this project'"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js",
+      "**/tests/**/*.spec.js"
+    ],
+    "collectCoverageFrom": [
+      "backend/**/*.js",
+      "frontend/js/**/*.js",
+      "!**/node_modules/**",
+      "!**/coverage/**"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ]
+  },
+  "keywords": [
+    "wine",
+    "sommelier",
+    "yacht",
+    "inventory",
+    "pwa"
+  ],
+  "author": "SommOS Team",
+  "license": "MIT",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.0",
+    "helmet": "^6.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "node-cron": "^3.0.0",
+    "openai": "^4.0.0",
+    "sqlite3": "^5.1.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.28.3",
+    "axios": "^1.12.2",
+    "babel-jest": "^30.2.0",
+    "eslint": "^8.50.0",
+    "fast-check": "^4.3.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "prettier": "^3.0.0",
+    "supertest": "^6.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
