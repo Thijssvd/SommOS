@@ -18,12 +18,14 @@
 ## 📦 What Gets Updated
 
 ### Priority 1 (Safe - Recommended) ✅
+
 - `@playwright/test`: 1.55.1 → 1.56.0
 - `@types/node`: 24.6.2 → 24.7.0
 - `openai`: 6.0.1 → 6.1.0
 - `zod`: 4.1.11 → 4.1.12
 
 ### Priority 2 (Breaking Changes) ⚠️
+
 - `web-vitals`: 3.5.2 → 5.1.0 (requires code changes)
 
 ---
@@ -64,7 +66,8 @@ After running, check these files:
 
 ## 🆘 Troubleshooting
 
-### Script fails? Check:
+### Script fails? Check
+
 ```bash
 # View the log file
 cat /Users/thijs/Documents/SommOS/logs/package-update-*.log | tail -100
@@ -77,6 +80,7 @@ npm --version
 ```
 
 ### Need to rollback?
+
 ```bash
 # Automatic rollback happens on failure
 # Manual rollback:
@@ -91,6 +95,7 @@ cd /Users/thijs/Documents/SommOS && npm install
 ## 📚 Full Documentation
 
 For complete documentation, see:
+
 - **Detailed Guide:** `/Users/thijs/Documents/SommOS/docs/PACKAGE_UPDATES.md`
 - **Project README:** `/Users/thijs/Documents/SommOS/README.md`
 
@@ -111,26 +116,31 @@ Before running the script:
 ## 🎯 Best Practices
 
 1. **Always run dry-run first**
+
    ```bash
    ./scripts/update-packages.sh --dry-run --verbose
    ```
 
 2. **Start with Priority 1 only**
+
    ```bash
    ./scripts/update-packages.sh --priority-1-only
    ```
 
 3. **Commit before updating**
+
    ```bash
    git add . && git commit -m "chore: checkpoint before updates"
    ```
 
 4. **Review the report**
+
    ```bash
    cat /Users/thijs/Documents/SommOS/logs/package-update-report-*.md
    ```
 
 5. **Monitor after deployment**
+
    ```bash
    npm test && npm run test:e2e
    ```

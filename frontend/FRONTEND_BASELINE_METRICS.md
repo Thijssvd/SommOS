@@ -8,11 +8,13 @@
 ## JavaScript Bundle Sizes (Uncompressed)
 
 ### Critical Files
+
 - **app.js**: 214KB ⚠️ TOO LARGE - Target: <100KB gzipped
 - **api.js**: 38KB ✓ Acceptable
 - **sw.js**: 13KB ✓ Acceptable
 
 ### Supporting Files
+
 - performance-dashboard.js: 26KB
 - glossary-data.js: 26KB
 - performance-monitor.js: 22KB
@@ -23,6 +25,7 @@
 - sync.js: 14KB
 
 ### Totals
+
 - **Total JavaScript**: 496KB (uncompressed)
 - **Build Output**: 680KB (dist/ directory)
 - **Estimated Gzipped**: ~150-180KB (assuming 30-35% compression)
@@ -32,17 +35,20 @@
 ## Optimization Targets
 
 ### Priority 1: Bundle Size Reduction
+
 - [ ] Reduce app.js from 214KB to <100KB (gzipped)
 - [ ] Implement lazy loading for feature modules
 - [ ] Implement dynamic imports for Chart.js
 - [ ] Split large modules into smaller chunks
 
 ### Priority 2: Service Worker
+
 - [ ] Measure cache size (currently unknown)
 - [ ] Implement cache size limits (<2MB target)
 - [ ] Add cache versioning and cleanup
 
 ### Priority 3: Performance Metrics
+
 - [ ] Run Lighthouse audit (baseline scores unknown)
 - [ ] Measure First Contentful Paint (FCP)
 - [ ] Measure Time to Interactive (TTI)
@@ -63,6 +69,7 @@
 ## Success Criteria
 
 After optimization, we should achieve:
+
 - ✅ app.js <100KB (gzipped) - 50% reduction
 - ✅ Total bundle <200KB (gzipped) - from ~160KB to <200KB
 - ✅ Service Worker cache <2MB

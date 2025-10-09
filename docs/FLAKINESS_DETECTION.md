@@ -7,23 +7,27 @@ SommOS implements a comprehensive flakiness detection system to identify and tra
 ## Features
 
 ### ✅ Comprehensive Coverage
+
 - **Jest Unit Tests**: Runs tests 5 times to detect flakiness in unit and integration tests
 - **Playwright E2E Tests**: Runs tests 3 times across all browsers (Chromium, Firefox, WebKit)
 - **Per-Test Analysis**: Identifies exactly which tests are flaky, not just overall pass/fail rates
 - **Browser-Specific Detection**: Tracks which tests are flaky only in specific browsers
 
 ### 📊 Detailed Reporting
+
 - **Console Output**: Color-coded summary with top flaky tests
 - **Markdown Reports**: Detailed reports with failure patterns and recommendations
 - **JSON Data**: Structured data for historical tracking and automation
 - **GitHub Step Summary**: Integrated reporting in GitHub Actions UI
 
 ### 🔄 Automatic Retry Configuration
+
 - **Jest Auto-Retry**: Failed tests automatically retry up to 2 times in CI
 - **Non-Blocking**: Flakiness detection never fails the CI pipeline
 - **Configurable**: Retry behavior can be adjusted per environment
 
 ### 📈 Historical Tracking
+
 - **Artifact Storage**: Flakiness reports stored for 30 days
 - **Trend Analysis**: Compare flakiness across multiple CI runs
 - **Threshold Warnings**: Automatic warnings when flakiness exceeds 10%
@@ -119,23 +123,27 @@ Flakiness = (Failed Runs / Total Runs) × 100
 ### Report Sections
 
 #### Summary
+
 - Total tests analyzed
 - Number of flaky tests
 - Overall flakiness rate
 - Warning thresholds
 
 #### Flaky Tests Table
+
 | Test Name | File | Flakiness | Passed | Failed | Total Runs | Avg Duration |
 |-----------|------|-----------|--------|--------|------------|--------------|
 | ... | ... | 40% | 3 | 2 | 5 | 245ms |
 
 #### Recommendations
+
 - Fix high-flakiness tests first (>50%)
 - Review test isolation
 - Check for timing issues
 - Consider quarantine for persistent issues
 
 #### Detailed Failure Analysis
+
 - Individual test breakdown
 - Failure messages
 - Browser-specific patterns (for Playwright)
@@ -143,6 +151,7 @@ Flakiness = (Failed Runs / Total Runs) × 100
 ## Common Causes of Flakiness
 
 ### 1. **Timing Issues**
+
 ```javascript
 // ❌ Bad: Hard-coded timeouts
 await page.waitForTimeout(1000);
@@ -152,6 +161,7 @@ await page.waitForSelector('.loaded');
 ```
 
 ### 2. **Shared State**
+
 ```javascript
 // ❌ Bad: Tests depend on execution order
 let sharedData = null;
@@ -163,6 +173,7 @@ beforeEach(() => {
 ```
 
 ### 3. **Race Conditions**
+
 ```javascript
 // ❌ Bad: Assuming immediate updates
 updateDatabase();
@@ -174,6 +185,7 @@ const result = await queryDatabase();
 ```
 
 ### 4. **External Dependencies**
+
 ```javascript
 // ❌ Bad: Depending on external services
 const data = await fetch('https://api.example.com');
@@ -183,6 +195,7 @@ jest.mock('axios');
 ```
 
 ### 5. **Browser-Specific Issues**
+
 - Webkit may handle animations differently
 - Firefox may have different timing for network requests
 - Check browser-specific failure patterns in reports
@@ -201,6 +214,7 @@ Configured in `jest.config.js`:
 ```
 
 To adjust:
+
 - Change `retryTimes` for different retry count
 - Set `retryImmediately: true` for faster retries (not recommended)
 - Remove condition to enable retries locally
@@ -235,21 +249,25 @@ if (analysis.summary.flakinessRate > 10) {
 ## Best Practices
 
 ### 1. **Fix Flaky Tests Promptly**
+
 - Address tests with >25% flakiness within 1 sprint
 - Quarantine tests with >50% flakiness until fixed
 - Document known flaky tests in test comments
 
 ### 2. **Monitor Trends**
+
 - Review flakiness reports weekly
 - Track if flakiness is increasing or decreasing
 - Investigate new flaky tests immediately
 
 ### 3. **Test Isolation**
+
 - Each test should be independent
 - Use `beforeEach`/`afterEach` for setup/teardown
 - Avoid global state and shared resources
 
 ### 4. **Use Proper Assertions**
+
 ```javascript
 // ❌ Bad: Generic assertions
 expect(result).toBeTruthy();
@@ -260,6 +278,7 @@ expect(result.data).toHaveLength(5);
 ```
 
 ### 5. **Handle Async Properly**
+
 ```javascript
 // ❌ Bad: Missing await
 test('should update user', () => {
@@ -322,16 +341,19 @@ done
 ## Performance Impact
 
 ### CI Time
+
 - **Regular Tests**: ~5-10 minutes
 - **Flakiness Detection**: +15-20 minutes
 - **Total Impact**: ~25-30 minutes per push
 
 ### Resource Usage
+
 - **Matrix Jobs**: 5 Jest + 9 Playwright = 14 parallel jobs
 - **Storage**: ~50MB per run (30-day retention)
 - **Compute**: Similar to running tests 5-9x normally
 
 ### Optimization Tips
+
 1. Run flakiness detection on `main` branch only
 2. Reduce matrix size for faster feedback (3 runs instead of 5)
 3. Skip flakiness detection for documentation-only changes
@@ -340,6 +362,7 @@ done
 ## Future Enhancements
 
 ### Planned Features
+
 - [ ] Historical trend analysis (track flakiness over time)
 - [ ] Automatic issue creation for consistently flaky tests
 - [ ] Flaky test quarantine system
@@ -348,7 +371,9 @@ done
 - [ ] Per-developer flakiness metrics
 
 ### Contributing
+
 To improve the flakiness detection system:
+
 1. Test the analysis script with edge cases
 2. Add support for additional test frameworks
 3. Improve report visualization
@@ -357,16 +382,19 @@ To improve the flakiness detection system:
 ## Resources
 
 ### Documentation
+
 - [Jest Configuration](https://jestjs.io/docs/configuration)
 - [Playwright Best Practices](https://playwright.dev/docs/best-practices)
 - [GitHub Actions Artifacts](https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts)
 
 ### Tools
+
 - `scripts/analyze-flakiness.js` - Main analysis tool
 - `.github/workflows/tests.yml` - CI configuration
 - `jest.config.js` - Jest retry configuration
 
 ### Support
+
 - Open an issue for flakiness detection problems
 - Check existing reports for similar patterns
 - Consult with team on persistent flaky tests

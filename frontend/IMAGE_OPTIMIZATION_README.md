@@ -5,6 +5,7 @@ A comprehensive frontend image optimization solution for the SommOS yacht wine m
 ## Features
 
 ### 🚀 Core Optimization Features
+
 - **Lazy Loading**: Images load only when they enter the viewport
 - **Responsive Images**: Automatic sizing based on container and device
 - **Format Optimization**: WebP and AVIF support with fallbacks
@@ -13,6 +14,7 @@ A comprehensive frontend image optimization solution for the SommOS yacht wine m
 - **Error Handling**: Graceful fallbacks for failed image loads
 
 ### 📱 Performance Features
+
 - **Virtual Scrolling**: Efficient rendering of large image lists
 - **Intersection Observer**: Modern, performant lazy loading
 - **Image Caching**: Prevents redundant downloads
@@ -20,6 +22,7 @@ A comprehensive frontend image optimization solution for the SommOS yacht wine m
 - **Performance Monitoring**: Track image load times and optimization metrics
 
 ### 🎨 UI/UX Features
+
 - **Skeleton Loading**: Animated placeholders during image load
 - **Smooth Transitions**: Fade-in animations and hover effects
 - **Optimization Badges**: Visual indicators for supported formats
@@ -217,6 +220,7 @@ self.addEventListener('fetch', event => {
 ### Built-in Metrics
 
 The system automatically tracks:
+
 - Image load times
 - Optimization success/failure rates
 - Format support detection
@@ -238,12 +242,14 @@ imageOptimizer.on('imageLoaded', (data) => {
 ## Browser Support
 
 ### Modern Browsers (Recommended)
+
 - Chrome 60+
 - Firefox 55+
 - Safari 12+
 - Edge 79+
 
 ### Fallbacks
+
 - Intersection Observer polyfill for older browsers
 - Automatic fallback to immediate loading
 - Progressive enhancement approach
@@ -251,6 +257,7 @@ imageOptimizer.on('imageLoaded', (data) => {
 ## Best Practices
 
 ### 1. Image Sizing
+
 ```javascript
 // Always specify dimensions for better performance
 imageOptimizer.optimizeImage(img, {
@@ -260,12 +267,14 @@ imageOptimizer.optimizeImage(img, {
 ```
 
 ### 2. Critical Images
+
 ```html
 <!-- Mark critical images for preloading -->
 <img src="hero-image.jpg" data-preload="true" alt="Hero image">
 ```
 
 ### 3. Virtual Scrolling
+
 ```javascript
 // Use virtual scrolling for lists > 50 items
 if (items.length > 50) {
@@ -274,6 +283,7 @@ if (items.length > 50) {
 ```
 
 ### 4. Error Handling
+
 ```javascript
 // Provide fallback images
 const fallbackUrl = '/images/placeholder-wine.jpg';
@@ -321,6 +331,7 @@ open frontend/image-optimization-demo.html
 ```
 
 The demo includes:
+
 - Performance statistics
 - Interactive controls
 - Image compression comparison

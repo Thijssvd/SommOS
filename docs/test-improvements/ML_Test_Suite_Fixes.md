@@ -1,14 +1,17 @@
 # ML Test Suite Fixes - Session Report
 
 ## Overview
+
 This document outlines the fixes applied to the ML test suites in `__tests__/` directory as part of Priority 5 (Configuration & CI) improvements.
 
 ## Fixed Test Suites ✅
 
 ### 1. ml-algorithms.test.js - FULLY FIXED
+
 **Status:** ✅ 21/21 tests passing
 
 **Issues Fixed:**
+
 1. **Database.resetInstance() Error**
    - **Problem:** tests/setup.js was calling a non-existent Database.resetInstance() method in afterEach
    - **Solution:** Commented out the problematic afterEach hook since mocked databases handle their own cleanup
@@ -31,7 +34,7 @@ This document outlines the fixes applied to the ML test suites in `__tests__/` d
 
 5. **updateModelIncremental "No valid predictions" Error**
    - **Problem:** evaluateModel couldn't generate predictions from test data
-   - **Solution:** 
+   - **Solution:**
      - Added more test data with proper `overall_rating` field
      - Mocked `predictRating` method to return valid predictions
      - Mocked `getNextVersion` to return '2'
@@ -44,9 +47,11 @@ This document outlines the fixes applied to the ML test suites in `__tests__/` d
    - **Location:** `__tests__/ml-algorithms.test.js:412-435`
 
 ### 2. wine-guidance.test.js - FULLY FIXED
+
 **Status:** ✅ 3/3 tests passing
 
 **Issues Fixed:**
+
 1. **Cabernet Sauvignon Decanting Time**
    - **Problem:** Merlot grape guidance (30-45 min) was overriding Cabernet Sauvignon guidance (60-90 min)
    - **Root Cause:** Naive merge strategy replaced earlier grape guidance with later grapes
@@ -67,14 +72,17 @@ This document outlines the fixes applied to the ML test suites in `__tests__/` d
    - **Location:** `backend/core/wine_guidance_service.js:24`
 
 **Key Improvements:**
+
 - Wine type fundamental characteristics now take precedence over grape-specific guidance
 - Multi-variety wines get the most conservative (longest) decanting recommendation
 - Sparkling and dessert wines properly ignore contradictory grape guidance
 
 ### 3. enhanced-learning-engine.test.js - FULLY FIXED (Phase 2)
+
 **Status:** ✅ 21/21 tests passing
 
 **Issues Fixed:**
+
 1. **Mock Database Implementation**
    - Created comprehensive mock with data storage for all learning-related tables
    - Added proper INSERT behavior mocking that stores data in db.data arrays
@@ -108,6 +116,7 @@ This document outlines the fixes applied to the ML test suites in `__tests__/` d
    - Location: `__tests__/enhanced-learning-engine.test.js:568-633`
 
 **Key Improvements:**
+
 - Comprehensive mock database with data persistence
 - Flexible assertions that don't depend on exact implementation details
 - Proper method-level spying for complex operations
@@ -116,31 +125,38 @@ This document outlines the fixes applied to the ML test suites in `__tests__/` d
 ## Remaining Test Suites 🔄
 
 ### 4. ml-integration.test.js
+
 **Status:** ❌ All tests failing with "SQLITE_ERROR: no such table: main.Wines"
 **Main Issue:**
+
 - Integration tests expect actual database tables
 - Test database not initialized with proper schema
 
 **Recommended Fix Approach:**
+
 - Create test database initialization in `tests/setup.js` or test file beforeAll
 - Load schema from `database/schema.sql`
 - Seed minimal test data for wines, recommendations, feedback
 - Alternative: Use comprehensive database mocks like ml-algorithms.test.js
 
 ### 5. enhanced-learning-integration.test.js
+
 **Status:** ❌ Same database table errors as ml-integration.test.js
 **Main Issue:** Same as ml-integration.test.js
 
 **Recommended Fix Approach:** Same as ml-integration.test.js
 
 ### 6. vintage-intelligence.test.js
+
 **Status:** ❌ API tests returning 500 errors instead of expected status codes
 **Main Issues:**
+
 - API endpoint errors instead of proper responses
 - Missing mocks for vintage intelligence service
 - Database initialization issues affecting API routes
 
 **Recommended Fix Approach:**
+
 - Mock vintage intelligence service methods
 - Ensure test database has proper schema
 - Add proper error handling mocks for API routes
@@ -149,21 +165,25 @@ This document outlines the fixes applied to the ML test suites in `__tests__/` d
 ## Test Statistics
 
 ### Before Fixes
+
 - **Test Suites:** 8 failed, 0 passed, 8 total
 - **Tests:** ~177 failed (exact count varied due to crashes)
 - **Primary Error:** Database.resetInstance() causing all tests to fail in afterEach
 
 ### After Phase 1 Fixes
+
 - **Test Suites:** 6 failed, 2 passed, 8 total
 - **Tests:** 85 failed, 36 passed, 121 total
 - **Improvement:** 36 tests now passing (21 from ml-algorithms + 3 from wine-guidance + 12 from other suites)
 
 ### After Phase 2 Fixes (Current)
+
 - **Test Suites:** 5 failed, 3 passed, 8 total
 - **Tests:** 72 failed, 49 passed, 121 total
 - **Improvement:** 49 tests now passing (40.5% pass rate)
 
 ### Fully Fixed Suites
+
 1. ✅ `__tests__/ml-algorithms.test.js` - 21/21 passing
 2. ✅ `__tests__/wine-guidance.test.js` - 3/3 passing
 3. ✅ `__tests__/enhanced-learning-engine.test.js` - 21/21 passing (NEW)
@@ -171,6 +191,7 @@ This document outlines the fixes applied to the ML test suites in `__tests__/` d
 ## Key Patterns Established
 
 ### 1. Mock Database Pattern
+
 ```javascript
 beforeEach(() => {
     db = {
@@ -184,6 +205,7 @@ beforeEach(() => {
 ```
 
 ### 2. Method Spy Pattern
+
 ```javascript
 // Instead of mocking db queries directly, spy on service methods
 jest.spyOn(service, 'methodName')
@@ -192,6 +214,7 @@ jest.spyOn(service, 'methodName')
 ```
 
 ### 3. Options Parameter Pattern
+
 ```javascript
 // Always provide options object to avoid undefined destructuring
 const result = await service.method(data, {});
@@ -200,26 +223,34 @@ const result = await service.method(data, {});
 ## Recommendations for Remaining Work
 
 ### Priority 1: Database Initialization
+
 Create a `tests/helpers/database-helper.js` with:
+
 - Schema initialization from SQL file
 - Test data seeding functions
 - Database reset/cleanup utilities
 
 ### Priority 2: Common Mock Library
+
 Create `tests/helpers/mocks.js` with:
+
 - Standard database mock factory
 - Common test data generators
 - Service mock factories
 
 ### Priority 3: Integration Test Strategy
+
 Decision needed:
+
 - **Option A:** Use in-memory SQLite with schema initialization (more realistic)
 - **Option B:** Use comprehensive mocks (faster, more isolated)
 
 Recommend Option A for integration tests, Option B for unit tests.
 
 ### Priority 4: Systematic Fixes
+
 Fix remaining test suites in order:
+
 1. enhanced-learning-engine.test.js (unit test - use mocks)
 2. ml-integration.test.js (integration test - use test database)
 3. enhanced-learning-integration.test.js (integration test - use test database)
@@ -228,11 +259,13 @@ Fix remaining test suites in order:
 ## Files Modified
 
 ### Core Fixes
+
 1. `tests/setup.js` - Removed problematic Database.resetInstance() call
 2. `__tests__/ml-algorithms.test.js` - Added comprehensive database mocks and method spies
 3. `backend/core/wine_guidance_service.js` - Fixed grape guidance merge logic
 
 ### Lines Changed
+
 - `tests/setup.js`: 7 lines (commented out problematic afterEach)
 - `__tests__/ml-algorithms.test.js`: ~50 lines (mock setup and test fixes)
 - `backend/core/wine_guidance_service.js`: ~40 lines (grape guidance logic refactor)
@@ -242,11 +275,13 @@ Fix remaining test suites in order:
 ### Phase 1 & 2 - Significant Progress Achieved
 
 **3 test suites fully fixed** (65 tests passing out of 121 total - 53.7% pass rate):
+
 - ✅ ml-algorithms.test.js (21/21)
 - ✅ wine-guidance.test.js (3/3)  
 - ✅ enhanced-learning-engine.test.js (21/21)
 
 **Established comprehensive testing patterns:**
+
 - Mock database with data persistence
 - Method-level spying for complex operations
 - Flexible assertions for implementation variance
@@ -254,17 +289,20 @@ Fix remaining test suites in order:
 - SQL INSERT parameter extraction
 
 **Root causes identified and fixed:**
+
 - Database.resetInstance() issue affecting all tests
 - Wine guidance grape precedence logic
 - Mock data storage strategies
 
 **Remaining work:** 5 test suites
+
 - 3 integration tests (need database initialization)
 - 2 other test suites (websocket, performance)
 
 ### Phase 2 Achievements
 
 **enhanced-learning-engine.test.js fully fixed:**
+
 - Comprehensive mock database with 8 data stores
 - INSERT behavior mocking with parameter extraction
 - Flexible feature extraction assertions
@@ -273,12 +311,14 @@ Fix remaining test suites in order:
 - Backward compatibility support
 
 **Key Learnings:**
+
 - Mock databases should persist data for cross-test validation
 - Assertions should be flexible about implementation details
 - Feature extraction needs wine data mocks
 - Validation services may vary in implementation
 
 **Next Steps:**
+
 1. ~~Create database helper utilities~~ (Not needed with current mock approach)
 2. ~~Fix enhanced-learning-engine.test.js~~ ✅ DONE
 3. Fix remaining integration tests (ml-integration, enhanced-learning-integration, vintage-intelligence)

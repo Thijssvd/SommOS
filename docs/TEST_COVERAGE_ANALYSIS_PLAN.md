@@ -7,13 +7,16 @@ This document outlines a systematic approach to analyze test coverage alignment 
 ## Current Test Status
 
 ### Overview
+
 - **Total Tests**: 218
 - **Passing**: 193 (88.5%)
 - **Failing**: 24 (11%)
 - **Skipped**: 1 (0.5%)
 
 ### Test Coverage by Area
+
 Based on coverage report and test structure:
+
 - **Core Business Logic**: ~40% coverage
 - **API Routes**: ~45% coverage
 - **Auth & Security**: ~48% coverage
@@ -25,6 +28,7 @@ Based on coverage report and test structure:
 ### Step 1: Code Inventory & Classification
 
 #### 1.1 Backend Code Classification
+
 ```
 Priority 1 (Critical Business Logic):
 - Wine pairing algorithms
@@ -48,6 +52,7 @@ Priority 3 (Supporting Infrastructure):
 ```
 
 #### 1.2 Frontend Code Classification
+
 ```
 Priority 1 (Critical User Flows):
 - Login/authentication
@@ -103,10 +108,12 @@ For each module, we'll assess:
 #### 1.1 Pairing Engine (`backend/core/pairing_engine.js`)
 
 **Current State:**
+
 - Basic tests exist in `tests/backend/pairing-engine.test.js`
 - Coverage: ~0% (mostly untested)
 
 **Analysis Tasks:**
+
 ```bash
 # 1. Review implementation
 grep -n "class PairingEngine\|async.*Pairing\|function.*pairing" backend/core/pairing_engine.js
@@ -119,6 +126,7 @@ npm test -- tests/backend/pairing-engine.test.js --coverage --collectCoverageFro
 ```
 
 **Test Gap Analysis:**
+
 - [ ] AI provider fallback chain (DeepSeek → OpenAI → Traditional)
 - [ ] Timeout handling (30-second limit)
 - [ ] Empty/invalid dish inputs
@@ -133,10 +141,12 @@ npm test -- tests/backend/pairing-engine.test.js --coverage --collectCoverageFro
 #### 1.2 Inventory Manager (`backend/core/inventory_manager.js`)
 
 **Current State:**
+
 - No dedicated test file found
 - Coverage: ~0%
 
 **Analysis Tasks:**
+
 ```bash
 # 1. Review implementation
 wc -l backend/core/inventory_manager.js
@@ -150,6 +160,7 @@ grep -n "inventoryManager" backend/api/routes.js
 ```
 
 **Test Gap Analysis:**
+
 - [ ] Stock quantity operations (add/consume/move)
 - [ ] Location management
 - [ ] Conflict detection and resolution
@@ -164,10 +175,12 @@ grep -n "inventoryManager" backend/api/routes.js
 #### 1.3 Procurement Engine (`backend/core/procurement_engine.js`)
 
 **Current State:**
+
 - No dedicated tests
 - Coverage: ~0%
 
 **Test Gap Analysis:**
+
 - [ ] Opportunity analysis algorithm
 - [ ] Purchase decision logic
 - [ ] Order generation
@@ -180,10 +193,12 @@ grep -n "inventoryManager" backend/api/routes.js
 #### 1.4 Vintage Intelligence (`backend/core/vintage_intelligence.js`)
 
 **Current State:**
+
 - Tests exist in `tests/backend/open-meteo-service.test.js`
 - Coverage: ~10.75%
 
 **Test Gap Analysis:**
+
 - [ ] Weather data integration
 - [ ] Quality score calculation
 - [ ] Vintage recommendation logic
@@ -198,10 +213,12 @@ grep -n "inventoryManager" backend/api/routes.js
 #### 2.1 Auth Service (`backend/core/auth_service.js`)
 
 **Current State:**
+
 - Good tests in `tests/backend/auth-service.test.js`
 - Coverage: ~48%
 
 **Analysis Tasks:**
+
 ```bash
 # Check current coverage
 npm test -- tests/backend/auth-service.test.js --coverage --collectCoverageFrom="backend/core/auth_service.js"
@@ -211,6 +228,7 @@ grep -n "FIXME\|TODO\|XXX" backend/core/auth_service.js
 ```
 
 **Test Gap Analysis:**
+
 - [ ] Token expiration edge cases
 - [ ] Concurrent login attempts
 - [ ] Session hijacking prevention
@@ -225,10 +243,12 @@ grep -n "FIXME\|TODO\|XXX" backend/core/auth_service.js
 #### 2.2 Auth Middleware (`backend/middleware/auth.js`)
 
 **Current State:**
+
 - Tested via integration tests
 - Coverage: ~0%
 
 **Test Gap Analysis:**
+
 - [ ] JWT validation edge cases
 - [ ] Cookie handling security
 - [ ] Auth bypass scenarios
@@ -240,10 +260,12 @@ grep -n "FIXME\|TODO\|XXX" backend/core/auth_service.js
 #### 2.3 Security Middleware (`backend/middleware/security.js`)
 
 **Current State:**
+
 - Basic tests exist
 - Coverage: ~0%
 
 **Test Gap Analysis:**
+
 - [ ] SQL injection prevention
 - [ ] XSS protection
 - [ ] CSRF validation
@@ -258,10 +280,12 @@ grep -n "FIXME\|TODO\|XXX" backend/core/auth_service.js
 #### 3.1 Database Connection (`backend/database/connection.js`)
 
 **Current State:**
+
 - Integration tested
 - Coverage: ~42%
 
 **Test Gap Analysis:**
+
 - [ ] Connection pool management
 - [ ] Transaction handling
 - [ ] Error recovery
@@ -275,10 +299,12 @@ grep -n "FIXME\|TODO\|XXX" backend/core/auth_service.js
 #### 3.2 API Routes (`backend/api/routes.js`)
 
 **Current State:**
+
 - Partial coverage via integration tests
 - Coverage: ~45%
 
 **Analysis Tasks:**
+
 ```bash
 # Find all endpoints
 grep -n "router\.\(get\|post\|put\|delete\|patch\)" backend/api/routes.js | wc -l
@@ -288,6 +314,7 @@ grep -r "request(app)" tests/ | grep -E "\.get\(|\.post\(|\.put\(|\.delete\(" | 
 ```
 
 **Test Gap Analysis:**
+
 - [ ] All endpoints have happy path tests
 - [ ] Error response consistency
 - [ ] Input validation comprehensive
@@ -302,10 +329,12 @@ grep -r "request(app)" tests/ | grep -E "\.get\(|\.post\(|\.put\(|\.delete\(" | 
 #### 3.3 Enhanced Learning Engine (`backend/core/enhanced_learning_engine.js`)
 
 **Current State:**
+
 - No tests found
 - Coverage: ~0%
 
 **Test Gap Analysis:**
+
 - [ ] Learning algorithm correctness
 - [ ] Feedback processing
 - [ ] Model training
@@ -320,10 +349,12 @@ grep -r "request(app)" tests/ | grep -E "\.get\(|\.post\(|\.put\(|\.delete\(" | 
 #### 4.1 Main Application (`frontend/js/app.js`)
 
 **Current State:**
+
 - Basic tests in `tests/frontend/frontend.test.js`
 - Coverage: unknown (large file ~174KB)
 
 **Analysis Tasks:**
+
 ```bash
 # Count methods/functions
 grep -c "^\s*async\s*\w\+\s*(" frontend/js/app.js
@@ -334,6 +365,7 @@ npm test -- tests/frontend/ --coverage --collectCoverageFrom="frontend/js/**"
 ```
 
 **Test Gap Analysis:**
+
 - [ ] Component initialization
 - [ ] Event handling
 - [ ] State management
@@ -348,10 +380,12 @@ npm test -- tests/frontend/ --coverage --collectCoverageFrom="frontend/js/**"
 #### 4.2 PWA Features (`frontend/sw.js`, `frontend/js/sync.js`)
 
 **Current State:**
+
 - Some tests in `tests/frontend/pwa.test.js`
 - Coverage: ~68%
 
 **Test Gap Analysis:**
+
 - [ ] Service worker lifecycle
 - [ ] Cache strategies
 - [ ] Offline functionality
@@ -365,10 +399,12 @@ npm test -- tests/frontend/ --coverage --collectCoverageFrom="frontend/js/**"
 #### 4.3 API Client (`frontend/js/api.js`)
 
 **Current State:**
+
 - Integration tested
 - Coverage: unknown
 
 **Test Gap Analysis:**
+
 - [ ] Request retry logic
 - [ ] Timeout handling
 - [ ] Error parsing
@@ -383,10 +419,12 @@ npm test -- tests/frontend/ --coverage --collectCoverageFrom="frontend/js/**"
 #### 5.1 Full Stack Workflows
 
 **Current State:**
+
 - Basic tests in `tests/integration/fullstack.test.js`
 - 1 test failing
 
 **Test Gap Analysis:**
+
 - [ ] Complete wine inventory flow
 - [ ] Pairing recommendation flow
 - [ ] User authentication flow
@@ -401,10 +439,12 @@ npm test -- tests/frontend/ --coverage --collectCoverageFrom="frontend/js/**"
 #### 5.2 Browser Compatibility
 
 **Current State:**
+
 - Guide exists in `tests/browser/compatibility.test.js`
 - Not automated
 
 **Test Gap Analysis:**
+
 - [ ] Chrome/Edge (Chromium)
 - [ ] Firefox
 - [ ] Safari
@@ -420,10 +460,12 @@ npm test -- tests/frontend/ --coverage --collectCoverageFrom="frontend/js/**"
 #### 6.1 Performance Tests
 
 **Current State:**
+
 - Good coverage in `tests/performance/performance.test.js`
 - 15/15 passing
 
 **Test Gap Analysis:**
+
 - [ ] Stress testing (high load)
 - [ ] Soak testing (long duration)
 - [ ] Spike testing (sudden load)
@@ -436,10 +478,12 @@ npm test -- tests/frontend/ --coverage --collectCoverageFrom="frontend/js/**"
 #### 6.2 Security Testing
 
 **Current State:**
+
 - Basic tests in `tests/security/security-hardening.test.js`
 - Passing
 
 **Test Gap Analysis:**
+
 - [ ] Penetration testing
 - [ ] Vulnerability scanning
 - [ ] Dependency audit
@@ -453,24 +497,28 @@ npm test -- tests/frontend/ --coverage --collectCoverageFrom="frontend/js/**"
 ## Test Creation Priority Matrix
 
 ### Immediate (Next Sprint)
+
 1. **Inventory Manager** - Core business logic, no tests
 2. **Auth Middleware** - Security critical, minimal coverage
 3. **Pairing Engine edge cases** - High user impact
 4. **API Routes validation** - Public surface area
 
 ### Short Term (1-2 Months)
+
 5. **Enhanced Learning Engine** - ML accuracy validation
 6. **Frontend state management** - UX reliability
 7. **Database transaction safety** - Data integrity
 8. **Procurement Engine** - Business logic completeness
 
 ### Medium Term (2-3 Months)
+
 9. **Vintage Intelligence** - Feature enhancement
 10. **PWA offline scenarios** - Offline-first requirement
 11. **WebSocket communication** - Real-time features
 12. **Performance optimization** - Scalability
 
 ### Long Term (3-6 Months)
+
 13. **Browser compatibility automation** - Cross-platform
 14. **Load testing suite** - Production readiness
 15. **Security penetration testing** - Hardening
@@ -479,6 +527,7 @@ npm test -- tests/frontend/ --coverage --collectCoverageFrom="frontend/js/**"
 ## Test Development Guidelines
 
 ### Unit Test Template
+
 ```javascript
 describe('ModuleName', () => {
     describe('methodName', () => {
@@ -502,6 +551,7 @@ describe('ModuleName', () => {
 ```
 
 ### Integration Test Template
+
 ```javascript
 describe('Feature Integration', () => {
     beforeAll(async () => {
@@ -519,6 +569,7 @@ describe('Feature Integration', () => {
 ```
 
 ### Coverage Goals
+
 - **Critical modules**: 90%+ coverage
 - **Important features**: 80%+ coverage
 - **Support code**: 70%+ coverage
@@ -527,7 +578,9 @@ describe('Feature Integration', () => {
 ## Metrics & Tracking
 
 ### Weekly Reporting
+
 Track progress on:
+
 1. Lines of code tested
 2. Branch coverage improvement
 3. Bug discovery rate
@@ -535,6 +588,7 @@ Track progress on:
 5. Flaky test count
 
 ### Success Criteria
+
 - [ ] All critical paths have >90% coverage
 - [ ] No critical bugs in production
 - [ ] Test suite runs in <2 minutes
@@ -544,6 +598,7 @@ Track progress on:
 ## Tools & Automation
 
 ### Coverage Tools
+
 ```bash
 # Generate detailed coverage report
 npm test -- --coverage --coverageReporters=html,text,lcov
@@ -556,6 +611,7 @@ npm test -- --coverage --coveragePathIgnorePatterns="tests/"
 ```
 
 ### Quality Gates
+
 - Pre-commit: Run affected tests
 - PR: Full test suite + coverage check
 - Main branch: E2E tests + performance tests
@@ -564,31 +620,37 @@ npm test -- --coverage --coveragePathIgnorePatterns="tests/"
 ## Implementation Schedule
 
 ### Week 1: Core Business Logic
+
 - Mon-Tue: Pairing Engine analysis + tests
 - Wed-Thu: Inventory Manager analysis + tests
 - Fri: Procurement Engine analysis
 
 ### Week 2: Security
+
 - Mon-Tue: Auth Service comprehensive tests
 - Wed: Auth Middleware tests
 - Thu-Fri: Security Middleware tests
 
 ### Week 3: Data & API
+
 - Mon-Tue: Database layer tests
 - Wed-Thu: API Routes coverage
 - Fri: Enhanced Learning tests
 
 ### Week 4: Frontend
+
 - Mon-Tue: App.js component tests
 - Wed: PWA features
 - Thu: API client tests
 - Fri: Integration
 
 ### Week 5: Integration
+
 - Mon-Wed: Full stack workflows
 - Thu-Fri: E2E scenarios
 
 ### Week 6: Performance & Security
+
 - Mon-Tue: Performance test expansion
 - Wed-Thu: Security testing
 - Fri: Documentation + review
@@ -596,6 +658,7 @@ npm test -- --coverage --coveragePathIgnorePatterns="tests/"
 ## Documentation Requirements
 
 For each new test:
+
 1. Purpose/objective clearly stated
 2. Test setup documented
 3. Edge cases explained
@@ -605,6 +668,7 @@ For each new test:
 ## Review & Sign-off
 
 Each phase requires:
+
 - [ ] Code review by 2 developers
 - [ ] Coverage report analyzed
 - [ ] Gap analysis documented
@@ -616,6 +680,7 @@ Each phase requires:
 ## Quick Reference
 
 ### Run Analysis Commands
+
 ```bash
 # Generate coverage report
 npm test -- --coverage > coverage-report.txt
@@ -637,6 +702,7 @@ comm -23 /tmp/src.txt /tmp/tests.txt
 ```
 
 ### Priority Flags
+
 - ⚠️ **HIGH** - Security, data integrity, core business logic
 - 🔶 **MEDIUM** - Important features, user experience
 - 🟢 **LOW** - Nice-to-have, manual testing acceptable

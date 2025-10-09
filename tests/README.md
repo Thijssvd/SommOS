@@ -131,6 +131,7 @@ npm run test:e2e:ui
 ### Screenshots and Videos
 
 Failed tests automatically capture:
+
 - Screenshots: `test-results/[test-name]/[retry]/screenshot.png`
 - Videos: `test-results/[test-name]/[retry]/video.webm`
 - Traces: `test-results/[test-name]/[retry]/trace.zip`
@@ -191,6 +192,7 @@ await waitForNetworkIdle(page);
 ### Test Best Practices
 
 1. **Use descriptive test names**
+
    ```typescript
    test('should filter wines by type and location', async ({ page }) => {
      // ...
@@ -202,6 +204,7 @@ await waitForNetworkIdle(page);
    - Don't depend on execution order
 
 3. **Use appropriate timeouts**
+
    ```typescript
    // Short timeout for fast operations
    await expect(element).toBeVisible({ timeout: 2000 });
@@ -211,6 +214,7 @@ await waitForNetworkIdle(page);
    ```
 
 4. **Handle flakiness**
+
    ```typescript
    // Use auto-waiting
    await page.locator('[data-testid="button"]').click();
@@ -223,6 +227,7 @@ await waitForNetworkIdle(page);
    ```
 
 5. **Clean up after tests**
+
    ```typescript
    test.afterEach(async ({ page }) => {
      // Clear state if needed
@@ -233,12 +238,14 @@ await waitForNetworkIdle(page);
 ## 🎯 Test Categories
 
 ### Smoke Tests (`smoke.spec.ts`)
+
 - App loads without errors
 - Basic UI elements visible
 - Service worker registration
 - PWA meta tags present
 
 ### Inventory Tests (`inventory-crud.spec.ts`)
+
 - List, search, filter, sort
 - View wine details
 - Permission-based access
@@ -246,6 +253,7 @@ await waitForNetworkIdle(page);
 - Responsive behavior
 
 ### Offline/PWA Tests (`offline-pwa.spec.ts`)
+
 - Service worker caching
 - Offline indicators
 - Data sync when reconnected
@@ -253,6 +261,7 @@ await waitForNetworkIdle(page);
 - Background sync
 
 ### Accessibility Tests (`a11y.spec.ts`)
+
 - Axe-core audits (no critical violations)
 - Keyboard navigation
 - Screen reader support
@@ -261,6 +270,7 @@ await waitForNetworkIdle(page);
 - Focus management
 
 ### Auth Tests (`auth/*.spec.ts`)
+
 - Member login (admin, crew)
 - Guest access (event codes)
 - Invalid credentials
@@ -272,6 +282,7 @@ await waitForNetworkIdle(page);
 ### `playwright.config.ts`
 
 Key settings:
+
 - **baseURL**: `http://localhost:3000` (frontend) - Change with `BASE_URL` env var
 - **Retries**: 2 on CI, 0 locally
 - **Workers**: 50% of CPU cores on CI, 3 locally
@@ -297,6 +308,7 @@ npm run test:e2e
 ## 🔄 CI/CD
 
 Tests run automatically on:
+
 - Push to `main` branch
 - Pull requests
 - Manual workflow dispatch
@@ -306,6 +318,7 @@ See `.github/workflows/e2e.yml` for CI configuration.
 ### CI Artifacts
 
 After CI runs, download:
+
 - HTML test report
 - Screenshots of failures
 - Video recordings
@@ -316,12 +329,14 @@ After CI runs, download:
 ### Tests Fail Locally But Pass on CI
 
 1. **Check Node/npm versions**
+
    ```bash
    node --version  # Should be >= 16
    npm --version   # Should be >= 8
    ```
 
 2. **Clear caches**
+
    ```bash
    rm -rf node_modules
    rm -f package-lock.json
@@ -330,6 +345,7 @@ After CI runs, download:
    ```
 
 3. **Database state**
+
    ```bash
    # Reset database
    npm run setup:db:clean
@@ -339,6 +355,7 @@ After CI runs, download:
 
 1. **Increase timeout** in test or config
 2. **Check if servers are running**
+
    ```bash
    # Backend
    curl http://localhost:3001/api/system/health
@@ -352,12 +369,14 @@ After CI runs, download:
 ### Flaky Tests
 
 1. **Add explicit waits**
+
    ```typescript
    await page.waitForLoadState('networkidle');
    await expect(element).toBeVisible({ timeout: 5000 });
    ```
 
 2. **Disable parallelism**
+
    ```bash
    npm exec playwright test --workers=1
    ```
@@ -401,6 +420,7 @@ chmod +x node_modules/.bin/playwright
 ## 💡 Tips
 
 1. **Use test.describe.serial** for tests that must run in order:
+
    ```typescript
    test.describe.serial('ordered tests', () => {
      // These run in sequence
@@ -408,6 +428,7 @@ chmod +x node_modules/.bin/playwright
    ```
 
 2. **Use test.skip** for conditional tests:
+
    ```typescript
    test('my test', async ({ browserName }) => {
      test.skip(browserName === 'webkit', 'Not supported on Safari');
@@ -416,6 +437,7 @@ chmod +x node_modules/.bin/playwright
    ```
 
 3. **Use test.fixme** for known failures:
+
    ```typescript
    test.fixme('this test needs fixing', async ({ page }) => {
      // Will be marked as "fixme" in report
@@ -423,18 +445,21 @@ chmod +x node_modules/.bin/playwright
    ```
 
 4. **Generate code** with Playwright:
+
    ```bash
    npm exec playwright codegen http://localhost:3000
    ```
 
 5. **Take screenshots** during tests:
+
    ```typescript
    await page.screenshot({ path: 'debug.png' });
    ```
 
-## 🎉 Happy Testing!
+## 🎉 Happy Testing
 
 For questions or issues, check:
+
 - [GitHub Issues](https://github.com/your-repo/issues)
 - [Project Wiki](https://github.com/your-repo/wiki)
 - Team Slack channel

@@ -5,6 +5,7 @@ This guide walks you through setting up API keys and environment variables for S
 ## Quick Setup
 
 1. **Generate secure secrets**:
+
    ```bash
    npm run generate:secrets
    ```
@@ -18,19 +19,23 @@ This guide walks you through setting up API keys and environment variables for S
 ### 🤖 Optional AI Keys (DeepSeek primary)
 
 #### DeepSeek API Key (Primary)
+
 - **Purpose**: Enables AI-powered summaries and pairing via DeepSeek
 - **Fallback**: If not set, system will use `OPENAI_API_KEY` if available
-- **Get it**: https://platform.deepseek.com/api_keys
+- **Get it**: <https://platform.deepseek.com/api_keys>
 - **Cost**: Low-cost, pay-per-use
 - **Add to `.env`**:
+
   ```bash
   DEEPSEEK_API_KEY=sk-your-deepseek-key-here
   ```
 
 #### OpenAI API Key (Fallback / Legacy)
+
 - **Purpose**: Used only if `DEEPSEEK_API_KEY` is not set
-- **Get it**: https://platform.openai.com/api-keys
+- **Get it**: <https://platform.openai.com/api-keys>
 - **Add to `.env`**:
+
   ```bash
   OPENAI_API_KEY=sk-your-openai-key-here
   ```
@@ -38,9 +43,11 @@ This guide walks you through setting up API keys and environment variables for S
 ### 🌤️ Weather Data (Automatic - No Keys Needed!)
 
 #### ✅ Open-Meteo Integration (Active)
+
 SommOS now uses **Open-Meteo** for historical weather data:
+
 - **✅ No API key required** - completely free!
-- **✅ 80+ years of historical data** (1940-present) 
+- **✅ 80+ years of historical data** (1940-present)
 - **✅ Global coverage** for all wine regions
 - **✅ High resolution** (1-11km precision)
 - **✅ Already integrated** and working automatically
@@ -48,13 +55,16 @@ SommOS now uses **Open-Meteo** for historical weather data:
 🎉 **Your vintage intelligence is already powered by real historical weather data!**
 
 #### 🔧 Optional Additional Weather APIs
+
 These are **not needed** but available if you want additional data sources:
 
 **OpenWeatherMap** (optional enhancement):
+
 - **Get it**: [OpenWeatherMap API](https://openweathermap.org/api)
 - **Add to `.env`**: `WEATHER_API_KEY=your-key`
 
 **Visual Crossing** (optional enhancement):
+
 - **Get it**: [Visual Crossing](https://www.visualcrossing.com/weather-api)
 - **Add to `.env`**: `VISUAL_CROSSING_API_KEY=your-key`
 
@@ -63,12 +73,14 @@ These are **not needed** but available if you want additional data sources:
 ### 1. Generate Security Secrets
 
 Run the secret generator:
+
 ```bash
 cd /Users/thijs/Desktop/SommOS
 npm run generate:secrets
 ```
 
 You'll see output like:
+
 ```
 🔐 SommOS Secrets Generator
 ==============================
@@ -88,6 +100,7 @@ SESSION_SECRET=x1y2z3a4b5c6...
 ### 2. Edit Your Environment File
 
 Open the `.env` file:
+
 ```bash
 code .env
 # or
@@ -95,6 +108,7 @@ nano .env
 ```
 
 Add the generated secrets:
+
 ```bash
 # Security Settings
 JWT_SECRET=a1b2c3d4e5f6... # Paste your generated secret
@@ -104,17 +118,22 @@ SESSION_SECRET=x1y2z3a4b5c6... # Paste your generated secret
 ### 3. Add API Keys (Optional)
 
 #### For AI Summaries (DeepSeek primary)
-1. Get DeepSeek key: https://platform.deepseek.com/api_keys
+
+1. Get DeepSeek key: <https://platform.deepseek.com/api_keys>
 2. Add to `.env`:
+
    ```bash
    DEEPSEEK_API_KEY=sk-your-actual-deepseek-key-here
    ```
+
 3. (Optional) Add OpenAI key as fallback:
+
    ```bash
    OPENAI_API_KEY=sk-your-actual-openai-key-here
    ```
 
 #### Disable Authentication (Development Only)
+
 You can run SommOS without login/roles during local development.
 
 ```bash
@@ -128,12 +147,14 @@ Or add to `.env` and restart:
 SOMMOS_AUTH_DISABLED=true
 ```
 
-#### For Weather APIs (Optional):
+#### For Weather APIs (Optional)
+
 1. **OpenWeatherMap**:
    - Go to [OpenWeatherMap](https://openweathermap.org/api)
    - Sign up for free account
    - Get API key from dashboard
    - Add to `.env`:
+
      ```bash
      WEATHER_API_KEY=your-weather-key-here
      ```
@@ -141,37 +162,43 @@ SOMMOS_AUTH_DISABLED=true
 ### 4. Verify Setup
 
 Test that everything loads properly:
+
 ```bash
 npm start
 ```
 
 Check the logs for:
+
 - ✅ "Server running on port 3001"
 - ✅ No environment variable errors
 - ✅ Vintage Intelligence Service loaded
 
 ## What Each Key Enables
 
-### With AI Key (DeepSeek or OpenAI):
+### With AI Key (DeepSeek or OpenAI)
+
 - ✅ Professional AI-generated vintage summaries
 - ✅ Sophisticated sommelier language
 - ✅ Context-aware wine descriptions
 - ✅ All template features as fallback
 
-### Without AI Key:
+### Without AI Key
+
 - ✅ Template-based vintage summaries
 - ✅ Weather analysis and scoring
 - ✅ Procurement recommendations
 - ✅ All core functionality works
 - ❌ AI-generated narratives
 
-### With Weather API Keys:
+### With Weather API Keys
+
 - ✅ Enhanced weather data accuracy
 - ✅ More detailed meteorological analysis  
 - ✅ Real-time weather integration
 - ✅ Historical data enrichment
 
-### Without Weather API Keys:
+### Without Weather API Keys
+
 - ✅ Built-in weather estimation
 - ✅ Regional weather patterns
 - ✅ Basic vintage analysis
@@ -179,14 +206,16 @@ Check the logs for:
 
 ## Security Best Practices
 
-### ✅ Do:
+### ✅ Do
+
 - Keep API keys in `.env` file only
 - Never commit `.env` to git
 - Use different keys for development/production
 - Regenerate keys if compromised
 - Monitor API usage and billing
 
-### ❌ Don't:
+### ❌ Don't
+
 - Put keys directly in code
 - Share keys in chat or email
 - Use production keys in development
@@ -196,6 +225,7 @@ Check the logs for:
 ## Environment File Template
 
 Your `.env` should look like this:
+
 ```bash
 # Application
 PORT=3001
@@ -223,7 +253,8 @@ VINTAGE_DEBUG=true
 
 ## Testing Your Setup
 
-### Test Basic Functionality:
+### Test Basic Functionality
+
 ```bash
 # Health check
 curl http://localhost:3001/health
@@ -234,36 +265,44 @@ curl -X POST http://localhost:3001/api/wines \
   -d '{"wine":{"name":"Test Wine","producer":"Test","region":"Bordeaux","country":"France","wine_type":"Red","grape_varieties":["Cabernet Sauvignon"]},"vintage":{"year":2020},"stock":{"location":"CELLAR","quantity":1,"cost_per_bottle":50}}'
 ```
 
-### Test AI Features (if AI key added):
+### Test AI Features (if AI key added)
+
 Check the response includes a sophisticated vintage summary instead of template text.
 
-### Test Weather Features (if weather API keys added):
+### Test Weather Features (if weather API keys added)
+
 The vintage analysis should show more detailed weather data.
 
 ## Troubleshooting
 
 ### "AI API key not found"
+
 - ✅ System continues with template summaries
 - Add key to enable AI features
 
 ### "Weather API failed"  
+
 - ✅ System uses built-in weather estimation
 - Check API key validity and quota
 
 ### "JWT Secret not set"
+
 - ❌ Authentication features may not work
 - Run `npm run generate:secrets` and add to `.env`
 
 ### "Database connection failed"
+
 - Check `DATABASE_PATH` in `.env`
 - Verify database file exists: `npm run setup:db`
 
 ## API Key Management
 
 ### Development vs Production
+
 Use different API keys for different environments:
 
 **Development** (`.env`):
+
 ```bash
 DEEPSEEK_API_KEY=sk-dev-deepseek-key...
 # Optional fallback
@@ -271,6 +310,7 @@ OPENAI_API_KEY=sk-dev-openai-key...
 ```
 
 **Production** (GitHub or server secrets):
+
 ```bash
 DEEPSEEK_API_KEY=sk-prod-deepseek-key...
 # Optional fallback
@@ -281,13 +321,16 @@ OPEN_METEO_BASE=https://archive-api.open-meteo.com/v1/archive
 ```
 
 ### Cost Management
+
 - **OpenAI**: ~$0.01-0.05 per vintage summary
 - **Weather APIs**: Usually free tier sufficient for testing
 - Monitor usage in API dashboards
 - Set up billing alerts
 
 ### Key Rotation
+
 Periodically rotate API keys:
+
 1. Generate new key in API dashboard
 2. Update `.env` file  
 3. Restart application
@@ -298,6 +341,7 @@ Periodically rotate API keys:
 For production, use proper secret management:
 
 ### Option 1: Server Environment Variables
+
 ```bash
 export DEEPSEEK_API_KEY="sk-your-production-deepseek-key"
 # Optional fallback
@@ -306,6 +350,7 @@ export JWT_SECRET="your-production-jwt-secret"
 ```
 
 ### Option 2: Docker Secrets
+
 ```dockerfile
 # docker-compose.yml
 services:
@@ -319,6 +364,7 @@ services:
 ```
 
 ### Option 3: Cloud Provider Secrets
+
 - AWS Secrets Manager
 - Google Secret Manager
 - Azure Key Vault
@@ -327,6 +373,7 @@ services:
 ## Support
 
 If you have issues:
+
 1. Check the troubleshooting section above
 2. Verify `.env` file format
 3. Check server logs for specific errors

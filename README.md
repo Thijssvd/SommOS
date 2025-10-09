@@ -36,6 +36,7 @@ SommOS/
 ### Frontend Architecture
 
 **Production Frontend**: `frontend/` (Vanilla JavaScript + Vite)
+
 - ✅ Full feature set (auth, guest access, inventory, pairing, procurement)
 - ✅ Production-ready with complete testing
 - ✅ PWA with offline support
@@ -45,6 +46,7 @@ SommOS/
 ## Key Features
 
 ### Core Functionality
+
 1. **Wine Inventory Management** - Track wines by location, vintage, and availability with multi-layer validation
 2. **Quick Pairing Engine** - 4-line AI recommendations for dish pairings
 3. **Weather Vintage Analysis** - Historical weather impact on wine quality
@@ -53,6 +55,7 @@ SommOS/
 6. **Guest Access** - Temporary read-only access via event codes for wine tastings and events
 
 ## Technical Stack
+
 - **Frontend**: Progressive Web App (PWA) with offline capabilities
 - **Backend**: Node.js with Express API
 - **Database**: SQLite for offline-first architecture
@@ -63,6 +66,7 @@ SommOS/
 ## 🚀 Quick Start
 
 ### Option 1: Automated Setup (Recommended)
+
 ```bash
 git clone https://github.com/Thijssvd/SommOS.git
 cd SommOS
@@ -70,11 +74,13 @@ npm install
 ./setup.sh          # Interactive API key configuration
 ./deployment/deploy.sh  # One-click deployment
 ```
-**Access**: http://localhost after deployment
+
+**Access**: <http://localhost> after deployment
 
 ### Option 2: Manual Setup
 
 1. **Clone and Install**
+
    ```bash
    git clone https://github.com/Thijssvd/SommOS.git
    cd SommOS
@@ -82,22 +88,25 @@ npm install
    ```
 
 2. **Configure API Keys**
+
    ```bash
    cp .env.production .env
    nano .env  # Edit with your keys
    ```
-   
+
    **Optional (for AI)**:
    - **DeepSeek API Key (Primary)**: Get from `https://platform.deepseek.com/api_keys` (add `DEEPSEEK_API_KEY`)
    - **OpenAI API Key (Fallback)**: Get from `https://platform.openai.com/api-keys` (add `OPENAI_API_KEY`)
    - **Open-Meteo**: FREE! Leave empty for 10,000 requests/day
 
 3. **Deploy**
+
    ```bash
    ./deployment/deploy.sh
    ```
 
 ### Development Mode
+
 ```bash
 npm run dev       # Development server
 npm test          # Run test suite
@@ -111,12 +120,14 @@ npm run test:e2e:flaky   # Run Playwright tests 3x and analyze
 ## 🧪 Testing & Quality
 
 ### Test Suite
+
 - **Unit & Integration Tests**: 600+ Jest tests across backend, frontend, and integration layers
 - **E2E Tests**: Playwright tests covering critical user workflows
 - **Flakiness Detection**: Automatic detection and reporting of inconsistent tests
 - **CI/CD**: Automated testing on every push with comprehensive reporting
 
 ### Running Tests
+
 ```bash
 # Run all Jest tests
 npm test
@@ -148,6 +159,7 @@ SommOS includes a comprehensive flakiness detection system that runs automatical
 ## Data Models
 
 The system uses 12+ interconnected tables:
+
 - **Core Wine Data**: Wines, Vintages, Stock, Ledger
 - **Weather Intelligence**: WeatherVintage, RegionCalendar, GrapeProfiles
 - **Business Data**: Suppliers, PriceBook, Aliases
@@ -156,6 +168,7 @@ The system uses 12+ interconnected tables:
 ## Deployment
 
 Designed for deployment on yacht networks with:
+
 - Offline-first capabilities
 - Progressive Web App installation
 - Background synchronization
@@ -184,13 +197,16 @@ Runtime automatically uses `DEEPSEEK_API_KEY` if present, otherwise `OPENAI_API_
 SommOS supports temporary guest access for wine tastings, yacht events, and browsing:
 
 ### For Guests
+
 1. Visit the login page and click **"Guest Access"** tab
 2. Enter your event code (provided by crew)
 3. Enter PIN if required
 4. Browse the wine collection with read-only access
 
 ### For Crew/Admins
+
 Create guest invites via API:
+
 ```bash
 curl -b cookies.txt -X POST http://localhost:3001/api/auth/invite \
   -H "Content-Type: application/json" \
@@ -203,6 +219,7 @@ curl -b cookies.txt -X POST http://localhost:3001/api/auth/invite \
 ```
 
 ### Testing Guest Access
+
 ```bash
 ./scripts/test-guest-access.sh
 ```
@@ -210,6 +227,7 @@ curl -b cookies.txt -X POST http://localhost:3001/api/auth/invite \
 📚 **Full Documentation**: See `docs/GUEST_ACCESS.md` for complete guide
 
 ### Guest Features
+
 - ✅ Browse wine collection (read-only)
 - ✅ View wine details and pairings
 - ✅ Search and filter wines

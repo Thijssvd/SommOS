@@ -24,6 +24,7 @@ npx playwright install
 ### **Step 2: Create Jest Configuration**
 
 Create `jest.config.js`:
+
 ```javascript
 module.exports = {
   testEnvironment: 'node',
@@ -170,6 +171,7 @@ Add these to your `package.json` scripts:
 The dashboard has a 405 error because the backend doesn't support the REST API method it's trying to use. Here are the options:
 
 ### **Option A: Update Agent-MCP** (if there's a newer version)
+
 ```bash
 cd /Users/thijs/Documents/SommOS/Agent-MCP
 git pull origin main
@@ -186,6 +188,7 @@ In Windsurf, the Agent-MCP SSE server is already configured. You can:
 ### **Option C: Work Without the Agent Dashboard**
 
 You don't actually need the agent dashboard to write tests! Just:
+
 1. Follow the manual steps above
 2. Write tests directly
 3. Use the dashboard only for monitoring (not creation)
@@ -195,6 +198,7 @@ You don't actually need the agent dashboard to write tests! Just:
 Choose your path:
 
 **Path 1: Just Start Testing** (Recommended)
+
 ```bash
 cd /Users/thijs/Documents/SommOS
 npm install --save-dev jest @jest/globals supertest
@@ -203,11 +207,13 @@ npx jest
 ```
 
 **Path 2: Fix Dashboard First**
+
 - Check Agent-MCP GitHub for issues
 - Update to latest version
 - Report the 405 error as a bug
 
 **Path 3: Use MCP via Windsurf**
+
 - Use the Agent-MCP tools in Windsurf to create agents
 - Monitor via the Agent-MCP Dashboard
 

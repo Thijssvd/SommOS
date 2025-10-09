@@ -15,6 +15,7 @@ This analysis evaluates whether the pairing recommendation and procurement deman
 ## 1. Pairing Recommendation Model Analysis
 
 ### Current Performance
+
 | Metric | Value | Interpretation |
 |--------|-------|----------------|
 | **RMSE** | 0.8906 | Predictions off by ~0.89 stars on 1-5 scale |
@@ -22,6 +23,7 @@ This analysis evaluates whether the pairing recommendation and procurement deman
 | **R²** | -0.3250 | Model performs worse than predicting mean |
 
 ### Data Characteristics
+
 ```
 Total Sessions: 228
 Average Rating: 4.20 (out of 5)
@@ -62,6 +64,7 @@ Flavor Harmony Avg: 4.06
 ### What WOULD Be Concerning
 
 ❌ **These would indicate bugs:**
+
 - RMSE > 2.0 (predictions wildly off)
 - MAE > 1.5 (errors larger than rating scale variance)
 - All predictions identical (model not training at all)
@@ -69,13 +72,16 @@ Flavor Harmony Avg: 4.06
 - Train error = 0, test error = 2.0 (severe overfitting)
 
 ✅ **What we actually see (healthy):**
+
 - RMSE 0.89 (reasonable given 1-5 scale)
 - MAE 0.74 (within expected variance)
 - R² negative but close to 0 (model is learning, just not enough signal)
 - Predictions likely in 3.5-4.5 range (sensible)
 
 ### Conclusion
+
 **The pairing model performance is REALISTIC and EXPECTED.** The negative R² is not a failure—it's a signal that we need:
+
 - More data (4-5× current amount)
 - Non-linear models (random forest, neural nets)
 - More discriminative features (wine chemistry, historical success rates)
@@ -85,12 +91,14 @@ Flavor Harmony Avg: 4.06
 ## 2. Procurement Demand Model Analysis
 
 ### Current Performance
+
 | Metric | Value | Interpretation |
 |--------|-------|----------------|
 | **MAPE** | 84.91% | Forecasts off by 85% on average |
 | **Wine Types** | 3/4 (Red, White, Sparkling; Dessert too sparse) |
 
 ### Data Characteristics
+
 ```sql
 -- Consumption patterns (229 events across 366 days)
 Red:      133 events, 300 bottles total, avg 2.26 bottles/event
@@ -144,17 +152,20 @@ Dessert:   1 event, 1 bottle total (completely sparse)
 Let me verify the sparsity claim:
 
 **Total Days with Consumption:**
+
 - Red wine: 127 days with events (34.7% of year)
 - White wine: 61 days with events (16.7% of year)
 - Sparkling: 34 days with events (9.3% of year)
 - Dessert: 1 day with events (0.3% of year)
 
 **Average Consumption on Active Days:**
+
 - Red: 2.36 bottles/day (when consumed)
 - White: 2.90 bottles/day (when consumed)
 - Sparkling: 2.38 bottles/day (when consumed)
 
 **This matches the simulation design:**
+
 - Guest occupancy varies: 10% (winter) to 70% (summer)
 - Not every charter has formal dining (lunch/dinner split)
 - Not every meal gets wine service
@@ -163,19 +174,23 @@ Let me verify the sparsity claim:
 ### What WOULD Be Concerning
 
 ❌ **These would indicate bugs:**
+
 - MAPE > 200% (model predicting negative bottles or absurd quantities)
 - All predictions = 0 (model not learning)
 - All predictions = 100 (model broken)
 - Seasonality detected as 0.99 (fake pattern in random data)
 
 ✅ **What we actually see (healthy):**
+
 - MAPE 84.91% (high but expected for sparse data)
 - Seasonality ≈ 0.06 (correctly identifies weak/no pattern)
 - Wine type models trained separately (sensible approach)
 - Dessert wine excluded (correctly handled as too sparse)
 
 ### Conclusion
+
 **The procurement model performance is REALISTIC and EXPECTED.** The high MAPE is not a failure—it's a signal that we need:
+
 - Aggregated forecasting (weekly/monthly instead of daily)
 - Event-based modeling (predict if consumption occurs, then predict quantity)
 - Multi-year data (3-5 years to capture seasonal patterns)
@@ -186,23 +201,29 @@ Let me verify the sparsity claim:
 ## 3. Comparative Context: Industry Benchmarks
 
 ### Wine Pairing Prediction
+
 **Academic Research:**
+
 - Food-wine pairing models typically achieve RMSE 0.5-1.2 on 1-5 scales
 - Best performance: Large datasets (10,000+ pairings) with chemical features
 - Our model: RMSE 0.89 with 228 pairings → **On par with limited-data scenarios**
 
 **Real-World Sommelier Consistency:**
+
 - Human sommeliers agree on pairing quality 70-80% of the time (± 1 star)
 - Our model: MAE 0.74 stars → **Within human sommelier variance**
 - Conclusion: Model is as good as can be expected without expert features
 
 ### Demand Forecasting (Sparse Events)
+
 **Retail Forecasting:**
+
 - Intermittent demand (many zeros): MAPE typically 60-120%
 - "Feast or famine" patterns: MAPE 80-150% is normal
 - Our model: MAPE 84.91% → **Middle of expected range**
 
 **Yacht Industry Patterns:**
+
 - Guest charters are highly variable (not like a restaurant with daily covers)
 - Wine consumption depends on guest count, preferences, weather, itinerary
 - Predicting daily consumption is genuinely difficult
@@ -216,12 +237,14 @@ Let me verify the sparsity claim:
 ### Pairing Model: What IS It Learning?
 
 Even with negative R², the model likely captures some patterns:
+
 - Wine type appropriateness (Red for beef, White for fish)
 - Cuisine-wine regional matching (Italian wine with Italian food)
 - Intensity matching (light wines for light dishes)
 - Occasion appropriateness (Sparkling for celebrations)
 
 **Evidence it's not random:**
+
 - RMSE 0.89 is better than random (random would be ~1.2-1.5)
 - MAE 0.74 vs random ~1.0
 - Model is learning, just not enough to beat simple baseline (mean)
@@ -229,12 +252,14 @@ Even with negative R², the model likely captures some patterns:
 ### Procurement Model: What IS It Learning?
 
 The model captures basic trends:
+
 - Red wine consumed most frequently (127 days)
 - White wine consumed moderately (61 days)
 - Sparkling consumed occasionally (34 days)
 - Dessert wine almost never (1 day)
 
 **Evidence it's not random:**
+
 - Correctly ranks wine types by consumption frequency
 - Identifies weak seasonality (0.06) rather than inventing fake patterns
 - Excludes Dessert wine from forecasting (appropriate decision)
@@ -246,18 +271,21 @@ The model captures basic trends:
 ### Is the Simulation Data Realistic?
 
 ✅ **Pairing Ratings (228 sessions):**
+
 - Mean: 4.20 → Luxury yacht standard (high quality expected)
 - Range: 1-5 → Full scale used (not artificially constrained)
 - Flavor Harmony: 4.06 → Consistent with overall rating
 - Distribution: Likely normal around guest biases (4.0, 4.2, 4.5)
 
 ✅ **Consumption Patterns (229 events):**
+
 - Red dominates (133 events, 54% market share) → Typical for formal dining
 - White secondary (61 events, 27%) → Appropriate for seafood/lunch
 - Sparkling occasional (34 events, 15%) → Matches celebration frequency
 - Dessert rare (1 event, 0.4%) → Realistic (most guests skip dessert wine)
 
 ✅ **Seasonal Patterns:**
+
 - Summer (Jun-Aug): 70% occupancy → Peak charter season
 - Winter (Dec-Feb): 10% occupancy → Off-season
 - Shoulder seasons: 40% → Realistic transition periods
@@ -271,16 +299,19 @@ The model captures basic trends:
 ### Pairing Model: Is Negative R² a Problem?
 
 **What negative R² means:**
+
 - R² = 1 - (SS_res / SS_tot)
 - R² = -0.325 → SS_res = 1.325 × SS_tot
 - Model residuals are 32.5% larger than baseline (mean prediction)
 
 **Is this significant?**
+
 - With 228 samples and 57 features, we have 228/57 = 4 samples per feature
 - Rule of thumb: Need 10+ samples per feature
 - **Conclusion: Model is data-starved, not broken**
 
 **Can we trust this R²?**
+
 - Test set: 46 samples (20% of 228)
 - With 46 samples, R² confidence interval is ±0.3-0.4
 - Our R² = -0.325 ± 0.35 → Could range from -0.675 to +0.025
@@ -289,17 +320,20 @@ The model captures basic trends:
 ### Procurement Model: Is MAPE 84.91% Meaningful?
 
 **What MAPE measures:**
+
 - MAPE = Average(|Actual - Predicted| / |Actual|)
 - With many zeros, MAPE is dominated by small actual values
 - Example: Actual=1, Predicted=2 → APE = 100%
 
 **Is this significant?**
+
 - Only 3 wine types forecasted (Dessert excluded)
 - Test set likely has 20-40 samples per wine type
 - With sparse data, MAPE has huge variance
 - **Conclusion: MAPE is measuring noise, not signal**
 
 **Better metric for sparse data:**
+
 - RMSE (root mean squared error) would be more stable
 - Classification accuracy (did consumption occur? yes/no)
 - MAE (mean absolute error in bottles, not percentage)
@@ -313,16 +347,19 @@ The model captures basic trends:
 **Goal:** Verify that model performance is stable across different random seeds.
 
 **Expected outcomes:**
+
 - Pairing model: RMSE should be 0.7-1.1 across seeds (±20% variance)
 - Procurement model: MAPE should be 70-100% across seeds (high variance expected)
 - Collaborative model: MAE should remain 0.10-0.20 (this model is robust)
 
 **If reproducibility is high (similar metrics across seeds):**
+
 - ✅ Models are stable and realistic
 - ✅ Poor performance is due to data limitations, not bugs
 - ✅ Proceed with multi-year simulation to improve data
 
 **If reproducibility is low (wildly different metrics across seeds):**
+
 - ⚠️ Models may be overfitting to random noise
 - ⚠️ Training process may have bugs
 - ⚠️ Need to investigate training algorithm stability
@@ -330,12 +367,14 @@ The model captures basic trends:
 ### Short-Term Improvements
 
 **For Pairing Model:**
+
 1. Collect more data (run 3-5 year simulation)
 2. Add non-linear model (random forest, neural network)
 3. Feature engineering: Wine chemistry, historical success rates
 4. Target: RMSE < 0.5, R² > 0.3
 
 **For Procurement Model:**
+
 1. Switch to weekly/monthly aggregation (not daily)
 2. Use classification: "Will we consume wine tomorrow?" (yes/no)
 3. Then predict quantity given consumption occurs
@@ -347,17 +386,20 @@ The model captures basic trends:
 ## 8. Key Insights Summary
 
 ### ✅ What's Working
+
 1. **Collaborative filtering model is excellent** (MAE 0.15, production-ready)
 2. **Simulation data is realistic** (matches yacht industry patterns)
 3. **Models are training correctly** (no bugs in training process)
 4. **Poor metrics are expected** (data-limited scenarios, not failures)
 
 ### ⚠️ What's Expected
+
 1. **Pairing model needs more data** (228 → 1000+ samples)
 2. **Procurement model needs different approach** (weekly aggregation, not daily forecast)
 3. **Simple models are hitting their limits** (need non-linear methods)
 
 ### ❌ What's NOT a Problem (Despite Appearances)
+
 1. **Negative R² is not a bug** (it's a signal: "need more data")
 2. **MAPE 84.91% is not broken** (it's realistic for sparse consumption)
 3. **Models are not randomly guessing** (RMSE/MAE better than random baseline)
@@ -367,6 +409,7 @@ The model captures basic trends:
 ## 9. Reproducibility Test Plan
 
 ### Test Configuration
+
 ```javascript
 Seeds to test: [42, 123, 777]
 Expected variance:
@@ -378,6 +421,7 @@ Expected variance:
 ```
 
 ### Success Criteria
+
 - [ ] All 3 seeds complete without errors
 - [ ] Pairing metrics within expected variance range
 - [ ] Procurement metrics within expected variance range
@@ -385,11 +429,13 @@ Expected variance:
 - [ ] No systematic bias detected (one seed not consistently better)
 
 ### If Test Passes
+
 - ✅ Models are reproducible and realistic
 - ✅ Proceed with multi-year simulation for better data
 - ✅ Document current models as "baseline v1"
 
 ### If Test Fails
+
 - ⚠️ Investigate training algorithm for randomness issues
 - ⚠️ Check for data leakage or overfitting
 - ⚠️ Verify train/test split is truly random

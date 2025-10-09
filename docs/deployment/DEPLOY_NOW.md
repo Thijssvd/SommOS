@@ -14,6 +14,7 @@ Run this **ONE command** to deploy:
 ```
 
 This interactive script will:
+
 1. ✅ Verify all prerequisites
 2. ✅ Check environment configuration
 3. ✅ Backup your database
@@ -41,15 +42,17 @@ This interactive script will:
 When you run `./deploy-production.sh`, you'll be asked to choose:
 
 ### Option 1: Docker Compose (Recommended)
+
 - ✅ Complete production setup
 - ✅ Includes nginx reverse proxy
-- ✅ Runs on port 80 (http://localhost)
+- ✅ Runs on port 80 (<http://localhost>)
 - ✅ Auto-restart on failure
 - ✅ Easy to manage with docker commands
 
 **Best for**: Full production deployment, remote servers
 
 ### Option 2: Local Node.js (Simple)
+
 - ✅ Direct Node.js server
 - ✅ Runs on port 3001
 - ✅ Good for testing
@@ -62,6 +65,7 @@ When you run `./deploy-production.sh`, you'll be asked to choose:
 ## 🔍 After Deployment
 
 ### Check Status
+
 ```bash
 # If using Docker:
 docker-compose -f deployment/production.yml ps
@@ -72,6 +76,7 @@ docker-compose -f deployment/production.yml logs -f
 ```
 
 ### Test the Deployment
+
 ```bash
 # Health check
 curl http://localhost/api/system/health
@@ -84,9 +89,10 @@ curl http://localhost:3001/api/system/health
 ```
 
 ### Access Your Application
-- **Frontend**: http://localhost (Docker) or serve `frontend/dist`
-- **API**: http://localhost/api or http://localhost:3001/api
-- **Health**: http://localhost/api/system/health
+
+- **Frontend**: <http://localhost> (Docker) or serve `frontend/dist`
+- **API**: <http://localhost/api> or <http://localhost:3001/api>
+- **Health**: <http://localhost/api/system/health>
 
 ---
 
@@ -141,6 +147,7 @@ After deployment, watch for:
 ## 🆘 If Something Goes Wrong
 
 ### Docker Issues
+
 ```bash
 # Check what's running
 docker ps
@@ -157,6 +164,7 @@ docker-compose -f deployment/production.yml down
 ```
 
 ### Restore Database
+
 ```bash
 # Find your backup
 ls -lt data/sommos.db.backup.*
@@ -166,6 +174,7 @@ cp data/sommos.db.backup.YYYYMMDD_HHMMSS data/sommos.db
 ```
 
 ### Roll Back
+
 ```bash
 # Stop services
 docker-compose -f deployment/production.yml down
@@ -193,10 +202,12 @@ git checkout <previous-commit-hash>
 
 2. **Configure AI Keys** (Optional):
    Edit `.env.production` and add:
+
    ```bash
    DEEPSEEK_API_KEY=your_key_here
    OPENAI_API_KEY=your_key_here
    ```
+
    Then restart: `docker-compose -f deployment/production.yml restart`
 
 3. **Set Up Monitoring**:
@@ -206,6 +217,7 @@ git checkout <previous-commit-hash>
    - Check API response times
 
 4. **Create Admin Account** (if needed):
+
    ```bash
    npm run seed:users
    ```
@@ -215,13 +227,14 @@ git checkout <previous-commit-hash>
 ## 📖 Detailed Documentation
 
 For more details, see:
+
 - `DEPLOYMENT_CHECKLIST.md` - Comprehensive deployment guide
 - `TEST_FIXES_REPORT.md` - What was fixed
 - `WORK_COMPLETION_SUMMARY.md` - Overview of completed work
 
 ---
 
-## ✨ You're Ready!
+## ✨ You're Ready
 
 Everything is prepared for deployment. Just run:
 

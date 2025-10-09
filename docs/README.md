@@ -51,6 +51,7 @@ SommOS is a comprehensive wine management system designed specifically for luxur
 ### Technology Stack
 
 **Backend:**
+
 - Node.js with Express.js framework
 - SQLite3 database with optimized indexes
 - DeepSeek (primary) or OpenAI (fallback) for AI pairing intelligence
@@ -58,6 +59,7 @@ SommOS is a comprehensive wine management system designed specifically for luxur
 - Comprehensive security middleware (Helmet, CORS, Rate Limiting)
 
 **Frontend:**
+
 - Vanilla JavaScript (ES6+) for optimal performance
 - Progressive Web App (PWA) with Service Workers
 - Chart.js for data visualization
@@ -65,6 +67,7 @@ SommOS is a comprehensive wine management system designed specifically for luxur
 - IndexedDB for offline data storage
 
 **Testing:**
+
 - Jest for unit and integration testing
 - Supertest for API testing
 - JSDOM for frontend testing
@@ -151,7 +154,7 @@ PurchaseOrders (id, supplier_id, status, created_at)
 
 ### Prerequisites
 
-- Node.js 16.0+ 
+- Node.js 16.0+
 - npm 8.0+
 - SQLite3
 - OpenAI API key (optional, for AI features)
@@ -159,17 +162,20 @@ PurchaseOrders (id, supplier_id, status, created_at)
 ### Quick Start
 
 1. **Clone the repository:**
+
    ```bash
    git clone <repository-url>
    cd SommOS
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
@@ -177,16 +183,19 @@ PurchaseOrders (id, supplier_id, status, created_at)
    ```
 
 4. **Initialize the database:**
+
    ```bash
    npm run setup:db
    ```
 
 5. **Import sample data (optional):**
+
    ```bash
    npm run import:cellar
    ```
 
 6. **Start the development server:**
+
    ```bash
    npm run dev
    ```
@@ -220,16 +229,19 @@ Run `npm run verify:env` after editing to confirm your configuration.
 For production deployment:
 
 1. **Build optimized assets:**
+
    ```bash
    npm run build
    ```
 
 2. **Set production environment:**
+
    ```bash
    export NODE_ENV=production
    ```
 
 3. **Start with process manager:**
+
    ```bash
    pm2 start backend/server.js --name sommos
    ```
@@ -239,22 +251,27 @@ For production deployment:
 ## API Reference
 
 ### Base URL
+
 ```
 http://localhost:3001/api
 ```
 
 ### Authentication
+
 Currently using basic authentication. JWT implementation planned for future versions.
 
 ### Endpoints
 
 #### System Health
+
 ```http
 GET /api/system/health
 ```
+
 Returns system status and basic statistics.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -272,11 +289,13 @@ Returns system status and basic statistics.
 #### Inventory Management
 
 **Get Stock Levels**
+
 ```http
 GET /api/inventory/stock?location=main-cellar&wine_type=Red&available_only=true
 ```
 
 **Record Wine Consumption**
+
 ```http
 POST /api/inventory/consume
 Content-Type: application/json
@@ -291,6 +310,7 @@ Content-Type: application/json
 ```
 
 **Create Inventory Intake Order**
+
 ```http
 POST /api/inventory/intake
 Content-Type: application/json
@@ -317,6 +337,7 @@ Content-Type: application/json
 ```
 
 **Receive Bottles for Intake Order**
+
 ```http
 POST /api/inventory/intake/{intakeId}/receive
 Content-Type: application/json
@@ -331,12 +352,15 @@ Content-Type: application/json
 ```
 
 **Verify Intake Completion**
+
 ```http
 GET /api/inventory/intake/{intakeId}/status
 ```
+
 Returns outstanding bottles and status (ORDERED, PARTIALLY_RECEIVED, RECEIVED).
 
 **Move Wine Between Locations**
+
 ```http
 POST /api/inventory/move
 Content-Type: application/json
@@ -351,6 +375,7 @@ Content-Type: application/json
 ```
 
 **Reserve Wine**
+
 ```http
 POST /api/inventory/reserve
 Content-Type: application/json
@@ -366,6 +391,7 @@ Content-Type: application/json
 #### Wine Pairing
 
 **Get Pairing Recommendations**
+
 ```http
 POST /api/pairing/recommend
 Content-Type: application/json
@@ -383,6 +409,7 @@ Content-Type: application/json
 ```
 
 **Quick Pairing**
+
 ```http
 POST /api/pairing/quick
 Content-Type: application/json
@@ -399,16 +426,19 @@ Content-Type: application/json
 #### Wine Catalog
 
 **Search Wines**
+
 ```http
 GET /api/wines?search=Bordeaux&wine_type=Red&limit=50&offset=0
 ```
 
 **Get Wine Details**
+
 ```http
 GET /api/wines/123
 ```
 
 **Add New Wine**
+
 ```http
 POST /api/wines
 Content-Type: application/json
@@ -435,11 +465,13 @@ Content-Type: application/json
 #### Procurement
 
 **Get Procurement Opportunities**
+
 ```http
 GET /api/procurement/opportunities?region=Tuscany&max_price=100
 ```
 
 **Analyze Purchase Decision**
+
 ```http
 POST /api/procurement/analyze
 Content-Type: application/json
@@ -458,11 +490,13 @@ Content-Type: application/json
 #### Vintage Intelligence
 
 **Get Vintage Analysis**
+
 ```http
 GET /api/vintage/analysis/wine-123
 ```
 
 **Enrich Wine Data**
+
 ```http
 POST /api/vintage/enrich
 Content-Type: application/json
@@ -486,6 +520,7 @@ All API endpoints return consistent error responses:
 ```
 
 **Common HTTP Status Codes:**
+
 - `200` - Success
 - `201` - Created
 - `400` - Bad Request (validation error)
@@ -511,6 +546,7 @@ The frontend is built as a Single Page Application (SPA) with PWA capabilities:
 ### Key Classes
 
 #### SommOSAPI
+
 Handles all API communication with automatic retry and offline fallback:
 
 ```javascript
@@ -524,6 +560,7 @@ await api.consumeWine(vintageId, location, quantity, notes);
 ```
 
 #### SommOSUI
+
 Manages UI components and user interactions:
 
 ```javascript
@@ -540,6 +577,7 @@ ui.showLoading('save-button');
 ```
 
 #### SommOS (Main App)
+
 Central application controller:
 
 ```javascript
@@ -560,6 +598,7 @@ app.applyFilters();
 ### PWA Features
 
 #### Service Worker
+
 Implements cache-first strategy for static assets and network-first for API calls:
 
 ```javascript
@@ -583,6 +622,7 @@ self.addEventListener('fetch', event => {
 ```
 
 #### Offline Storage
+
 Uses IndexedDB for persistent data storage:
 
 ```javascript
@@ -647,26 +687,31 @@ tests/
 ### Running Tests
 
 **All tests:**
+
 ```bash
 npm test
 ```
 
 **Backend API tests:**
+
 ```bash
 npm test -- tests/backend
 ```
 
 **Frontend tests:**
+
 ```bash
 npm test -- tests/frontend
 ```
 
 **Integration tests:**
+
 ```bash
 npm test -- tests/integration
 ```
 
 **Performance tests:**
+
 ```bash
 npm test -- tests/performance
 ```
@@ -721,12 +766,14 @@ Target performance metrics:
 ### Production Environment Requirements
 
 **Server Requirements:**
+
 - Node.js 16.0+
 - 2GB+ RAM
 - 10GB+ storage
 - SSL certificate for HTTPS (required for PWA)
 
 **Recommended Stack:**
+
 - **Server:** Ubuntu 20.04+ or CentOS 8+
 - **Reverse Proxy:** Nginx
 - **Process Manager:** PM2
@@ -735,6 +782,7 @@ Target performance metrics:
 ### Docker Deployment
 
 **Dockerfile:**
+
 ```dockerfile
 FROM node:16-alpine
 
@@ -755,6 +803,7 @@ CMD ["node", "backend/server.js"]
 ```
 
 **Docker Compose:**
+
 ```yaml
 version: '3.8'
 services:
@@ -772,6 +821,7 @@ services:
 ```
 
 **Deploy with Docker:**
+
 ```bash
 docker-compose up -d
 ```
@@ -781,9 +831,11 @@ docker-compose up -d
 #### AWS Deployment
 
 **Using Elastic Beanstalk:**
+
 1. Create Elastic Beanstalk application
 2. Configure environment variables
 3. Deploy using EB CLI:
+
    ```bash
    eb init
    eb create production
@@ -791,6 +843,7 @@ docker-compose up -d
    ```
 
 **Using ECS:**
+
 1. Build and push Docker image to ECR
 2. Create ECS service
 3. Configure load balancer and auto-scaling
@@ -798,6 +851,7 @@ docker-compose up -d
 #### Azure Deployment
 
 **Using App Service:**
+
 1. Create App Service plan
 2. Deploy from GitHub or Docker Hub
 3. Configure custom domain and SSL
@@ -805,8 +859,10 @@ docker-compose up -d
 #### Google Cloud Deployment
 
 **Using Cloud Run:**
+
 1. Build container image
 2. Deploy to Cloud Run:
+
    ```bash
    gcloud run deploy sommos --image gcr.io/PROJECT-ID/sommos
    ```
@@ -880,6 +936,7 @@ NODE_OPTIONS="--max-old-space-size=512"
 ### Backup and Monitoring
 
 **Database Backup:**
+
 ```bash
 # Daily backup script
 #!/bin/bash
@@ -891,12 +948,14 @@ find /backups -name "sommos_*.db" -mtime +30 -delete
 ```
 
 **Health Check:**
+
 ```bash
 # Health check endpoint
 curl -f http://localhost:3001/api/system/health || exit 1
 ```
 
 **Process Monitoring with PM2:**
+
 ```bash
 pm2 start backend/server.js --name sommos
 pm2 startup
@@ -907,6 +966,7 @@ pm2 monit
 ### SSL Certificate Setup
 
 **Using Let's Encrypt:**
+
 ```bash
 # Install certbot
 sudo apt install certbot python3-certbot-nginx
@@ -937,11 +997,13 @@ sudo crontab -e
 ### Getting Started
 
 #### First Login
+
 1. Access SommOS through your web browser
 2. If prompted, allow the app to install as a PWA
 3. The dashboard will display your wine collection overview
 
 #### Navigation
+
 - **Dashboard:** Overview of your collection with charts and recent activity
 - **Inventory:** Browse and manage your wine collection
 - **Pairing:** Get AI-powered wine pairing recommendations
@@ -951,6 +1013,7 @@ sudo crontab -e
 ### Managing Your Wine Collection
 
 #### Adding Wines
+
 1. Go to the **Inventory** section
 2. Click **Add Wine** (if available) or use the import feature
 3. Fill in wine details:
@@ -961,6 +1024,7 @@ sudo crontab -e
    - Quantity and cost
 
 #### Recording Wine Consumption
+
 1. Find the wine in your inventory
 2. Click **Serve** on the wine card
 3. Select the storage location
@@ -969,13 +1033,16 @@ sudo crontab -e
 6. Click **Record Service**
 
 #### Moving Wines Between Locations
+
 Wines can be stored in different locations on your yacht:
+
 - **Main Cellar:** Primary storage
 - **Service Bar:** Ready for immediate service  
 - **Deck Storage:** Casual dining wines
 - **Private Reserve:** Special occasion wines
 
 To move wines:
+
 1. Find the wine in inventory
 2. Click on the wine card for options
 3. Select **Move**
@@ -983,7 +1050,9 @@ To move wines:
 5. Enter quantity and notes
 
 #### Reserving Wines
+
 Reserve wines for special occasions:
+
 1. Click **Reserve** on a wine card
 2. Select the location
 3. Enter quantity to reserve
@@ -993,6 +1062,7 @@ Reserve wines for special occasions:
 ### Wine Pairing Recommendations
 
 #### Getting Pairing Suggestions
+
 1. Go to the **Pairing** section
 2. Describe your dish in detail
 3. Select the dining occasion:
@@ -1005,7 +1075,9 @@ Reserve wines for special occasions:
 6. Click **Get Pairings**
 
 #### Understanding Pairing Results
+
 Each recommendation includes:
+
 - **Wine Details:** Name, producer, vintage, region
 - **Confidence Score:** How well the wine matches (0-100%)
 - **Pairing Reasoning:** Why this wine works with your dish
@@ -1015,7 +1087,9 @@ Each recommendation includes:
 ### Search and Filters
 
 #### Searching Your Collection
+
 Use the search bar to find wines by:
+
 - Wine name
 - Producer name
 - Region
@@ -1023,7 +1097,9 @@ Use the search bar to find wines by:
 - Tasting notes
 
 #### Using Filters
+
 Filter your collection by:
+
 - **Wine Type:** Red, White, Sparkling, Rosé, Dessert
 - **Location:** Main Cellar, Service Bar, etc.
 - **Availability:** Show only available wines
@@ -1033,12 +1109,15 @@ Filter your collection by:
 ### Inventory Insights
 
 #### Dashboard Charts
+
 - **Wine Type Distribution:** See your collection breakdown
 - **Stock by Location:** Monitor storage distribution
 - **Recent Activity:** Track consumption and additions
 
 #### Understanding Wine Cards
+
 Each wine displays:
+
 - Wine type badge with icon
 - Name, producer, and vintage
 - Region and country
@@ -1049,20 +1128,25 @@ Each wine displays:
 ### Mobile Usage
 
 #### PWA Installation
+
 On mobile devices:
+
 1. Open SommOS in your browser
 2. Look for "Add to Home Screen" prompt
 3. Tap "Install" or "Add"
 4. The app icon will appear on your home screen
 
 #### Offline Usage
+
 When internet is unavailable:
+
 - Browse previously loaded wines
 - View cached pairing recommendations
 - Data syncs automatically when connection returns
 - Offline indicator shows current status
 
 #### Sync Conflict Resolution Rules
+
 - **Metadata fields follow last-write-wins (LWW):** Each mutation carries `updated_at`, `updated_by`, `op_id`, and `origin`. The server compares timestamps and replaces metadata with the most recent change when concurrent edits occur.
 - **Inventory deltas are additive:** Stock movements append ledger entries and adjust quantities incrementally so parallel receipts and consumptions accumulate rather than overwrite.
 - **Negative stock is rejected with HTTP 409:** If a request would drive available inventory below zero, the API returns a 409 Conflict with an explanatory error so the client can reconcile before retrying.
@@ -1072,28 +1156,34 @@ When internet is unavailable:
 #### Common Issues
 
 **App won't load:**
+
 - Check internet connection
 - Clear browser cache
 - Try refreshing the page
 - Check if JavaScript is enabled
 
 **Pairing recommendations not working:**
+
 - Ensure internet connectivity
 - Check if AI features are enabled
 - Try simplifying your dish description
 
 **Charts not displaying:**
+
 - Check if you have wines in your collection
 - Try refreshing the page
 - Ensure JavaScript is enabled
 
 **Offline mode not working:**
+
 - Make sure you've loaded the app online first
 - Check browser support for Service Workers
 - Clear cache and reload
 
 #### Getting Help
+
 For technical support:
+
 1. Check the troubleshooting section
 2. Review browser compatibility requirements
 3. Contact your system administrator
@@ -1106,18 +1196,21 @@ For technical support:
 ### Best Practices
 
 #### Wine Data Management
+
 - Keep wine information updated and accurate
 - Use consistent naming conventions
 - Add detailed tasting notes
 - Record service occasions for future reference
 
 #### Storage Location Management
+
 - Keep frequently served wines in the service bar
 - Store special occasion wines in the private reserve
 - Use main cellar for long-term storage
 - Consider temperature and accessibility for each location
 
 #### Pairing Requests
+
 - Be specific about cooking methods and ingredients
 - Mention guest preferences and dietary restrictions
 - Consider the dining environment and occasion
@@ -1131,19 +1224,26 @@ For technical support:
 
 1. **Fork the repository**
 2. **Create a feature branch:**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
+
 3. **Install dependencies:**
+
    ```bash
    npm install
    ```
+
 4. **Set up development environment:**
+
    ```bash
    cp .env.example .env
    # Configure your development settings
    ```
+
 5. **Run tests:**
+
    ```bash
    npm test
    ```
@@ -1159,6 +1259,7 @@ For technical support:
 ### Commit Guidelines
 
 Use conventional commits:
+
 - `feat:` New features
 - `fix:` Bug fixes  
 - `docs:` Documentation updates
@@ -1167,6 +1268,7 @@ Use conventional commits:
 - `style:` Code formatting changes
 
 Example:
+
 ```bash
 git commit -m "feat: add wine reservation functionality"
 ```
@@ -1182,6 +1284,7 @@ git commit -m "feat: add wine reservation functionality"
 ### Reporting Issues
 
 When reporting bugs:
+
 1. **Check existing issues** first
 2. **Use the issue template**
 3. **Provide reproduction steps**
@@ -1191,6 +1294,7 @@ When reporting bugs:
 ### Feature Requests
 
 For new features:
+
 1. **Describe the use case**
 2. **Explain the expected behavior**
 3. **Consider implementation complexity**
@@ -1205,8 +1309,9 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Support
 
 For support and questions:
-- 📧 Email: support@sommos.app
-- 📖 Documentation: https://docs.sommos.app
+
+- 📧 Email: <support@sommos.app>
+- 📖 Documentation: <https://docs.sommos.app>
 - 🐛 Issues: GitHub Issues
 - 💬 Discussions: GitHub Discussions
 

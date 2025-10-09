@@ -1,11 +1,13 @@
 # Task: Wine Bottle Images with Optimization & Virtual Scrolling
 
 ## Overview
+
 Add wine bottle images to inventory and catalog displays with automatic web lookup for new wines, applying the existing image optimization system, and ensuring virtual scrolling performs smoothly with image-heavy content.
 
 ## Context & Current State
 
 ### What Exists
+
 - ✅ **VirtualScroll Implementation**: Fully functional in `frontend/js/ui.js` (lines 400-671)
   - Inventory: threshold 50 items, buffer 3, height 220px
   - Catalog: threshold 30 items, buffer 2, dynamic heights (80-300px)
@@ -20,6 +22,7 @@ Add wine bottle images to inventory and catalog displays with automatic web look
   - Placeholder/skeleton loading animations
 
 ### What's Missing
+
 - ❌ **No Images in Wine Cards**: `createInventoryWineCard()` and `createCatalogWineCard()` don't render any `<img>` elements
 - ❌ **No Image Storage**: Database doesn't have an `image_url` column
 - ❌ **No Image Lookup Service**: No backend service to search for wine bottle images
@@ -38,23 +41,28 @@ Add wine bottle images to inventory and catalog displays with automatic web look
 ### Phase 1: Backend - Image Storage & Lookup
 
 #### 1. Update Database Schema for Image Storage
+
 **File:** `backend/db/schema.sql`
 
 Add `image_url` column to store cached image URLs:
+
 ```sql
 ALTER TABLE Wines ADD COLUMN image_url TEXT;
 ```
 
 **Migration Script:** `backend/migrations/add_image_url.js` (create if needed)
+
 - Check if column exists before adding
 - Backfill with NULL for existing records
 
 ---
 
 #### 2. Create Wine Image Lookup Service
+
 **File:** `backend/services/imageService.js` (NEW)
 
 Build service to search for wine bottle images:
+
 ```javascript
 // Use Unsplash API (free tier: 50 requests/hour)
 // API Key setup in .env: UNSPLASH_ACCESS_KEY
@@ -78,10 +86,12 @@ class ImageService {
 ```
 
 **Dependencies:**
+
 - Add to `package.json`: `"unsplash-js": "^7.0.19"`
 - Environment variable: `UNSPLASH_ACCESS_KEY` in `.env`
 
 **Error Handling:**
+
 - Rate limiting → return placeholder, log warning
 - Network errors → retry with exponential backoff
 - No results → fallback search, then placeholder
@@ -90,9 +100,11 @@ class ImageService {
 ---
 
 #### 3. Integrate Image Lookup into Wine Creation
+
 **File:** `backend/api/routes.js` (line 1132, POST /api/wines endpoint)
 
 Modify wine creation flow:
+
 ```javascript
 router.post('/wines', requireRole('admin', 'crew'), 
   validate(validators.winesCreate), 
@@ -121,6 +133,7 @@ router.post('/wines', requireRole('admin', 'crew'),
 ```
 
 **Service Injection:**
+
 - Add `imageService` to `withServices` dependencies
 - Initialize in server startup: `services.imageService = new ImageService(db)`
 
@@ -129,9 +142,11 @@ router.post('/wines', requireRole('admin', 'crew'),
 ### Phase 2: Frontend - Image Rendering
 
 #### 4. Add Image HTML to Inventory Wine Cards
+
 **File:** `frontend/js/app.js` (line ~1505, `createInventoryWineCard()`)
 
 Add image container at top of card:
+
 ```javascript
 createInventoryWineCard(item, index, isGuest) {
   // NEW: Image container
@@ -163,6 +178,7 @@ createInventoryWineCard(item, index, isGuest) {
 ```
 
 **Key Attributes:**
+
 - `loading="lazy"` - Native browser lazy loading
 - `data-optimized="false"` - Flag for ImageOptimizer
 - `onerror` - Fallback to placeholder on load failure
@@ -171,6 +187,7 @@ createInventoryWineCard(item, index, isGuest) {
 ---
 
 #### 5. Add Image HTML to Catalog Wine Cards
+
 **File:** `frontend/js/app.js` (line ~4362, `createCatalogWineCard()`)
 
 Add images with view-specific dimensions:
@@ -232,6 +249,7 @@ createCatalogWineCard(wine, viewType) {
 ---
 
 #### 6. Integrate ImageOptimizer with Wine Cards
+
 **Files:** `frontend/js/app.js` (both `displayInventory()` and `displayCatalogWines()`)
 
 Hook up ImageOptimizer after rendering:
@@ -271,6 +289,7 @@ displayInventory(inventory) {
 ```
 
 **Same pattern for `displayCatalogWines()`** with view-specific dimensions:
+
 - Grid: 300x450
 - List: 80x120
 - Detail: 600x400
@@ -278,6 +297,7 @@ displayInventory(inventory) {
 ---
 
 #### 7. Update Virtual Scroll Integration
+
 **File:** `frontend/js/ui.js` (lines 542-560, `createItemElement()`)
 
 Ensure images are optimized when items enter viewport:
@@ -304,6 +324,7 @@ createItemElement(item, index) {
 ```
 
 **Height Verification:**
+
 - Measure actual rendered card heights with images
 - Update `getCatalogItemHeight()` if needed (line 4337)
 - Test that virtual scroll positioning remains accurate
@@ -313,6 +334,7 @@ createItemElement(item, index) {
 ### Phase 3: Styling & Polish
 
 #### 8. Add CSS Styles for Wine Images
+
 **File:** `frontend/css/styles.css`
 
 Add comprehensive image styles:
@@ -433,11 +455,14 @@ Add comprehensive image styles:
 ---
 
 #### 9. Create Placeholder Images and Error Handling
-**Files:** 
+
+**Files:**
+
 - `frontend/images/wine-placeholder.svg` (NEW)
 - `frontend/js/app.js` (error handling)
 
 **Create SVG Placeholder:**
+
 ```svg
 <!-- frontend/images/wine-placeholder.svg -->
 <svg width="300" height="450" xmlns="http://www.w3.org/2000/svg">
@@ -456,6 +481,7 @@ Add comprehensive image styles:
 ```
 
 **Enhanced Error Handling in Cards:**
+
 ```javascript
 // Add to image element creation
 onerror="
@@ -472,6 +498,7 @@ onerror="
 ```
 
 **Fallback Chain:**
+
 1. Original `wine.image_url` from database
 2. Generic SVG placeholder
 3. Emoji fallback (🍷)
@@ -481,9 +508,11 @@ onerror="
 ### Phase 4: Testing & Validation
 
 #### 10. Test Performance and Optimization
+
 **Comprehensive Testing Checklist:**
 
 **✅ Virtual Scroll Performance:**
+
 - [ ] Load inventory with 200+ wines
 - [ ] Open Chrome DevTools Performance tab
 - [ ] Record while scrolling rapidly
@@ -491,24 +520,28 @@ onerror="
 - [ ] Check: Only visible items have rendered images
 
 **✅ Image Optimization:**
+
 - [ ] Verify `loading="lazy"` attribute present
 - [ ] Check Network tab: images load as cards enter viewport
 - [ ] Confirm WebP format used (if browser supports)
 - [ ] Test retry logic: throttle network, verify 3 retry attempts
 
 **✅ View Modes:**
+
 - [ ] Test catalog grid view with images
 - [ ] Test catalog list view with thumbnails
 - [ ] Test catalog detail view with large images
 - [ ] Verify layout doesn't break in any view
 
 **✅ Network Conditions:**
+
 - [ ] Throttle to "Slow 3G" in DevTools
 - [ ] Verify skeleton loaders appear
 - [ ] Confirm smooth fade-in transitions
 - [ ] Check placeholder appears for failed loads
 
 **✅ Memory Usage:**
+
 - [ ] Record heap snapshot with 500+ wines
 - [ ] Scroll through entire list
 - [ ] Take second snapshot
@@ -516,6 +549,7 @@ onerror="
 - [ ] Check: Memory increase < 50MB
 
 **✅ Backend Image Search:**
+
 - [ ] Create new wine without image_url
 - [ ] Verify API called to search for image
 - [ ] Check database: image_url stored
@@ -523,12 +557,14 @@ onerror="
 - [ ] Verify wine creation succeeds even if image search fails
 
 **✅ Responsive Design:**
+
 - [ ] Test on mobile viewport (375px)
 - [ ] Test on tablet viewport (768px)
 - [ ] Test on desktop (1920px)
 - [ ] Verify images scale appropriately
 
 **✅ Accessibility:**
+
 - [ ] Verify all images have descriptive `alt` text
 - [ ] Test with screen reader (VoiceOver/NVDA)
 - [ ] Check keyboard navigation works with images
@@ -539,6 +575,7 @@ onerror="
 ## Dependencies & Environment
 
 ### Backend Dependencies
+
 ```json
 {
   "unsplash-js": "^7.0.19"
@@ -546,19 +583,23 @@ onerror="
 ```
 
 ### Environment Variables
+
 ```bash
 # .env
 UNSPLASH_ACCESS_KEY=your_access_key_here
 ```
 
 **Get Unsplash API Key:**
-1. Sign up at https://unsplash.com/developers
+
+1. Sign up at <https://unsplash.com/developers>
 2. Create new application
 3. Copy Access Key
 4. Add to `.env` file
 
 ### Frontend Dependencies
+
 No new dependencies needed - all infrastructure exists:
+
 - `ImageOptimizer` class in `frontend/js/image-optimizer.js`
 - `VirtualScroll` class in `frontend/js/ui.js`
 
@@ -567,18 +608,21 @@ No new dependencies needed - all infrastructure exists:
 ## Success Criteria
 
 ✅ **Functional:**
+
 - Wine cards display bottle images in both inventory and catalog
 - Images load lazily as cards enter viewport
 - New wines automatically get images from web search
 - Graceful fallbacks for missing/failed images
 
 ✅ **Performance:**
+
 - 60fps scrolling maintained with 200+ wines
 - Virtual scroll working correctly with image heights
 - Memory usage remains stable during scrolling
 - Images use WebP format where supported
 
 ✅ **User Experience:**
+
 - Smooth skeleton → image transitions
 - No layout shifts during image loading
 - Responsive images on all screen sizes
@@ -589,22 +633,26 @@ No new dependencies needed - all infrastructure exists:
 ## Implementation Timeline
 
 **Phase 1 (Backend):** ~2-3 hours
+
 - Database schema update (30 min)
 - Image service implementation (1.5 hours)
 - API integration (1 hour)
 
 **Phase 2 (Frontend - Rendering):** ~3-4 hours
+
 - Inventory card images (1 hour)
 - Catalog card images (1.5 hours)
 - ImageOptimizer integration (1 hour)
 - Virtual scroll updates (30 min)
 
 **Phase 3 (Styling):** ~1-2 hours
+
 - CSS implementation (1 hour)
 - Placeholder creation (30 min)
 - Error handling polish (30 min)
 
 **Phase 4 (Testing):** ~2-3 hours
+
 - Performance testing (1 hour)
 - Cross-browser testing (1 hour)
 - Bug fixes and refinement (1 hour)
@@ -616,24 +664,29 @@ No new dependencies needed - all infrastructure exists:
 ## Notes & Considerations
 
 ### Image Source Options
+
 **Recommended: Unsplash API**
+
 - ✅ Free tier: 50 requests/hour
 - ✅ High-quality images
 - ✅ Good search API
 - ✅ No attribution required in UI
 
 **Alternatives:**
+
 - Pexels API (200 requests/hour, attribution required)
 - Pixabay API (Unlimited, lower quality)
 - Wine.com scraping (legal concerns, not recommended)
 
 ### Performance Optimization Tips
+
 1. **Preload critical images**: First 10 visible wines
 2. **Connection hints**: Add `<link rel="preconnect">` for image CDN
 3. **Adaptive loading**: Lower quality on slow connections
 4. **Progressive images**: Consider LQIP (Low Quality Image Placeholder)
 
 ### Future Enhancements
+
 - 📸 Upload custom wine photos
 - 🤖 AI-powered image relevance scoring
 - 🌐 Multiple image sources/CDNs
@@ -645,17 +698,20 @@ No new dependencies needed - all infrastructure exists:
 ## Related Files
 
 ### Must Modify
+
 - ✏️ `backend/db/schema.sql` - Add image_url column
 - ✏️ `backend/api/routes.js` - Integrate image lookup
 - ✏️ `frontend/js/app.js` - Add images to cards
 - ✏️ `frontend/css/styles.css` - Style image containers
 
 ### Must Create
+
 - 🆕 `backend/services/imageService.js` - Image search service
 - 🆕 `frontend/images/wine-placeholder.svg` - Fallback image
 - 🆕 `backend/migrations/add_image_url.js` - Schema migration
 
 ### Reference
+
 - 📖 `frontend/js/image-optimizer.js` - Existing optimizer
 - 📖 `frontend/js/ui.js` - VirtualScroll implementation
 - 📖 `frontend/IMAGE_OPTIMIZATION_README.md` - Documentation
@@ -665,6 +721,7 @@ No new dependencies needed - all infrastructure exists:
 ## Questions & Support
 
 If you encounter issues:
+
 1. Check browser console for ImageOptimizer errors
 2. Verify Unsplash API key is valid
 3. Test with network throttling disabled

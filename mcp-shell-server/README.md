@@ -1,20 +1,21 @@
 # MCP Shell Server
- 
+
  A secure Model Context Protocol (MCP) server for executing shell commands with safety controls.
- 
+
  > Notice
  >
  > The primary MCP platform for SommOS is the external Agent-MCP suite, which exposes an SSE server at `http://localhost:8080/sse` and stores state in:
  > `/Users/thijs/Documents/SommOS/.agent/mcp_state.db`.
  >
  > This local `mcp-shell-server` is optional. Prefer the Agent-MCP suite for production and day-to-day operations. Keep this server only if you explicitly need an embedded stdio MCP in this repository. Otherwise, archive or disable it to avoid duplication and operator confusion.
- 
- ## Features
+
+## Features
 
 - **Secure Command Execution**: Commands run with timeout limits and output size restrictions
 - **Directory Sandboxing**: Only allowed directories can be used for command execution
 - **Command Sanitization**: Basic protection against dangerous command patterns
 - **Detailed Output**: Captures stdout, stderr, and exit codes
+
 ## Security Features
 
 1. **Allowed Directories**: Commands can only execute in:
@@ -39,13 +40,16 @@ chmod +x index.js
 ## Tools Provided
 
 ### 1. `execute_shell_command`
+
 Execute a shell command with security controls.
 
 **Arguments:**
+
 - `command` (required): The shell command to execute
 - `working_directory` (optional): Directory to run the command in
 
 **Example:**
+
 ```json
 {
   "command": "ls -la",
@@ -54,9 +58,11 @@ Execute a shell command with security controls.
 ```
 
 ### 2. `get_working_directory`
+
 Get information about the current working directory and security settings.
 
 **Example:**
+
 ```json
 {}
 ```
@@ -111,15 +117,18 @@ const ALLOWED_DIRS = [
 ## Troubleshooting
 
 **Server doesn't start:**
+
 - Check Node.js version (requires 18+)
 - Ensure dependencies are installed: `npm install`
 - Verify the script is executable: `chmod +x index.js`
 
 **Commands fail:**
+
 - Check if the working directory is in ALLOWED_DIRS
 - Verify the command doesn't contain blocked patterns
 - Check command syntax is valid for your shell (zsh)
 
 **Permission denied:**
+
 - Ensure the working directory has proper permissions
 - Check that files being executed are executable (`chmod +x`)

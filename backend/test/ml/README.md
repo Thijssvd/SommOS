@@ -5,6 +5,7 @@ Comprehensive test suite for the SommOS Machine Learning recommendation system.
 ## Overview
 
 This test suite provides thorough coverage of all ML components including:
+
 - **ML Model Manager**: Model training, evaluation, versioning, and A/B testing
 - **Collaborative Filtering Engine**: User-based and item-based recommendations with cold-start handling
 - **Content-Based Engine**: Feature extraction, similarity calculation, and content-based recommendations
@@ -26,12 +27,14 @@ test/ml/
 ## Running Tests
 
 ### Run All Tests
+
 ```bash
 cd backend/test/ml
 node run_all_tests.js
 ```
 
 ### Run Individual Test Suites
+
 ```bash
 # ML Model Manager tests
 node ml_model_manager.test.js
@@ -49,6 +52,7 @@ node integration.test.js
 ## Test Coverage
 
 ### ML Model Manager Tests (10 tests)
+
 1. Model training with sample dataset
 2. Content-based model training
 3. Model versioning
@@ -61,6 +65,7 @@ node integration.test.js
 10. Statistical significance calculation
 
 ### Collaborative Filtering Engine Tests (15 tests)
+
 1. User-based recommendations for active users
 2. Item-based recommendations
 3. Cold-start user handling (zero ratings)
@@ -78,6 +83,7 @@ node integration.test.js
 15. Update with new ratings
 
 ### Content-Based Engine Tests (20 tests)
+
 1. Feature extraction from wine attributes
 2. Wine-to-wine similarity calculation
 3. Recommendations based on user profile
@@ -100,6 +106,7 @@ node integration.test.js
 20. Performance with large wine catalog
 
 ### Integration Tests (10 tests)
+
 1. End-to-end recommendation flow
 2. Hybrid recommendation blending
 3. Cold-start user handling across engines
@@ -114,15 +121,18 @@ node integration.test.js
 ## Test Utilities
 
 ### generateTestData(options)
+
 Generates realistic test data for wines, users, and ratings.
 
 **Options:**
+
 - `numUsers`: Number of users to generate (default: 50)
 - `numWines`: Number of wines to generate (default: 100)
 - `numRatings`: Number of ratings to generate (default: 500)
 - `sparsityFactor`: Controls rating distribution sparsity (0-1, default: 0.7)
 
 **Returns:**
+
 ```javascript
 {
     users: [...],    // Array of user objects
@@ -132,18 +142,22 @@ Generates realistic test data for wines, users, and ratings.
 ```
 
 ### MockDatabase
+
 A lightweight mock database for testing that implements the necessary query interfaces.
 
 **Usage:**
+
 ```javascript
 const testData = generateTestData({ numUsers: 20, numWines: 30, numRatings: 150 });
 const db = new MockDatabase(testData);
 ```
 
 ### TestRunner
+
 Simple test runner class with assertion helpers.
 
 **Usage:**
+
 ```javascript
 const runner = new TestRunner('My Test Suite');
 
@@ -158,12 +172,14 @@ const success = await runner.run();
 ## Test Data Characteristics
 
 ### Users
+
 - Realistic user IDs and names
 - Preference tags (red, white, sparkling, sweet, dry, etc.)
 - Geographic locations
 - Activity levels vary (cold-start to very active)
 
 ### Wines
+
 - Multiple wine types (red, white, rosé, sparkling)
 - Various regions (Bordeaux, Burgundy, Tuscany, Napa Valley, etc.)
 - Grape varieties (Cabernet Sauvignon, Pinot Noir, Chardonnay, etc.)
@@ -173,6 +189,7 @@ const success = await runner.run();
 - Stock quantities (0-100 bottles)
 
 ### Ratings
+
 - Scale of 1-5 stars
 - Realistic timestamp distribution
 - Configurable sparsity to simulate real-world conditions
@@ -181,17 +198,20 @@ const success = await runner.run();
 ## Expected Behavior
 
 ### Cold-Start Scenarios
+
 - **Zero ratings**: System falls back to popularity-based recommendations
 - **1-2 ratings**: Blended approach with low confidence
 - **3-5 ratings**: Increasing collaborative filtering weight
 - **5+ ratings**: Full collaborative filtering with high confidence
 
 ### Similarity Thresholds
+
 - Minimum similarity: 0.3 (configurable)
 - Minimum common items: 2 (configurable)
 - Minimum similar users: 3 (configurable)
 
 ### Performance Expectations
+
 - Model initialization: < 5 seconds for 200 wines
 - Recommendation generation: < 2 seconds
 - Model training: < 10 seconds for 250 ratings
@@ -209,6 +229,7 @@ To integrate with CI/CD pipelines:
 ```
 
 Then run:
+
 ```bash
 npm run test:ml
 ```
@@ -220,6 +241,7 @@ To debug individual tests:
 1. Add console.log statements in test functions
 2. Run individual test files instead of the full suite
 3. Use Node.js debugger:
+
    ```bash
    node --inspect-brk ml_model_manager.test.js
    ```
@@ -227,6 +249,7 @@ To debug individual tests:
 ## Future Enhancements
 
 Potential test additions:
+
 - [ ] Performance benchmarking tests
 - [ ] Stress tests with very large datasets (1000+ users, 5000+ wines)
 - [ ] Recommendation quality tests (human evaluation simulation)
@@ -239,6 +262,7 @@ Potential test additions:
 ## Contributing
 
 When adding new tests:
+
 1. Follow the existing test structure
 2. Use descriptive test names
 3. Include appropriate assertions

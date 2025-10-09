@@ -19,6 +19,7 @@ SommOS now supports guest access, allowing temporary, read-only access to the wi
 As a guest user, you have **read-only access**:
 
 ✅ **You can:**
+
 - Browse the complete wine collection
 - View wine details, tasting notes, and regions
 - Search and filter wines
@@ -26,6 +27,7 @@ As a guest user, you have **read-only access**:
 - See inventory levels and locations
 
 ❌ **You cannot:**
+
 - Add, edit, or delete wines
 - Modify inventory quantities
 - Access procurement features
@@ -36,6 +38,7 @@ As a guest user, you have **read-only access**:
 ### Session Duration
 
 Guest sessions are designed for temporary access:
+
 - **Access Token**: 10 minutes (automatically refreshed)
 - **Refresh Token**: 4 hours maximum
 - After 4 hours, you'll need to log in again with your event code
@@ -65,12 +68,14 @@ curl -X POST http://your-server.com/api/auth/invite \
 ```
 
 **Parameters:**
+
 - `email` (required): Guest email (used for identification)
 - `role` (required): Must be "guest"
 - `expires_in_hours` (optional): Hours until code expires (default: 24)
 - `pin` (optional): 4-6 digit PIN for additional security
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -186,22 +191,27 @@ CREATE TABLE Invites (
 ## Troubleshooting
 
 ### "Event code not found or has expired"
+
 - **Cause**: Code is invalid or past expiration time
 - **Solution**: Request a new code from the crew
 
 ### "This event code requires a PIN"
+
 - **Cause**: The invite was created with PIN protection
 - **Solution**: Check the "This code requires a PIN" box and enter the PIN
 
 ### "Incorrect PIN"
+
 - **Cause**: Wrong PIN entered
 - **Solution**: Verify PIN with event organizer
 
 ### "Session has expired"
+
 - **Cause**: 4-hour guest session limit reached
 - **Solution**: Re-enter your event code to start a new session
 
 ### Guest cannot see certain features
+
 - **Expected**: Guests have read-only access by design
 - **Solution**: Contact crew to upgrade to full member access
 
@@ -222,6 +232,7 @@ CREATE TABLE Invites (
 ## Support
 
 For questions or issues with guest access:
+
 1. Check this documentation
 2. Contact your yacht crew or system administrator
 3. Review logs in `/backend/logs/` for technical issues

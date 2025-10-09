@@ -10,7 +10,7 @@ created → initialized → active → (terminated)
   📝          ⚙️          ✅
 ```
 
-### Your Agents Right Now:
+### Your Agents Right Now
 
 | Agent | Current Status | Needs Action |
 |-------|---------------|--------------|
@@ -27,6 +27,7 @@ created → initialized → active → (terminated)
 ## What Each Status Means
 
 ### 1. **created** (3 agents)
+
 - ✅ Agent registered in database
 - ✅ Token generated
 - ✅ Basic configuration set
@@ -34,11 +35,13 @@ created → initialized → active → (terminated)
 - ❌ NOT ready to work
 
 **What's missing:**
+
 - Agent initialization context
 - Capability configuration details
 - Task assignment setup
 
 ### 2. **initialized** (2 agents)
+
 - ✅ Agent registered
 - ✅ Agent configured with capabilities
 - ✅ Context loaded
@@ -46,11 +49,13 @@ created → initialized → active → (terminated)
 - ❌ Cannot accept tasks yet
 
 **What's missing:**
+
 - Activation command
 - Connection to MCP server
 - Task queue access
 
 ### 3. **active** (0 agents - your goal!)
+
 - ✅ Agent fully operational
 - ✅ Connected to MCP server
 - ✅ Can accept and execute tasks
@@ -63,7 +68,7 @@ created → initialized → active → (terminated)
 
 ### Option 1: Through Dashboard (Recommended)
 
-The dashboard at http://localhost:3847 should have an interface to:
+The dashboard at <http://localhost:3847> should have an interface to:
 
 1. **Navigate to "Agents" tab**
 2. **Click on an agent** (e.g., "test-specialist-sommos")
@@ -105,7 +110,6 @@ If the dashboard doesn't have activation buttons, you can initialize agents manu
 
 ### Option 3: Check MCP Server API
 
-
 ```bash
 # Check available endpoints
 curl -s http://localhost:8080/api/agents | jq .
@@ -116,29 +120,34 @@ TOKEN=$(cat /Users/thijs/Documents/SommOS/.agent/admin_token.txt)
 curl -X POST http://localhost:8080/api/agents/test-specialist-sommos/activate \
   -H "Authorization: Bearer $TOKEN"
 ```
+
 {{ ... }}
 
 ## Quick Diagnostic Commands
 
 ### Check Current Agent Status
+
 ```bash
 sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db \
   "SELECT agent_id, status, updated_at FROM agents ORDER BY agent_id;"
 ```
 
 ### Check Agent Capabilities
+
 ```bash
 sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db \
   "SELECT agent_id, capabilities FROM agents;"
 ```
 
 ### Check Agent Tokens
+
 ```bash
 sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db \
   "SELECT agent_id, token FROM agents;"
 ```
 
 ### Watch for Status Changes
+
 ```bash
 watch -n 2 "sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db \
   'SELECT agent_id, status FROM agents;'"
@@ -191,32 +200,37 @@ Once an agent moves to **"active"** status:
 ### Agents Won't Activate
 
 **Check MCP Server Logs:**
+
 ```bash
 tail -50 /Users/thijs/Documents/SommOS/.agent/logs/mcp_server.log
 ```
 
 **Common Issues:**
+
 1. **Admin token incorrect** - Verify: `cat /Users/thijs/Documents/SommOS/.agent/admin_token.txt`
 2. **Server not responding** - Restart: `pkill -f agent_mcp.cli && cd /Users/thijs/Documents/SommOS/Agent-MCP && uv run -m agent_mcp.cli --port 8080 --project-dir /Users/thijs/Documents/SommOS --no-tui &`
 3. **Database locked** - Wait a moment and retry
-4. **Dashboard disconnected** - Refresh browser at http://localhost:3847
+4. **Dashboard disconnected** - Refresh browser at <http://localhost:3847>
 
 ### Agents Stuck in "initialized"
 
 If agents are stuck in "initialized" state:
 
 1. **Check if activation endpoint exists:**
+
    ```bash
    curl -s http://localhost:8080/health | jq .
    ```
 
 2. **Try manual status update (temporary):**
+
    ```bash
    sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db \
      "UPDATE agents SET status='active', updated_at=datetime('now') WHERE agent_id='test-specialist-sommos';"
    ```
 
 3. **Restart MCP server to reload agents:**
+
    ```bash
    pkill -f agent_mcp.cli
    cd /Users/thijs/Documents/SommOS/Agent-MCP
@@ -233,9 +247,9 @@ If agents are stuck in "initialized" state:
 
 **None of your agents are currently working - all need to reach "active" status.**
 
-### Quick Action Plan:
+### Quick Action Plan
 
-1. ✅ **Check Dashboard** - Open http://localhost:3847
+1. ✅ **Check Dashboard** - Open <http://localhost:3847>
 2. ✅ **Look for Activation Interface** - Find agent activation buttons
 3. ✅ **Use Admin Token** - from `/.agent/admin_token.txt`
 4. ✅ **Activate All 5 Agents** - One by one
@@ -245,7 +259,7 @@ If agents are stuck in "initialized" state:
 ---
 
 **Admin Token**: Stored in `/.agent/admin_token.txt`  
-**Dashboard**: http://localhost:3847  
+**Dashboard**: <http://localhost:3847>  
 **Monitor**: `./monitor_agents.sh`
 
 The dashboard is your best option for activation - it should have a visual interface for this!

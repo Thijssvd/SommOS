@@ -13,6 +13,7 @@ npm run setup:db:clean
 ```
 
 This command will:
+
 1. **Delete** the existing database (if any)
 2. **Create** a fresh database with schema
 3. **Run** all migrations
@@ -57,6 +58,7 @@ sqlite3 ./data/sommos.db "SELECT email, role FROM Invites WHERE role = 'guest';"
 ```
 
 Expected output:
+
 ```
 Wines: 994
 Vintages: 994
@@ -69,6 +71,7 @@ Guest codes: 2 (guest-yacht@sommos.local, guest-vip@sommos.local)
 ### Problem
 
 The database had **4,970 wine records** instead of **994** due to:
+
 - Running seed scripts multiple times
 - The seed script using `INSERT OR IGNORE` which reuses existing records but doesn't clean old ones
 - Different variations of the same wine being inserted with slightly different data
@@ -76,6 +79,7 @@ The database had **4,970 wine records** instead of **994** due to:
 ### Solution
 
 Always use `npm run setup:db:clean` to ensure a fresh database. This command:
+
 - ✅ Removes all old data
 - ✅ Creates a clean slate
 - ✅ Ensures exactly 994 wines from CSV
@@ -94,10 +98,11 @@ The E2E tests require these guest event codes:
 
 | Event Code | PIN | Email | Purpose |
 |------------|-----|-------|---------|
-| `YACHT2025` | None | guest-yacht@sommos.local | Guest login without PIN |
-| `VIP2025` | `123456` | guest-vip@sommos.local | Guest login with PIN |
+| `YACHT2025` | None | <guest-yacht@sommos.local> | Guest login without PIN |
+| `VIP2025` | `123456` | <guest-vip@sommos.local> | Guest login with PIN |
 
 These are automatically created by:
+
 - `npm run setup:db:clean`
 - `npm run seed:guests`
 
@@ -154,6 +159,7 @@ npm run setup:db:clean
 ## Database Schema
 
 The database includes:
+
 - **Core Tables**: Wines, Vintages, Stock, Ledger
 - **Auth Tables**: Users, Roles, RefreshTokens, Invites
 - **Learning Tables**: Memories, LearningPairingFeedback, etc.

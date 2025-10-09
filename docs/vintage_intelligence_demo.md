@@ -5,6 +5,7 @@ This document demonstrates the new Vintage Intelligence Service functionality in
 ## Overview
 
 The Vintage Intelligence Service automatically enriches wine data with:
+
 - Weather analysis and vintage summaries
 - Professional 3-sentence vintage narratives (AI-powered with fallback templates)
 - Weather-adjusted quality scoring
@@ -14,6 +15,7 @@ The Vintage Intelligence Service automatically enriches wine data with:
 ## Prerequisites
 
 1. Start the SommOS server:
+
 ```bash
 cd /Users/thijs/Desktop/SommOS
 npm run dev
@@ -75,6 +77,7 @@ curl -X GET http://localhost:3001/api/vintage/analysis/1
 ```
 
 Expected response:
+
 ```json
 {
   "success": true,
@@ -140,6 +143,7 @@ curl -X GET http://localhost:3001/api/vintage/procurement-recommendations
 ```
 
 Expected response:
+
 ```json
 {
   "success": true,
@@ -226,7 +230,7 @@ The service works in two modes:
 1. **AI Mode**: Uses DeepSeek (primary) or OpenAI for sophisticated vintage summaries
    - Requires `DEEPSEEK_API_KEY` or `OPENAI_API_KEY` environment variable
    - Generates contextual, professional sommelier language
-   
+
 2. **Template Mode**: Uses built-in template logic (fallback)
    - Works offline without external dependencies
    - Generates structured summaries based on weather data patterns
@@ -246,14 +250,14 @@ The service works in two modes:
 
 ### Common Issues
 
-1. **"Weather analysis unavailable"**: 
+1. **"Weather analysis unavailable"**:
    - Service falls back to template summaries
    - Check network connectivity for external weather data
-   
+
 2. **Empty procurement recommendations**:
    - Ensure wines have stock quantities > 0
    - Check that vintage data includes year information
-   
+
 3. **Database errors**:
    - Verify database schema is up to date
    - Run `npm run setup:db` if needed
@@ -261,6 +265,7 @@ The service works in two modes:
 ### Logs
 
 Monitor server logs for enrichment activity:
+
 ```bash
 # Watch logs during wine addition
 tail -f server.log | grep "Enriching wine data"
@@ -276,6 +281,7 @@ tail -f server.log | grep "Enriching wine data"
 ## Support
 
 For questions or issues with the Vintage Intelligence Service:
+
 1. Check server logs for error details
 2. Verify API responses match expected format
 3. Test with fallback template mode if AI features aren't working

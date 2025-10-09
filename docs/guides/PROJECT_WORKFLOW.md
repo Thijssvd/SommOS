@@ -1,9 +1,11 @@
 # SommOS Project Workflow & Development History
 
 ## Project Overview
+
 **SommOS** (Sommelier Operating System) is a luxury yacht wine management system combining AI-powered wine pairing, inventory management, procurement assistance, and comprehensive wine cataloging.
 
 ### Development Timeline
+
 - **Initial Setup**: September 24, 2025
   - Core backend architecture established
   - SQLite database with wine inventory system
@@ -18,6 +20,7 @@
   - Resolved CORS and CSP configuration issues
 
 ## Technical Stack
+
 - **Backend**: Node.js + Express.js
 - **Database**: SQLite with comprehensive wine schema
 - **Frontend**: Vanilla JavaScript PWA
@@ -28,12 +31,14 @@
 ## Key Features Implemented
 
 ### ✅ Core Functionality
+
 - **Wine Inventory Management**: Complete CRUD operations with real-time stock tracking
 - **AI-Powered Wine Pairing**: Intelligent recommendations with fallback to traditional pairing
 - **Procurement Assistant**: Opportunity analysis, purchase decision tools, order generation
 - **Wine Catalog**: Multiple view modes (grid, list, detail) with comprehensive filtering
 
 ### ✅ Technical Features
+
 - **Offline-First Architecture**: IndexedDB for local storage
 - **Progressive Web App**: Mobile-optimized with service worker
 - **Real-time Updates**: Dynamic inventory and pairing updates
@@ -41,6 +46,7 @@
 - **Responsive Design**: Yacht-optimized interface
 
 ### 🔄 In Progress
+
 - Enhanced Dashboard analytics
 - Wine Detail Modal with vintage intelligence
 - Settings and Configuration panel
@@ -50,6 +56,7 @@
 ## Development Environment Setup
 
 ### Prerequisites
+
 ```bash
 # Node.js (v16+)
 node --version  # v24.8.0
@@ -63,6 +70,7 @@ cp .env.example .env
 ```
 
 ### Development Workflow
+
 ```bash
 # Start backend server
 cd backend && node server.js
@@ -82,6 +90,7 @@ npm run import:cellar
 ```
 
 ### Project Structure
+
 ```
 SommOS/
 ├── backend/
@@ -112,38 +121,46 @@ SommOS/
 ## API Endpoints Implemented
 
 ### Wine Management
+
 - `GET /api/inventory/stock` - Get current inventory
 - `POST /api/inventory/consume` - Record wine consumption
 - `POST /api/inventory/reserve` - Reserve wine for service
 - `POST /api/inventory/move` - Move wine between locations
 
 ### Wine Pairing
+
 - `POST /api/pairing/recommend` - AI-powered pairing recommendations
 - `POST /api/pairing/quick` - Quick pairing for immediate service
 
 ### Procurement
+
 - `GET /api/procurement/opportunities` - Get procurement opportunities
 - `POST /api/procurement/analyze` - Analyze purchase decisions
 - `POST /api/procurement/order` - Generate purchase orders
 
 ### Wine Catalog
+
 - `GET /api/wines` - Browse wine catalog
 - `GET /api/wines/:id` - Get detailed wine information
 - `POST /api/wines` - Add new wine with vintage intelligence
 
 ### System
+
 - `GET /api/system/health` - System health check
 
 ## Development Issues Resolved
 
 ### Wine Pairing Not Displaying (Resolved)
+
 **Issue**: API returning data but frontend not showing results
-**Root Cause**: 
+**Root Cause**:
+
 1. API timeout (10s → 30s for AI processing)
 2. Content Security Policy blocking external resources
 3. Frontend error handling improvements needed
 
 **Solution**:
+
 ```javascript
 // Extended timeout for AI processing
 this.timeout = 30000; // 30 seconds
@@ -155,6 +172,7 @@ if (error.name === 'AbortError') {
 ```
 
 **CSP Configuration**:
+
 ```javascript
 contentSecurityPolicy: {
     directives: {
@@ -168,6 +186,7 @@ contentSecurityPolicy: {
 ```
 
 ### Frontend-Backend Connection (Resolved)
+
 **Issue**: Offline mode showing despite backend running
 **Solution**: Updated API baseURL configuration for development vs production
 
@@ -185,6 +204,7 @@ if (isDevelopment) {
 ## Current System Status
 
 ### Database Stats (as of Sept 25, 2025)
+
 - **Total Wines**: 96 unique wine labels
 - **Total Vintages**: 774 different vintage years
 - **Total Bottles**: 2,012 bottles in inventory
@@ -192,6 +212,7 @@ if (isDevelopment) {
 - **Locations**: Multiple storage areas (Main Cellar, Service Bar, etc.)
 
 ### AI Integration Status
+
 - **OpenAI API**: Configured but requires valid key for full AI features
 - **Fallback System**: Traditional pairing algorithm working
 - **Vintage Intelligence**: Weather data integration ready
@@ -200,6 +221,7 @@ if (isDevelopment) {
 ## Deployment Configuration
 
 ### Environment Variables
+
 ```bash
 # Core Configuration
 NODE_ENV=development
@@ -219,6 +241,7 @@ JWT_SECRET=your_jwt_secret_here
 ```
 
 ### Production Deployment
+
 - Docker configuration ready
 - Health monitoring implemented
 - HTTPS redirect configured
@@ -228,18 +251,21 @@ JWT_SECRET=your_jwt_secret_here
 ## Development Best Practices
 
 ### Code Organization
+
 - **Modular Architecture**: Separate concerns (API, Logic, UI)
 - **Error Handling**: Comprehensive try-catch with user feedback
 - **Async/Await**: Modern JavaScript patterns throughout
 - **Progressive Enhancement**: Works without AI when needed
 
 ### Testing Strategy
+
 - **API Testing**: Automated endpoint testing
 - **Integration Testing**: Frontend-backend communication
 - **Error Scenarios**: Network failures, timeouts, invalid data
 - **Cross-browser**: PWA compatibility testing
 
 ### Performance Optimization
+
 - **Lazy Loading**: Large datasets paginated
 - **Caching**: API responses cached where appropriate
 - **Offline Support**: Critical features work offline
@@ -248,18 +274,21 @@ JWT_SECRET=your_jwt_secret_here
 ## Next Development Phases
 
 ### Phase 2: Enhanced Analytics
+
 - Advanced reporting system
 - Consumption analytics
 - Procurement ROI analysis
 - Custom dashboard widgets
 
 ### Phase 3: Advanced Features
+
 - Multi-user support with roles
 - Advanced wine scoring algorithms
 - Integration with wine databases
 - Mobile app companion
 
 ### Phase 4: Enterprise Features
+
 - Multi-vessel management
 - Supplier integration APIs
 - Advanced inventory forecasting
@@ -268,12 +297,14 @@ JWT_SECRET=your_jwt_secret_here
 ## Troubleshooting Guide
 
 ### Common Issues
+
 1. **"Running in offline mode"**: Check backend server status and API configuration
 2. **Pairing timeout errors**: Verify OpenAI API key and network connection
 3. **Empty inventory**: Run `npm run seed:data` to populate test data
 4. **CORS errors**: Ensure backend CORS configuration includes frontend origin
 
 ### Debug Commands
+
 ```bash
 # Check server status
 curl http://localhost:3001/api/system/health

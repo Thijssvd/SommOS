@@ -5,12 +5,14 @@
 All MCP servers have been successfully installed and configured for your SommOS project!
 
 ### 1. **Playwright** 🎭
+
 - **Version**: 0.0.41
 - **Purpose**: Browser automation (Chrome, Firefox, Safari)
 - **Capabilities**: Screenshots, page navigation, element interactions, network monitoring
 - **Command**: `mcp-server-playwright`
 
 ### 2. **Filesystem** 📁
+
 - **Version**: 2025.8.21
 - **Purpose**: Secure file operations for your SommOS project
 - **Capabilities**: Read, write, search files with access controls
@@ -18,18 +20,21 @@ All MCP servers have been successfully installed and configured for your SommOS 
 - **Command**: `mcp-server-filesystem`
 
 ### 3. **Sequential Thinking** 🧠
+
 - **Version**: 2025.7.1
 - **Purpose**: Dynamic problem-solving through thought sequences
 - **Capabilities**: Break down complex problems, reflective thinking
 - **Command**: `mcp-server-sequential-thinking`
 
 ### 4. **Memory** 💾
+
 - **Version**: 2025.9.25
 - **Purpose**: Knowledge graph-based persistent memory
 - **Capabilities**: Long-term context retention, knowledge graph storage
 - **Command**: `mcp-server-memory`
 
 ### 5. **GitHub** 🐙
+
 - **Version**: 2025.4.8 (deprecated but functional)
 - **Purpose**: GitHub API integration
 - **Capabilities**: Repository management, issues, PRs, file operations
@@ -78,11 +83,12 @@ Located at: `~/Library/Application Support/Warp/mcp_config.json`
 
 To use the GitHub MCP server, you need a personal access token:
 
-1. Go to: https://github.com/settings/tokens
+1. Go to: <https://github.com/settings/tokens>
 2. Click "Generate new token (classic)"
 3. Select scopes: `repo`, `read:org`, `read:user`
 4. Copy the token
 5. Add it to the config file:
+
    ```bash
    # Edit the config
    nano ~/Library/Application\ Support/Warp/mcp_config.json
@@ -104,29 +110,34 @@ To use the GitHub MCP server, you need a personal access token:
 ## 📚 Use Cases for SommOS Development
 
 ### Filesystem Server
+
 - Navigate your backend/frontend code
 - Read configuration files (.env, package.json)
 - Update documentation
 - Search across your codebase
 
 ### Sequential Thinking
+
 - Debug complex wine pairing algorithms
 - Optimize database queries
 - Design new features step-by-step
 - Analyze system architecture
 
 ### Memory
+
 - Remember project context across sessions
 - Store important decisions and patterns
 - Build knowledge about your wine domain
 
 ### Playwright
+
 - Test your PWA offline functionality
 - Screenshot your UI for documentation
 - Automate browser testing
 - Validate responsive design
 
 ### GitHub
+
 - Create and manage issues
 - Review and merge pull requests
 - Check CI/CD status
@@ -135,6 +146,7 @@ To use the GitHub MCP server, you need a personal access token:
 ## 🔧 Troubleshooting
 
 If a server doesn't work:
+
 1. Check installation: `which mcp-server-<name>`
 2. Verify config syntax: `cat ~/Library/Application\ Support/Warp/mcp_config.json | jq`
 3. Restart Warp completely
@@ -143,6 +155,7 @@ If a server doesn't work:
 ## 📦 Installed Binaries
 
 All located in: `/Users/thijs/.nvm/versions/node/v20.19.5/bin/`
+
 - `mcp-server-playwright`
 - `mcp-server-filesystem`
 - `mcp-server-sequential-thinking`

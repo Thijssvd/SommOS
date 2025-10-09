@@ -1,6 +1,7 @@
 # Guest Permission Audit Findings
 
 ## Audit Date: 2025-10-03
+
 ## Auditor: AI Code Review Assistant
 
 ---
@@ -16,31 +17,37 @@ This audit systematically reviewed the SommOS application for guest user permiss
 ### ✅ Elements with Proper Role Restrictions
 
 #### Navigation Elements
+
 - **Line 174**: Procurement nav button - `data-role-allow="admin,crew"` ✓
 - **Line 193**: Sync button - `data-role-allow="admin,crew"` ✓
 - **Line 260**: Record Service action card - `data-role-allow="admin,crew"` ✓
 
 #### Dashboard Elements
+
 - **Line 189**: Guest notice - `data-role-allow="guest"` ✓
 
 #### Views
+
 - **Line 531**: Procurement view container - `data-role-allow="admin,crew"` ✓
 
 ### ⚠️ Elements Requiring Review
 
 #### Settings Button
+
 - **Line 196**: `<button class="nav-action" id="settings-btn" title="Settings">`
 - **Status**: NO role restriction attribute
 - **Risk Level**: MEDIUM
 - **Recommendation**: Add `data-role-allow="admin,crew"` if settings contains sensitive features, OR ensure settings modal filters content by role
 
 #### Procurement View Internal Elements
+
 - **Lines 565-577**: Procurement action buttons with `onclick` attributes
 - **Status**: These buttons call `app.analyzeProcurementOpportunities()`, `app.showPurchaseDecisionTool()`, `app.generatePurchaseOrder()`
 - **Risk Level**: LOW (view itself is role-restricted, but double-check JS functions have guards)
 - **Recommendation**: Verify JavaScript functions have `ensureCrewAccess()` checks
 
 #### Dish Builder Buttons
+
 - **Lines 440-445**: Dish builder utility buttons
 - **Status**: No role restrictions (but these are utility functions, not data-modifying)
 - **Risk Level**: LOW
@@ -53,12 +60,14 @@ This audit systematically reviewed the SommOS application for guest user permiss
 ### ✅ Functions with Proper Permission Checks
 
 #### Permission Guard Functions
+
 - `isGuestUser()` (line 441) - Returns true for guest role ✓
 - `canManageInventory()` (line 445) - Checks for crew/admin role ✓
 - `canManageProcurement()` (line 449) - Checks for crew/admin role ✓
 - `ensureCrewAccess()` (line 453) - Shows toast and returns false for guests ✓
 
 #### Protected Functions
+
 - `reserveWineModal()` (line 1798) - Has `ensureCrewAccess()` check ✓
 - `consumeWineModal()` (line 1846) - Has `ensureCrewAccess()` check ✓
 - `showConsumptionModal()` (line 2769) - Has `ensureCrewAccess()` check ✓
@@ -73,12 +82,14 @@ This audit systematically reviewed the SommOS application for guest user permiss
 ### ⚠️ Functions Requiring Review
 
 #### Navigation Function
+
 - `navigateToView('procurement')` (line 1166)
 - **Status**: Has check at line 1167-1170 that blocks procurement for non-crew
 - **Risk Level**: LOW
 - **Recommendation**: Currently protected ✓
 
 #### Settings Function
+
 - Settings button click handler - NOT FOUND in search
 - **Status**: No explicit handler found in app.js
 - **Risk Level**: LOW-MEDIUM
@@ -94,11 +105,13 @@ This audit systematically reviewed the SommOS application for guest user permiss
 ### ✅ Templates with Guest Checks
 
 #### Inventory Module
+
 - `createInventoryWineCard()` in `modules/inventory.js` (lines 61-127)
   - **Status**: Accepts `isGuest` parameter and conditionally renders actions ✓
   - **Line 108-122**: Shows only "View" button for guests, hides "Reserve" and "Consume" ✓
 
 #### Main App
+
 - `createInventoryWineCard()` in `app.js` (lines 1374-1418)
   - **Status**: Checks `isGuest` and renders accordingly ✓
   - **Line 1378-1398**: Conditionally renders action buttons based on guest status ✓
@@ -108,12 +121,14 @@ This audit systematically reviewed the SommOS application for guest user permiss
 ### ⚠️ Templates Requiring Review
 
 #### Procurement Opportunity Cards
+
 - `displayProcurementOpportunities()` in `app.js` (lines 3611-3651)
 - **Status**: Renders procurement cards with action buttons
 - **Risk Level**: LOW (entire procurement view is role-restricted)
 - **Recommendation**: Consider adding conditional rendering even though view is protected
 
 #### Catalog View Wine Cards
+
 - `loadWineCatalog()` and related rendering functions
 - **Status**: NOT FULLY AUDITED (catalog rendering functions not located in provided code)
 - **Risk Level**: LOW-MEDIUM
@@ -172,17 +187,21 @@ The backend has proper role-based middleware (`requireRole('admin')`, `requireRo
 ## 6. Recommendations Summary
 
 ### Critical (Implement Immediately)
+
 - None identified - core permissions are properly implemented
 
 ### High Priority
+
 - None identified
 
 ### Medium Priority
+
 1. **Add role restriction to Settings button** (Line 196 in index.html)
    - Option A: Add `data-role-allow="admin,crew"` to hide for guests
    - Option B: Implement role-filtered settings view
 
 ### Low Priority
+
 1. **Add defensive checks in procurement card templates** (Lines 3611-3651 in app.js)
    - Even though view is protected, add `if (!this.isGuestUser())` around action buttons
 
@@ -198,12 +217,14 @@ The backend has proper role-based middleware (`requireRole('admin')`, `requireRo
 ## 7. Testing Coverage
 
 ### Automated Tests Created ✓
+
 - Navigation restrictions
 - Inventory view restrictions
 - Function invocation blocks
 - Role-based visibility checks
 
 ### Manual Testing Required
+
 - Settings button functionality for guests
 - Catalog view guest experience
 - Browser DevTools resistance testing
@@ -223,11 +244,13 @@ The SommOS application has a solid foundation for guest permission controls:
 ✅ Guest users are properly identified and limited
 
 **Remaining Work:**
+
 - Review settings button access
 - Verify catalog view guest rendering
 - Conduct manual penetration testing
 
 **Risk Assessment:**
+
 - Current implementation provides adequate security
 - Backend protects against API abuse even if frontend is bypassed
 - Minor UI improvements recommended for better user experience

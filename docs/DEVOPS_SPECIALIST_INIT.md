@@ -21,6 +21,7 @@ Build and maintain production-ready infrastructure, monitoring, and deployment a
 The following infrastructure has been successfully implemented:
 
 #### 1. Prometheus Metrics Integration
+
 - **Endpoint**: `GET /metrics` (port 3000)
 - **Metrics Collected**:
   - HTTP request tracking (method, path, status, duration)
@@ -33,11 +34,13 @@ The following infrastructure has been successfully implemented:
   - WebSocket connections
 
 **Files**:
+
 - `backend/core/prometheus_exporter.js` - Metrics collection engine
 - `backend/server.js` - `/metrics` endpoint + HTTP tracking middleware
 - `backend/core/advanced_cache_manager.js` - Prometheus reporting
 
 #### 2. Grafana Monitoring Stack
+
 - **Grafana**: Running on port 3002 (default credentials: admin/admin)
 - **Prometheus**: Running on port 9090 (15-second scrape interval, 15-day retention)
 - **Dashboard**: Pre-configured SommOS Overview with 9 panels
@@ -51,12 +54,14 @@ The following infrastructure has been successfully implemented:
   - WebSocket Connections
 
 **Files**:
+
 - `monitoring/prometheus.yml` - Prometheus configuration
 - `monitoring/docker-compose.monitoring.yml` - Monitoring stack
 - `monitoring/grafana/dashboards/sommos-overview.json` - Dashboard definition
 - `monitoring/README.md` - Complete setup guide (445 lines)
 
 #### 3. Docker Optimization
+
 - **Multi-stage build** (3 stages: dependencies → builder → production)
 - **Image size reduction**: ~40% smaller
 - **Signal handling**: `dumb-init` for proper SIGTERM/SIGINT
@@ -64,9 +69,11 @@ The following infrastructure has been successfully implemented:
 - **Layer caching**: Optimized for faster rebuilds
 
 **Files**:
+
 - `backend/Dockerfile` - Multi-stage optimized build
 
 #### 4. Documentation
+
 - `docs/PROMETHEUS_METRICS.md` (325 lines) - Complete metrics reference
 - `monitoring/README.md` (445 lines) - Monitoring setup and operations guide
 
@@ -74,10 +81,10 @@ The following infrastructure has been successfully implemented:
 
 | Service | URL | Status | Purpose |
 |---------|-----|--------|---------|
-| SommOS Backend | http://localhost:3000 | ✅ Running | API + Metrics |
-| Prometheus | http://localhost:9090 | ✅ Running | Metrics storage |
-| Grafana | http://localhost:3002 | ✅ Running | Dashboards |
-| Agent-MCP Server | http://localhost:8080 | ✅ Running | Multi-agent coordination |
+| SommOS Backend | <http://localhost:3000> | ✅ Running | API + Metrics |
+| Prometheus | <http://localhost:9090> | ✅ Running | Metrics storage |
+| Grafana | <http://localhost:3002> | ✅ Running | Dashboards |
+| Agent-MCP Server | <http://localhost:8080> | ✅ Running | Multi-agent coordination |
 
 ---
 
@@ -86,16 +93,19 @@ The following infrastructure has been successfully implemented:
 ### 🎯 Phase 2: Alerting & Automation (CURRENT FOCUS)
 
 #### Task 1: Set up AlertManager for Prometheus Alerts
+
 **Priority**: CRITICAL  
 **Estimated Time**: 2-3 hours
 
 **Objectives**:
+
 1. Deploy AlertManager container in monitoring stack
 2. Configure critical alert rules for SommOS
 3. Set up notification channels (email, Slack, webhooks)
 4. Test alert firing and resolution
 
 **Alert Rules to Implement**:
+
 - **High Error Rate**: >5% of requests returning 5xx in 5 minutes
 - **Low AI Cache Hit Rate**: <50% cache hits over 10 minutes
 - **Memory Exhaustion**: Node.js heap >90% for 5 minutes
@@ -104,6 +114,7 @@ The following infrastructure has been successfully implemented:
 - **Service Down**: Target down for >1 minute
 
 **Files to Create/Modify**:
+
 ```
 monitoring/
 ├── alertmanager.yml           # AlertManager configuration
@@ -112,6 +123,7 @@ monitoring/
 ```
 
 **Acceptance Criteria**:
+
 - [ ] AlertManager container running and healthy
 - [ ] Alert rules loaded in Prometheus
 - [ ] Test alert fires and notification received
@@ -121,10 +133,12 @@ monitoring/
 ---
 
 #### Task 2: Create GitHub Actions CI/CD Pipeline
+
 **Priority**: HIGH  
 **Estimated Time**: 4-5 hours
 
 **Objectives**:
+
 1. Set up automated testing on PR and push
 2. Implement Docker build and registry push
 3. Create deployment automation for staging/production
@@ -133,6 +147,7 @@ monitoring/
 **Workflows to Create**:
 
 **1. Continuous Integration** (`.github/workflows/ci.yml`):
+
 ```yaml
 # Triggers: PR, push to main
 # Steps:
@@ -145,6 +160,7 @@ monitoring/
 ```
 
 **2. Docker Build & Push** (`.github/workflows/docker-build.yml`):
+
 ```yaml
 # Triggers: Push to main, tag creation
 # Steps:
@@ -155,6 +171,7 @@ monitoring/
 ```
 
 **3. Deployment** (`.github/workflows/deploy.yml`):
+
 ```yaml
 # Triggers: Tag creation, manual workflow_dispatch
 # Steps:
@@ -166,6 +183,7 @@ monitoring/
 ```
 
 **Files to Create**:
+
 ```
 .github/workflows/
 ├── ci.yml                     # Continuous integration
@@ -175,6 +193,7 @@ monitoring/
 ```
 
 **Acceptance Criteria**:
+
 - [ ] Tests run automatically on every PR
 - [ ] Docker images build and push on main branch
 - [ ] Deployment workflow functional (staging)
@@ -184,10 +203,12 @@ monitoring/
 ---
 
 #### Task 3: Enhance Grafana Dashboards
+
 **Priority**: MEDIUM  
 **Estimated Time**: 3-4 hours
 
 **Objectives**:
+
 1. Create AI-specific performance dashboard
 2. Create cache analysis dashboard
 3. Add alerting visualization panels
@@ -196,6 +217,7 @@ monitoring/
 **Dashboards to Create**:
 
 **1. AI Performance Dashboard** (`ai-performance.json`):
+
 - AI provider selection over time (DeepSeek vs OpenAI)
 - Confidence score distribution (histogram)
 - Response time by provider (comparison)
@@ -204,6 +226,7 @@ monitoring/
 - Error rate by provider
 
 **2. Cache Analysis Dashboard** (`cache-analysis.json`):
+
 - Cache hit/miss rate trends
 - Cache size over time
 - Eviction rate
@@ -212,12 +235,14 @@ monitoring/
 - Cache invalidation events
 
 **3. Enhanced Overview Dashboard**:
+
 - Add alert status panel
 - Add service uptime indicators
 - Add recent deployments timeline
 - Add resource utilization trends
 
 **Files to Create**:
+
 ```
 monitoring/grafana/dashboards/
 ├── ai-performance.json        # AI-specific metrics
@@ -226,6 +251,7 @@ monitoring/grafana/dashboards/
 ```
 
 **Acceptance Criteria**:
+
 - [ ] AI performance dashboard shows provider metrics
 - [ ] Cache dashboard tracks efficiency trends
 - [ ] Dashboards auto-imported on Grafana startup
@@ -234,10 +260,12 @@ monitoring/grafana/dashboards/
 ---
 
 #### Task 4: Implement Structured JSON Logging
+
 **Priority**: MEDIUM  
 **Estimated Time**: 2-3 hours
 
 **Objectives**:
+
 1. Replace console.log with Winston structured logging
 2. Add request ID correlation
 3. Configure environment-based log levels
@@ -246,6 +274,7 @@ monitoring/grafana/dashboards/
 **Implementation**:
 
 **1. Logger Module** (`backend/core/logger.js`):
+
 ```javascript
 // Winston-based logger with:
 // - JSON structured output
@@ -256,6 +285,7 @@ monitoring/grafana/dashboards/
 ```
 
 **2. Server Integration** (`backend/server.js`):
+
 ```javascript
 // Replace console.log with logger
 // Add request logging middleware
@@ -264,6 +294,7 @@ monitoring/grafana/dashboards/
 ```
 
 **Log Format**:
+
 ```json
 {
   "timestamp": "2025-10-06T12:00:00.000Z",
@@ -279,6 +310,7 @@ monitoring/grafana/dashboards/
 ```
 
 **Files to Create/Modify**:
+
 ```
 backend/core/
 ├── logger.js                  # Winston logger configuration
@@ -289,6 +321,7 @@ backend/
 ```
 
 **Acceptance Criteria**:
+
 - [ ] All logs in JSON format
 - [ ] Request IDs correlate across services
 - [ ] Log levels configurable via environment
@@ -298,10 +331,12 @@ backend/
 ---
 
 #### Task 5: Docker Resource Limits & Health Monitoring
+
 **Priority**: LOW  
 **Estimated Time**: 2 hours
 
 **Objectives**:
+
 1. Set memory and CPU limits for all containers
 2. Optimize health check configurations
 3. Configure restart policies
@@ -310,6 +345,7 @@ backend/
 **Configuration Updates**:
 
 **1. Backend Container**:
+
 ```yaml
 services:
   backend:
@@ -330,17 +366,20 @@ services:
 ```
 
 **2. Monitoring Stack**:
+
 - Prometheus: 512M memory limit
 - Grafana: 256M memory limit
 - AlertManager: 128M memory limit
 
 **Files to Modify**:
+
 ```
 docker-compose.yml
 monitoring/docker-compose.monitoring.yml
 ```
 
 **Acceptance Criteria**:
+
 - [ ] Resource limits defined for all containers
 - [ ] Health checks pass consistently
 - [ ] Container metrics visible in Grafana
@@ -351,6 +390,7 @@ monitoring/docker-compose.monitoring.yml
 ### 🎯 Phase 3: Advanced Infrastructure (FUTURE)
 
 #### Future Enhancements
+
 - [ ] Implement distributed tracing with OpenTelemetry
 - [ ] Set up log aggregation with Loki or ELK
 - [ ] Add performance testing in CI/CD (k6 or Artillery)
@@ -365,6 +405,7 @@ monitoring/docker-compose.monitoring.yml
 ## File Scope & Responsibilities
 
 ### Primary Ownership
+
 ```
 monitoring/                    # Monitoring infrastructure
 ├── prometheus.yml
@@ -395,6 +436,7 @@ docs/                         # DevOps documentation
 ```
 
 ### Shared Ownership
+
 ```
 backend/Dockerfile            # Shared with Backend Specialist
 backend/server.js             # Logging integration
@@ -406,21 +448,25 @@ package.json                  # Shared with all agents
 ## Integration with Other Agents
 
 ### Backend Specialist
+
 - **Provides**: Performance optimization metrics
 - **Consumes**: Database query metrics, API response times
 - **Coordination**: Notify when new endpoints added (need metrics)
 
 ### Frontend Specialist
+
 - **Provides**: Service Worker metrics, Web Vitals
 - **Consumes**: Frontend deployment automation
 - **Coordination**: PWA build optimization in CI/CD
 
 ### AI Integration Specialist
+
 - **Provides**: AI provider performance tracking
 - **Consumes**: AI confidence scores, fallback metrics
 - **Coordination**: Alert on AI provider failures
 
 ### Test Specialist
+
 - **Provides**: CI/CD test execution
 - **Consumes**: Test coverage reports, flaky test detection
 - **Coordination**: Test failures block deployment
@@ -430,6 +476,7 @@ package.json                  # Shared with all agents
 ## Success Metrics
 
 ### Phase 2 Success Criteria
+
 - ✅ AlertManager operational with 6+ critical alerts
 - ✅ CI/CD pipeline running on all PRs
 - ✅ 3 Grafana dashboards (overview, AI, cache)
@@ -437,6 +484,7 @@ package.json                  # Shared with all agents
 - ✅ Container resource limits configured
 
 ### Operational Metrics
+
 - **Monitoring Coverage**: 100% of critical services
 - **Alert Response Time**: <5 minutes for critical alerts
 - **Deployment Frequency**: Daily (if needed)
@@ -445,6 +493,7 @@ package.json                  # Shared with all agents
 - **Mean Time to Recovery (MTTR)**: <30 minutes
 
 ### Quality Metrics
+
 - **Failed Deployments**: <5% of total deployments
 - **Alert False Positives**: <10% of total alerts
 - **CI/CD Pipeline Success Rate**: >95%
@@ -455,6 +504,7 @@ package.json                  # Shared with all agents
 ## Testing & Validation
 
 ### Alert Testing
+
 ```bash
 # Test alert firing
 curl -X POST http://localhost:9090/api/v1/alerts
@@ -467,6 +517,7 @@ curl http://localhost:9093/api/v2/alerts
 ```
 
 ### CI/CD Testing
+
 ```bash
 # Local CI/CD simulation
 act -j test  # Run GitHub Actions locally with 'act'
@@ -480,6 +531,7 @@ curl http://localhost:3000/health
 ```
 
 ### Monitoring Validation
+
 ```bash
 # Check Prometheus targets
 curl http://localhost:9090/api/v1/targets | jq
@@ -496,6 +548,7 @@ curl http://localhost:3002/api/dashboards/home
 ## Quick Reference Commands
 
 ### Monitoring Stack
+
 ```bash
 # Start monitoring
 cd monitoring
@@ -514,6 +567,7 @@ docker-compose -f docker-compose.monitoring.yml restart
 ```
 
 ### Prometheus
+
 ```bash
 # Reload configuration (no restart)
 curl -X POST http://localhost:9090/-/reload
@@ -526,6 +580,7 @@ curl 'http://localhost:9090/api/v1/query?query=up'
 ```
 
 ### Grafana
+
 ```bash
 # Import dashboard
 curl -X POST http://admin:admin@localhost:3002/api/dashboards/db \
@@ -537,6 +592,7 @@ curl http://admin:admin@localhost:3002/api/search
 ```
 
 ### Docker
+
 ```bash
 # View container resource usage
 docker stats
@@ -553,16 +609,19 @@ docker logs sommos-backend --tail 100 -f
 ## Agent Coordination Protocol
 
 ### Communication
+
 - **Knowledge Graph**: `/Users/thijs/Documents/SommOS/.agent/mcp_state.db`
 - **Admin Token**: `<use token from .agent/admin_token.txt>`
 - **Agent Messages**: Stored in `agent_messages` table
 
 ### File Locking
+
 - **Exclusive Write**: `monitoring/`, `.github/workflows/`
 - **Coordinated Write**: `docker-compose.yml`, `backend/server.js`
 - **Read Access**: All project files
 
 ### Task Dependencies
+
 - **Depends On**: None (monitoring is foundational)
 - **Blocks**: None (other agents can work in parallel)
 - **Notifies**: All agents when infrastructure changes
@@ -612,7 +671,7 @@ AUTO --worker --memory
 1. **Review completed infrastructure** (docs/DEVOPS_INTEGRATION_SUMMARY.md)
 2. **Start with Task 1**: Set up AlertManager (highest priority)
 3. **Coordinate with Test Specialist**: CI/CD pipeline integration
-4. **Monitor via Dashboard**: http://localhost:3847
+4. **Monitor via Dashboard**: <http://localhost:3847>
 
 ---
 

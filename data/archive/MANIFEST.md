@@ -6,6 +6,7 @@
 ## Database Backups
 
 ### October 3, 2025 Backups
+
 - **sommos.db.backup.20251003_000132** (~2.8 MB)
   - Backup timestamp: 2025-10-03 00:01:32
   - Created during: Database migration/update
@@ -15,6 +16,7 @@
   - Created during: Database migration/update
 
 ### Simulation Backups
+
 - **sommos_backup_pre_simulation.db** (~2.3 MB)
   - Pre-simulation backup
   - Created: 2025-10-03
@@ -28,6 +30,7 @@
 ## Training Reports
 
 ### October 3, 2025 Training Sessions
+
 - **training_report_2025-10-03T21-19-37-188Z.txt** (1.3 KB)
   - Training session: 21:19:37 UTC
   
@@ -41,17 +44,20 @@
   - Training session: 22:11:55 UTC
 
 ## Simulation Data
+
 - **simulation_report_2024.txt** (3.0 KB)
   - 2024 simulation report
   - Created: 2025-10-04 00:07
 
 ## Current Active Database
+
 - **sommos.db** (in `/data/` directory)
   - Size: ~2.7 MB
   - Last modified: 2025-10-06
   - Status: ACTIVE - DO NOT MOVE
 
 ## Notes
+
 - All archived databases can be restored if needed
 - Training reports contain ML model performance metrics
 - Simulation data preserved for historical reference

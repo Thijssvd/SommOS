@@ -9,31 +9,37 @@ The SommOS API client includes sophisticated retry mechanisms designed to handle
 ## Features
 
 ### 🔄 Automatic Retry with Exponential Backoff
+
 - **Exponential backoff**: Delays increase exponentially (1s, 2s, 4s, 8s...)
 - **Jitter**: Random variation (±25%) to prevent thundering herd problems
 - **Maximum delay cap**: 10 seconds to prevent excessive wait times
 - **Minimum delay**: 100ms to ensure reasonable responsiveness
 
 ### 🎯 Smart Retry Conditions
+
 The client automatically retries on:
+
 - **Network errors**: Connection failures, timeouts, DNS issues
 - **5xx server errors**: Internal server errors, service unavailable
 - **429 rate limiting**: Too many requests
 - **408 timeout**: Request timeout from server
 
 ### 📊 Retry Metrics and Monitoring
+
 - Track total requests and retry attempts
 - Monitor retry rates by endpoint
 - Record last retry timestamps
 - Calculate retry success rates
 
 ### 🔧 Configurable Retry Behavior
+
 - Customizable retry counts per request
 - Adjustable base delay times
 - Optional jitter control
 - Per-request retry configuration
 
 ### 🛡️ Circuit Breaker Pattern
+
 - Automatic failure detection
 - Circuit opening on repeated failures
 - Configurable failure thresholds
@@ -206,26 +212,31 @@ trackRetryAttempt(endpoint, attempt) {
 ## Best Practices
 
 ### 1. Choose Appropriate Retry Counts
+
 - **Health checks**: 1-2 retries for fast failure detection
 - **User-facing requests**: 3-5 retries for good UX
 - **Background tasks**: 5-10 retries for reliability
 
 ### 2. Use Jitter for High-Volume Systems
+
 - Always enable jitter in production
 - Prevents thundering herd problems
 - Distributes retry load over time
 
 ### 3. Implement Circuit Breakers for Unstable Services
+
 - Use for external APIs or unstable endpoints
 - Prevents cascading failures
 - Provides fast failure feedback
 
 ### 4. Monitor Retry Metrics
+
 - Track retry rates to identify issues
 - Set up alerts for high retry rates
 - Use metrics for capacity planning
 
 ### 5. Customize Per Endpoint
+
 - Critical endpoints: More retries
 - Non-critical endpoints: Fewer retries
 - Health checks: No retries for fast feedback
@@ -233,15 +244,18 @@ trackRetryAttempt(endpoint, attempt) {
 ## Demo and Testing
 
 ### Interactive Demo
+
 Open `retry-demo.html` in your browser to see the retry logic in action.
 
 ### Programmatic Demo
+
 ```javascript
 import { runAllDemos } from './js/retry-demo.js';
 await runAllDemos();
 ```
 
 ### Testing Retry Logic
+
 ```javascript
 // Test with a failing endpoint
 try {
@@ -276,16 +290,19 @@ export class SommOSAPIError extends Error {
 ## Performance Considerations
 
 ### Memory Usage
+
 - Retry metrics are stored in memory
 - Circuit breaker states are lightweight
 - No persistent storage required
 
 ### Network Impact
+
 - Exponential backoff reduces server load
 - Jitter prevents synchronized retries
 - Circuit breakers prevent unnecessary requests
 
 ### CPU Usage
+
 - Minimal overhead for retry logic
 - Jitter calculation is lightweight
 - Metrics tracking is efficient
@@ -293,18 +310,21 @@ export class SommOSAPIError extends Error {
 ## Troubleshooting
 
 ### High Retry Rates
+
 1. Check network connectivity
 2. Verify server health
 3. Review retry configuration
 4. Consider circuit breaker implementation
 
 ### Circuit Breaker Issues
+
 1. Check failure threshold settings
 2. Verify reset timeout configuration
 3. Monitor circuit state transitions
 4. Review endpoint stability
 
 ### Performance Issues
+
 1. Reduce retry counts for non-critical requests
 2. Increase base delay for high-load scenarios
 3. Disable jitter if timing is critical

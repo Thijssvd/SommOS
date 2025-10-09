@@ -3,6 +3,7 @@
 ## Quick Setup - Use Generic Wine Images by Type
 
 ### Step 1: Add Static Images
+
 Place generic wine bottle images in `frontend/images/wines/`:
 
 ```bash
@@ -50,14 +51,16 @@ async searchWineImage(wine) {
 }
 ```
 
-### Pros:
+### Pros
+
 - ✅ No API needed
 - ✅ Works offline
 - ✅ Zero rate limits
 - ✅ Instant setup
 - ✅ Predictable behavior
 
-### Cons:
+### Cons
+
 - ❌ Less specific (not actual wine bottles)
 - ❌ Less visual variety
 - ❌ Still generic

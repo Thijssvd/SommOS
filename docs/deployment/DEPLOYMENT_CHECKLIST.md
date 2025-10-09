@@ -9,17 +9,20 @@
 ## Pre-Deployment Verification
 
 ### ✅ Code Quality
+
 - [x] All tests passing (24/24 suites, 387/388 tests = 99.7%)
 - [x] No critical bugs in production code
 - [x] All known issues documented
 - [x] Code committed to git with detailed commit message
 
 ### ✅ Critical Bug Fixes Applied
+
 - [x] Ledger quantity constraint violation fixed
 - [x] WebSocket SQL column alias corrected
 - [x] Missing grape_varieties field added with safe defaults
 
 ### ✅ Test Coverage
+
 - [x] Backend API tests: 48/48 passing
 - [x] Integration tests: 16/16 passing  
 - [x] Procurement engine: 53/53 passing
@@ -32,6 +35,7 @@
 ## Environment Configuration
 
 ### Production Environment Variables
+
 Ensure the following are set in your production `.env` file:
 
 ```bash
@@ -58,11 +62,13 @@ OPEN_METEO_API_KEY=
 ```
 
 ### Generate Production Secrets
+
 ```bash
 npm run generate:secrets
 ```
 
 ### Verify Environment
+
 ```bash
 npm run verify:env
 ```
@@ -72,6 +78,7 @@ npm run verify:env
 ## Database Preparation
 
 ### Initial Setup (Fresh Installation)
+
 ```bash
 # 1. Setup database schema
 npm run setup:db
@@ -87,6 +94,7 @@ npm run seed:data
 ```
 
 ### Migration (Existing Database)
+
 ```bash
 # Check migration status
 npm run migrate:status
@@ -96,6 +104,7 @@ npm run migrate
 ```
 
 ### Database Backup
+
 ```bash
 # Backup current database before deployment
 cp data/sommos.db data/sommos.db.backup.$(date +%Y%m%d_%H%M%S)
@@ -106,6 +115,7 @@ cp data/sommos.db data/sommos.db.backup.$(date +%Y%m%d_%H%M%S)
 ## Build and Test
 
 ### Frontend Build
+
 ```bash
 # Build vanilla JS frontend
 cd frontend && npm run build
@@ -115,6 +125,7 @@ cd frontend-react && npm run build
 ```
 
 ### Production Test
+
 ```bash
 # Run all tests one final time
 npm test -- --forceExit
@@ -125,6 +136,7 @@ npm test -- --forceExit
 ```
 
 ### Health Check Test
+
 ```bash
 # Start production server
 npm start
@@ -141,12 +153,14 @@ curl http://localhost:3001/api/system/health
 ## Docker Deployment (Recommended)
 
 ### Build Docker Image
+
 ```bash
 # From project root
 docker-compose -f deployment/production.yml build
 ```
 
 ### Start Services
+
 ```bash
 # Start all services (app + nginx)
 docker-compose -f deployment/production.yml up -d
@@ -156,6 +170,7 @@ docker-compose -f deployment/production.yml logs -f
 ```
 
 ### Verify Deployment
+
 ```bash
 # Check container health
 docker-compose -f deployment/production.yml ps
@@ -165,6 +180,7 @@ curl http://localhost/api/system/health
 ```
 
 ### Automated Deployment Script
+
 ```bash
 # One-command deployment
 ./deployment/deploy.sh
@@ -175,6 +191,7 @@ curl http://localhost/api/system/health
 ## Manual Deployment (Node.js)
 
 ### Start Production Server
+
 ```bash
 # Using PM2 (recommended)
 pm2 start backend/server.js --name sommos-api
@@ -187,6 +204,7 @@ node backend/server.js
 ```
 
 ### Configure Reverse Proxy (Nginx)
+
 ```nginx
 server {
     listen 80;
@@ -215,6 +233,7 @@ server {
 ## Post-Deployment Verification
 
 ### Health Checks
+
 ```bash
 # System health
 curl http://your-domain.com/api/system/health
@@ -228,6 +247,7 @@ ws.onopen = () => console.log('WebSocket connected');
 ```
 
 ### Functional Tests
+
 1. **Inventory Management**
    - [ ] View wine inventory
    - [ ] Consume wine (record transaction)
@@ -260,6 +280,7 @@ ws.onopen = () => console.log('WebSocket connected');
 ## Monitoring Setup
 
 ### Application Monitoring
+
 ```bash
 # PM2 monitoring (if using PM2)
 pm2 monit
@@ -272,6 +293,7 @@ pm2 show sommos-api
 ```
 
 ### Database Monitoring
+
 ```bash
 # Check database size
 ls -lh data/sommos.db
@@ -281,6 +303,7 @@ npm run summary
 ```
 
 ### Log Monitoring
+
 ```bash
 # Application logs location
 tail -f logs/sommos.log
@@ -291,6 +314,7 @@ tail -f /var/log/nginx/error.log
 ```
 
 ### Key Metrics to Monitor
+
 - [ ] API response times
 - [ ] Database query performance
 - [ ] WebSocket connection count
@@ -304,6 +328,7 @@ tail -f /var/log/nginx/error.log
 ## Rollback Plan
 
 ### Quick Rollback Steps
+
 ```bash
 # 1. Stop current services
 docker-compose -f deployment/production.yml down
@@ -326,7 +351,9 @@ curl http://localhost/api/system/health
 ```
 
 ### Database Migration Rollback
+
 If a database migration fails:
+
 ```bash
 # Database has versioning - restore from backup
 cp data/sommos.db.backup.YYYYMMDD_HHMMSS data/sommos.db
@@ -340,6 +367,7 @@ npm run migrate:status
 ## Security Checklist
 
 ### Pre-Deployment Security Review
+
 - [x] JWT secrets are unique and secure (not default values)
 - [x] Auth bypass is disabled (`SOMMOS_AUTH_DISABLED` not set)
 - [x] HTTPS enabled for production (via nginx or load balancer)
@@ -351,6 +379,7 @@ npm run migrate:status
 - [x] XSS protection via CSP headers
 
 ### Security Hardening
+
 ```bash
 # File permissions
 chmod 600 .env
@@ -367,16 +396,19 @@ sudo ufw enable
 ## Known Issues and Workarounds
 
 ### 1. Jest Not Exiting After Tests
+
 **Issue**: Jest hangs after test completion  
 **Cause**: Lingering async operations (database connections)  
 **Workaround**: Always use `--forceExit` flag: `npm test -- --forceExit`
 
 ### 2. AI Pairing Failures
+
 **Issue**: Pairing engine fails when no AI keys configured  
 **Expected Behavior**: System gracefully falls back to traditional pairing algorithm  
 **Action**: No action needed - this is expected behavior
 
 ### 3. Auth Mocking in Integration Tests
+
 **Issue**: Auth mocking can be unreliable in integration tests  
 **Resolution**: Tests are now resilient to mock failures  
 **Action**: No action needed
@@ -388,6 +420,7 @@ sudo ufw enable
 ### Common Issues
 
 #### Database Locked Error
+
 ```bash
 # Check for other processes accessing the database
 lsof data/sommos.db
@@ -397,6 +430,7 @@ pm2 restart sommos-api
 ```
 
 #### Port Already in Use
+
 ```bash
 # Find process using port 3001
 lsof -i :3001
@@ -406,6 +440,7 @@ kill -9 <PID>
 ```
 
 #### WebSocket Connection Failures
+
 ```bash
 # Check nginx WebSocket upgrade configuration
 # Ensure proxy_set_header Upgrade and Connection are set
@@ -415,6 +450,7 @@ wscat -c ws://localhost:3001/api/ws
 ```
 
 ### Getting Help
+
 - Documentation: `README.md`, `PROJECT_WORKFLOW.md`, `DEVELOPMENT_NOTEBOOK.md`
 - Test Reports: `TEST_FIXES_REPORT.md`
 - API Documentation: `backend/api/openapi.yaml`
@@ -423,7 +459,8 @@ wscat -c ws://localhost:3001/api/ws
 
 ## Success Criteria
 
-### Deployment Considered Successful When:
+### Deployment Considered Successful When
+
 - [ ] Health endpoint returns `{"success":true,"status":"healthy"}`
 - [ ] All functional tests pass
 - [ ] WebSocket connections established
@@ -438,6 +475,7 @@ wscat -c ws://localhost:3001/api/ws
 ## Final Checklist
 
 ### Before Going Live
+
 - [ ] All tests passing (verify with `npm test -- --forceExit`)
 - [ ] Production `.env` configured with secure secrets
 - [ ] Database backed up
@@ -450,6 +488,7 @@ wscat -c ws://localhost:3001/api/ws
 - [ ] Team notified of deployment window
 
 ### Post-Deployment (First Hour)
+
 - [ ] Health checks passing
 - [ ] Monitor error logs
 - [ ] Test critical user workflows
@@ -459,6 +498,7 @@ wscat -c ws://localhost:3001/api/ws
 - [ ] Verify authentication flows
 
 ### Post-Deployment (First Day)
+
 - [ ] Review application logs
 - [ ] Check database growth rate
 - [ ] Monitor resource utilization

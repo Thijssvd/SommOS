@@ -9,6 +9,7 @@ This document describes the WebSocket implementation for real-time inventory upd
 ### Backend Components
 
 #### 1. WebSocket Server (`backend/core/websocket_server.js`)
+
 - **Purpose**: Manages WebSocket connections and message broadcasting
 - **Features**:
   - Client connection management with unique IDs
@@ -18,6 +19,7 @@ This document describes the WebSocket implementation for real-time inventory upd
   - Broadcasting to specific rooms or all clients
 
 #### 2. WebSocket Integration Service (`backend/core/websocket_integration.js`)
+
 - **Purpose**: Provides easy-to-use broadcasting methods for inventory operations
 - **Features**:
   - Inventory update broadcasting
@@ -26,6 +28,7 @@ This document describes the WebSocket implementation for real-time inventory upd
   - Connection statistics and health monitoring
 
 #### 3. Inventory Manager Integration
+
 - **Purpose**: Automatically broadcasts inventory changes via WebSocket
 - **Integration Points**:
   - `addWineToInventory()` - broadcasts new item additions
@@ -35,6 +38,7 @@ This document describes the WebSocket implementation for real-time inventory upd
 ### Frontend Components
 
 #### 1. RealTimeSync Class (`frontend/js/realtime-sync.js`)
+
 - **Purpose**: WebSocket client for real-time updates
 - **Features**:
   - Automatic reconnection with exponential backoff
@@ -44,6 +48,7 @@ This document describes the WebSocket implementation for real-time inventory upd
   - Connection state monitoring
 
 #### 2. SommOS App Integration (`frontend/js/app.js`)
+
 - **Purpose**: Integrates real-time updates with the main application
 - **Features**:
   - Automatic WebSocket connection on app initialization
@@ -54,6 +59,7 @@ This document describes the WebSocket implementation for real-time inventory upd
 ## Message Types
 
 ### Connection Messages
+
 ```javascript
 // Connection established
 {
@@ -76,6 +82,7 @@ This document describes the WebSocket implementation for real-time inventory upd
 ```
 
 ### Inventory Messages
+
 ```javascript
 // Inventory update
 {
@@ -118,6 +125,7 @@ This document describes the WebSocket implementation for real-time inventory upd
 ```
 
 ### System Messages
+
 ```javascript
 // System notification
 {
@@ -192,6 +200,7 @@ realtimeSync.joinRoom('pairing_recommendations');
 ## Configuration
 
 ### Server Configuration
+
 ```javascript
 // In server.js
 const wsServer = new SommOSWebSocketServer(server, {
@@ -202,6 +211,7 @@ const wsServer = new SommOSWebSocketServer(server, {
 ```
 
 ### Client Configuration
+
 ```javascript
 const realtimeSync = new RealTimeSync({
   url: 'ws://localhost:3001/api/ws',
@@ -214,12 +224,14 @@ const realtimeSync = new RealTimeSync({
 ## Testing
 
 ### Automated Tests
+
 ```bash
 # Run WebSocket tests
 npm test -- __tests__/websocket.test.js
 ```
 
 ### Manual Testing
+
 ```bash
 # Start the demo script
 node scripts/demo-websocket.js
@@ -229,6 +241,7 @@ open frontend/websocket-test.html
 ```
 
 ### Test Page Features
+
 - Real-time connection status
 - Message logging
 - Connection statistics
@@ -253,6 +266,7 @@ open frontend/websocket-test.html
 ## Monitoring and Debugging
 
 ### Connection Statistics
+
 ```javascript
 const stats = wsServer.getStats();
 console.log('Connected clients:', stats.totalClients);
@@ -260,6 +274,7 @@ console.log('Active rooms:', stats.totalRooms);
 ```
 
 ### Logging
+
 - All WebSocket events are logged with appropriate levels
 - Connection/disconnection events
 - Message broadcasting statistics
@@ -294,6 +309,7 @@ console.log('Active rooms:', stats.totalRooms);
    - Monitor server resources
 
 ### Debug Mode
+
 ```javascript
 // Enable debug logging
 const realtimeSync = new RealTimeSync({
@@ -307,6 +323,7 @@ const realtimeSync = new RealTimeSync({
 ## API Reference
 
 ### WebSocket Server Methods
+
 - `broadcastInventoryUpdate(update)` - Broadcast inventory update
 - `broadcastInventoryAction(action)` - Broadcast inventory action
 - `broadcastSystemNotification(notification)` - Broadcast system notification
@@ -314,6 +331,7 @@ const realtimeSync = new RealTimeSync({
 - `close()` - Close server and all connections
 
 ### RealTimeSync Methods
+
 - `connect()` - Establish WebSocket connection
 - `disconnect()` - Close WebSocket connection
 - `joinRoom(roomName)` - Join a room

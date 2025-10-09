@@ -1,11 +1,12 @@
 # SommOS Quick Start Guide
+
 **Your Docker deployment is now running!** 🍷
 
 ---
 
 ## 🌐 Access SommOS
 
-**Frontend URL**: http://localhost
+**Frontend URL**: <http://localhost>
 
 The application should have automatically opened in your browser. If not, click the link above or navigate to `http://localhost` in your web browser.
 
@@ -14,16 +15,18 @@ The application should have automatically opened in your browser. If not, click 
 ## 🔐 Login Credentials
 
 ### Administrator Account
+
 - **Email**: `admin@sommos.local`
 - **Password**: `admin123`
 - **Role**: Full administrative access
-- **Capabilities**: 
+- **Capabilities**:
   - Manage all wines and inventory
   - Create/edit users
   - Configure system settings
   - Access all features
 
 ### Crew Member Account
+
 - **Email**: `crew@sommos.local`
 - **Password**: `crew123`
 - **Role**: Operational access
@@ -35,6 +38,7 @@ The application should have automatically opened in your browser. If not, click 
   - View analytics
 
 ### Guest Account (Basic)
+
 - **Email**: `guest@sommos.local`
 - **Password**: `guest123`
 - **Role**: Read-only access
@@ -51,12 +55,14 @@ The application should have automatically opened in your browser. If not, click 
 Perfect for wine tasting events or showing the app to others!
 
 ### Event Code 1 (No PIN)
+
 - **Code**: `YACHT2024`
 - **PIN**: None
 - **Access**: Click "Guest Access" tab on login page
 - **Duration**: Read-only access to wine collection
 
 ### Event Code 2 (With PIN)
+
 - **Code**: `GUEST2024`
 - **PIN**: `123456`
 - **Access**: Click "Guest Access" tab on login page
@@ -67,6 +73,7 @@ Perfect for wine tasting events or showing the app to others!
 ## 📊 What's Already Loaded
 
 Your database comes pre-populated with realistic data:
+
 - **2,982 wines** from various regions
 - **1,050 vintages** with quality scores
 - **1,934 bottles** in inventory
@@ -79,27 +86,32 @@ Your database comes pre-populated with realistic data:
 ## 🚀 Try These Features
 
 ### 1. Browse Wine Collection
+
 - Navigate to "Wines" or "Inventory"
 - Use search and filters to find specific wines
 - Click on any wine to see detailed information
 
 ### 2. Wine Pairing Recommendations
+
 - Go to "Pairing" section
 - Enter a dish name (e.g., "Grilled Salmon")
 - Get AI-powered wine recommendations
 
 ### 3. Inventory Management (Admin/Crew only)
+
 - Track wine consumption
 - Move bottles between locations
 - Reserve wines for events
 - View transaction history
 
 ### 4. Procurement Intelligence (Admin/Crew only)
+
 - Get buying recommendations
 - Analyze procurement opportunities
 - View supplier information
 
 ### 5. Vintage Analysis
+
 - Check weather impact on specific vintages
 - View quality scores and aging potential
 - Get procurement timing recommendations
@@ -109,11 +121,13 @@ Your database comes pre-populated with realistic data:
 ## 🎨 PWA Features
 
 ### Install as App
+
 1. Look for the "Install" button in your browser (usually in the address bar)
 2. Click "Install" to add SommOS to your dock/taskbar
 3. Launch it like a native app!
 
 ### Offline Mode
+
 - The app works offline after initial load
 - Browse wines without internet
 - Changes sync when connection is restored
@@ -123,26 +137,31 @@ Your database comes pre-populated with realistic data:
 ## 🔧 Docker Management
 
 ### View Application Logs
+
 ```bash
 docker-compose -f deployment/production.yml logs -f
 ```
 
 ### Check Container Status
+
 ```bash
 docker-compose -f deployment/production.yml ps
 ```
 
 ### Restart Containers
+
 ```bash
 docker-compose -f deployment/production.yml restart
 ```
 
 ### Stop SommOS
+
 ```bash
 docker-compose -f deployment/production.yml down
 ```
 
 ### Start SommOS Again
+
 ```bash
 docker-compose -f deployment/production.yml up -d
 ```
@@ -153,10 +172,10 @@ docker-compose -f deployment/production.yml up -d
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **Frontend** | http://localhost | Main PWA interface |
-| **API** | http://localhost/api | REST API endpoints |
-| **Health Check** | http://localhost/api/system/health | System status |
-| **API Docs** | http://localhost/docs | Interactive API documentation |
+| **Frontend** | <http://localhost> | Main PWA interface |
+| **API** | <http://localhost/api> | REST API endpoints |
+| **Health Check** | <http://localhost/api/system/health> | System status |
+| **API Docs** | <http://localhost/docs> | Interactive API documentation |
 | **WebSocket** | ws://localhost/api/ws | Real-time updates |
 
 ---
@@ -174,6 +193,7 @@ docker-compose -f deployment/production.yml up -d
 ## 🐛 Troubleshooting
 
 ### Can't Connect?
+
 ```bash
 # Check if containers are running
 docker ps | grep sommos
@@ -183,6 +203,7 @@ docker logs sommos-production --tail 50
 ```
 
 ### Need to Reset?
+
 ```bash
 # Stop containers
 docker-compose -f deployment/production.yml down
@@ -192,9 +213,11 @@ docker-compose -f deployment/production.yml up -d
 ```
 
 ### Port Already in Use?
+
 If port 80 is already taken:
+
 1. Stop other services using port 80
-2. Or access directly via port 3000: http://localhost:3000
+2. Or access directly via port 3000: <http://localhost:3000>
 
 ---
 
@@ -207,7 +230,7 @@ If port 80 is already taken:
 
 ---
 
-## 🍷 Enjoy Exploring SommOS!
+## 🍷 Enjoy Exploring SommOS
 
 You're all set! Start by logging in with the admin account and exploring the wine collection. Try creating a wine pairing, checking vintage intelligence, or browsing the inventory.
 

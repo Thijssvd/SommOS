@@ -5,6 +5,7 @@
 For a quick deployment, follow these steps:
 
 ### 1. Prerequisites
+
 - Docker & Docker Compose installed
 - Minimum 2GB available disk space
 - DeepSeek API key (recommended for AI features)
@@ -12,27 +13,33 @@ For a quick deployment, follow these steps:
 - Open-Meteo API key (optional, has fallback)
 
 ### 2. Configuration
+
 ```bash
 # Configure production environment variables (authoritative file)
 nano deployment/.env  # Edit with your API keys and production settings
 ```
 
 ### 3. Deploy
+
 ```bash
 ./deployment/deploy.sh
 ```
+
 ## 📋 Detailed Deployment Instructions
 
 ### Prerequisites
 
 #### System Requirements
+
 - **OS**: Linux (Ubuntu 20.04+ recommended), macOS, or Windows with WSL2
 - **RAM**: Minimum 1GB, recommended 2GB+
 - **Storage**: Minimum 2GB free space
 - **CPU**: 1+ cores (2+ recommended for better performance)
 
 #### Required Software
+
 1. **Docker**: Version 20.0+
+
    ```bash
    # Ubuntu/Debian
    curl -fsSL https://get.docker.com -o get-docker.sh
@@ -43,6 +50,7 @@ nano deployment/.env  # Edit with your API keys and production settings
    ```
 
 2. **Docker Compose**: Version 2.0+
+
    ```bash
    # Usually included with Docker Desktop
    # For standalone installation:
@@ -51,15 +59,16 @@ nano deployment/.env  # Edit with your API keys and production settings
    ```
 
 #### Optional AI Keys (DeepSeek primary)
+
 1. **DeepSeek API Key** ✅ **Recommended**
    - **Purpose**: AI-powered pairing and summaries (primary provider)
-   - **How to get**: https://platform.deepseek.com/api_keys
+   - **How to get**: <https://platform.deepseek.com/api_keys>
    - **Add to .env**: `DEEPSEEK_API_KEY=sk-your-deepseek-key`
 2. **OpenAI API Key** (Fallback / Legacy)
    - **Purpose**: Used only if `DEEPSEEK_API_KEY` is not set
    - **Add to .env**: `OPENAI_API_KEY=sk-your-openai-key`
 
-2. **Open-Meteo API Key** ✅ **OPTIONAL** 
+2. **Open-Meteo API Key** ✅ **OPTIONAL**
    - **Purpose**: Historical weather data for vintage intelligence
    - **Cost**: FREE! (10,000 requests/day without key, 20,000/day with free account)
    - **How to get**: Leave empty for free tier, or get free key at [open-meteo.com](https://open-meteo.com/)
@@ -68,7 +77,9 @@ nano deployment/.env  # Edit with your API keys and production settings
 ### Configuration
 
 #### Environment Variables
+
 Configure `deployment/.env` with your production settings:
+
 ```bash
 # AI (DeepSeek primary)
 DEEPSEEK_API_KEY=sk-your-actual-deepseek-key-here
@@ -94,6 +105,7 @@ LOG_LEVEL=info
 ### Deployment Options
 
 #### Option 1: Automated Deployment (Recommended)
+
 ```bash
 # Make deployment script executable
 chmod +x deployment/deploy.sh
@@ -103,6 +115,7 @@ chmod +x deployment/deploy.sh
 ```
 
 The script will:
+
 - Check system requirements
 - Setup directories
 - Create database backups
@@ -111,6 +124,7 @@ The script will:
 - Show deployment status
 
 #### Option 2: Manual Deployment
+
 ```bash
 # Create directories
 sudo mkdir -p /opt/sommos/{data,logs,backups}
@@ -126,6 +140,7 @@ docker-compose -f deployment/production.yml ps
 ### Post-Deployment Verification
 
 #### Health Checks
+
 ```bash
 # Check application health
 curl http://localhost/api/system/health
@@ -145,6 +160,7 @@ curl http://localhost/api/system/health
 ```
 
 #### Performance Verification
+
 ```bash
 # Test wine pairing endpoint (requires AI key)
 curl -X POST http://localhost/api/pairing/recommend \
@@ -156,6 +172,7 @@ curl http://localhost/api/inventory/stock
 ```
 
 #### Log Monitoring
+
 ```bash
 # View application logs
 docker-compose -f deployment/production.yml logs -f
@@ -171,6 +188,7 @@ docker-compose -f deployment/production.yml logs -f sommos-app
 ### Daily Operations
 
 #### Monitoring Commands
+
 ```bash
 # Check deployment status
 ./deployment/deploy.sh status
@@ -183,6 +201,7 @@ docker-compose -f deployment/production.yml logs -f sommos-app
 ```
 
 #### Backup Operations
+
 ```bash
 # Manual backup
 ./deployment/deploy.sh backup
@@ -195,6 +214,7 @@ docker-compose -f deployment/production.yml logs -f sommos-app
 #### Common Issues
 
 1. **Port 80/443 already in use**
+
    ```bash
    # Check what's using the ports
    sudo netstat -tulpn | grep :80
@@ -205,6 +225,7 @@ docker-compose -f deployment/production.yml logs -f sommos-app
    ```
 
 2. **Permission denied errors**
+
    ```bash
    # Fix ownership
    sudo chown -R $USER:$USER /opt/sommos
@@ -212,6 +233,7 @@ docker-compose -f deployment/production.yml logs -f sommos-app
    ```
 
 3. **Container won't start**
+
    ```bash
    # Check container logs
    docker-compose -f deployment/production.yml logs sommos-app
@@ -221,6 +243,7 @@ docker-compose -f deployment/production.yml logs -f sommos-app
    ```
 
 4. **Database issues**
+
    ```bash
    # Reset database (WARNING: This will delete all data)
    rm /opt/sommos/data/sommos.db
@@ -230,11 +253,13 @@ docker-compose -f deployment/production.yml logs -f sommos-app
 ### Performance Optimization
 
 #### Database Optimization
+
 - Database automatically creates indexes for common queries
 - Regular VACUUM operations run automatically
 - Consider backing up database regularly
 
 #### Resource Monitoring
+
 ```bash
 # Monitor resource usage
 docker stats
@@ -249,7 +274,9 @@ du -sh /opt/sommos/logs/*
 ### Scaling Considerations
 
 #### For Higher Traffic
+
 1. **Add Redis caching**:
+
    ```yaml
    services:
      redis:
@@ -263,6 +290,7 @@ du -sh /opt/sommos/logs/*
 3. **Load balancing**: Add multiple app containers behind nginx
 
 #### For Larger Datasets
+
 - Consider PostgreSQL for larger wine collections (>10,000 wines)
 - Implement database read replicas
 - Add dedicated storage volumes
@@ -272,6 +300,7 @@ du -sh /opt/sommos/logs/*
 ## 🔄 Updates & Maintenance
 
 ### Updating the Application
+
 ```bash
 # Stop current deployment
 ./deployment/deploy.sh stop
@@ -284,13 +313,16 @@ git pull origin main
 ```
 
 ### Database Migrations
+
 Database schema updates are handled automatically on startup. The application will:
+
 1. Detect schema changes
 2. Create automatic backup
 3. Apply migrations
 4. Verify data integrity
 
 ### Backup Strategy
+
 - **Automatic**: Daily at 2 AM (configurable)
 - **Manual**: Use `./deployment/deploy.sh backup`
 - **Retention**: 30 days (configurable)
@@ -301,16 +333,19 @@ Database schema updates are handled automatically on startup. The application wi
 ## 🔐 Security Best Practices
 
 ### Environment Security
+
 - Keep API keys secure and rotate regularly
 - Use environment variables, never hardcode secrets
 - Regular security updates: `docker-compose pull && ./deployment/deploy.sh`
 
 ### Network Security
+
 - Configure firewall to only allow necessary ports
 - Use HTTPS in production (SSL configuration provided)
 - Consider VPN access for admin functions
 
 ### Data Security
+
 - Regular encrypted backups
 - Database stored in protected directory
 - Logs rotation and cleanup
@@ -320,18 +355,22 @@ Database schema updates are handled automatically on startup. The application wi
 ## 📊 Monitoring & Alerts
 
 ### Built-in Monitoring
+
 - Health check endpoint: `/api/system/health`
 - Performance metrics in logs
 - Resource usage tracking
 
 ### External Monitoring (Optional)
+
 Set up monitoring with tools like:
+
 - **Uptime monitoring**: UptimeRobot, Pingdom
 - **Logs**: ELK Stack, Splunk
 - **Metrics**: Prometheus + Grafana
 - **Errors**: Sentry (already configured)
 
 ### Log Management
+
 ```bash
 # Rotate logs manually
 docker-compose -f deployment/production.yml exec sommos-app logrotate /etc/logrotate.conf
@@ -345,12 +384,15 @@ find /opt/sommos/logs -name "*.log" -mtime +7 -exec gzip {} \;
 ## 🆘 Support & Recovery
 
 ### Emergency Recovery
+
 1. **Application crash**:
+
    ```bash
    docker-compose -f deployment/production.yml restart sommos-app
    ```
 
 2. **Database corruption**:
+
    ```bash
    # Restore from backup
    cp /opt/sommos/backups/sommos_backup_YYYYMMDD_HHMMSS.db.gz /tmp/
@@ -360,6 +402,7 @@ find /opt/sommos/logs -name "*.log" -mtime +7 -exec gzip {} \;
    ```
 
 3. **Complete system recovery**:
+
    ```bash
    # Stop everything
    ./deployment/deploy.sh stop
@@ -373,6 +416,7 @@ find /opt/sommos/logs -name "*.log" -mtime +7 -exec gzip {} \;
    ```
 
 ### Getting Help
+
 - **GitHub Issues**: Report bugs and feature requests
 - **Documentation**: This file and inline code comments
 - **Logs**: Check application logs for detailed error information
@@ -382,6 +426,7 @@ find /opt/sommos/logs -name "*.log" -mtime +7 -exec gzip {} \;
 ## 📈 Performance Benchmarks
 
 Based on test results, SommOS achieves:
+
 - **Inventory Loading**: ~347ms for 4,000+ items
 - **Search Queries**: <30ms for filtered results
 - **AI Pairing**: ~20 seconds (due to OpenAI API)
@@ -389,6 +434,7 @@ Based on test results, SommOS achieves:
 - **Static Assets**: Cached and optimized
 
 ### Resource Usage (Typical)
+
 - **RAM**: 256-512MB (depends on dataset size)
 - **CPU**: Low usage, spikes during AI operations
 - **Storage**: ~50MB application + database size
@@ -401,6 +447,7 @@ Based on test results, SommOS achieves:
 Before going live:
 
 ### Pre-deployment
+
 - [ ] API keys configured and tested
 - [ ] SSL certificates installed (if using HTTPS)
 - [ ] Firewall configured
@@ -408,6 +455,7 @@ Before going live:
 - [ ] Monitoring set up
 
 ### Deployment
+
 - [ ] System requirements met
 - [ ] Environment variables configured
 - [ ] Deployment script runs successfully
@@ -415,6 +463,7 @@ Before going live:
 - [ ] All endpoints respond correctly
 
 ### Post-deployment
+
 - [ ] Performance tests completed
 - [ ] Security scan performed
 - [ ] Backup/restore tested

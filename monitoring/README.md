@@ -12,6 +12,7 @@ docker-compose -f docker-compose.monitoring.yml up -d
 ```
 
 This will start:
+
 - **Prometheus** on port 9090
 - **Grafana** on port 3001
 
@@ -26,8 +27,8 @@ The backend will expose metrics at `http://localhost:3000/metrics`
 
 ### 3. Access Dashboards
 
-- **Grafana**: http://localhost:3001 (admin/admin)
-- **Prometheus**: http://localhost:9090
+- **Grafana**: <http://localhost:3001> (admin/admin)
+- **Prometheus**: <http://localhost:9090>
 
 ## Architecture
 
@@ -56,16 +57,18 @@ The backend will expose metrics at `http://localhost:3000/metrics`
 ### Prometheus
 
 **Purpose**: Time-series database and metrics collection
-**Endpoint**: http://localhost:9090
+**Endpoint**: <http://localhost:9090>
 **Configuration**: `prometheus.yml`
 
 **Key Features**:
+
 - Scrapes metrics every 15 seconds
 - Stores 15 days of data
 - Automatic service discovery
 - Alert rule evaluation
 
 **Useful Queries**:
+
 ```promql
 # HTTP request rate
 rate(http_requests_total[5m])
@@ -80,10 +83,11 @@ nodejs_heap_used_bytes / nodejs_heap_total_bytes * 100
 ### Grafana
 
 **Purpose**: Metrics visualization and dashboards
-**Endpoint**: http://localhost:3001
+**Endpoint**: <http://localhost:3001>
 **Credentials**: admin / admin (change on first login)
 
 **Dashboards**:
+
 - `SommOS Overview` - Main operational dashboard
   - HTTP request metrics
   - Response time percentiles (p50, p90, p95, p99)
@@ -93,6 +97,7 @@ nodejs_heap_used_bytes / nodejs_heap_total_bytes * 100
   - Business metrics (inventory, wines, users)
 
 **Importing Dashboards**:
+
 1. Navigate to Dashboards → Import
 2. Upload `grafana/dashboards/sommos-overview.json`
 3. Select Prometheus as data source
@@ -157,6 +162,7 @@ groups:
 ```
 
 Reference in `prometheus.yml`:
+
 ```yaml
 rule_files:
   - "alerts.yml"
@@ -167,6 +173,7 @@ rule_files:
 Auto-configure data sources and dashboards by creating:
 
 `grafana/provisioning/datasources/prometheus.yml`:
+
 ```yaml
 apiVersion: 1
 
@@ -180,6 +187,7 @@ datasources:
 ```
 
 `grafana/provisioning/dashboards/dashboard.yml`:
+
 ```yaml
 apiVersion: 1
 
@@ -289,15 +297,17 @@ services:
 ### Metrics Not Appearing
 
 1. **Check backend is running**:
+
    ```bash
    curl http://localhost:3000/metrics
    ```
 
 2. **Check Prometheus targets**:
-   - Visit http://localhost:9090/targets
+   - Visit <http://localhost:9090/targets>
    - Ensure target is "UP"
 
 3. **Check Prometheus logs**:
+
    ```bash
    docker logs sommos-prometheus
    ```
@@ -318,6 +328,7 @@ services:
 ### High Memory Usage
 
 1. **Reduce retention**:
+
    ```yaml
    command:
      - '--storage.tsdb.retention.time=7d'
@@ -328,6 +339,7 @@ services:
    - Use metric_relabel_configs to drop unnecessary labels
 
 3. **Increase container memory**:
+
    ```yaml
    deploy:
      resources:
@@ -440,6 +452,7 @@ receivers:
 ## Support
 
 For issues or questions:
+
 1. Check logs: `docker-compose logs -f`
 2. Review [Prometheus Metrics Documentation](../docs/PROMETHEUS_METRICS.md)
 3. Create an issue in the SommOS repository

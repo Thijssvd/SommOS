@@ -1,4 +1,5 @@
 # SommOS Cellar Gap Analysis Report
+
 **Generated**: 2025-10-03  
 **Purpose**: Identify inventory gaps for optimal ML training
 
@@ -11,6 +12,7 @@
 **High Priority Gaps**: 2  
 
 ### 🔴 Critical Issues
+
 - **Rosé**: Completely missing from cellar
 - **Fortified**: Completely missing from cellar
 
@@ -61,6 +63,7 @@
 ### Regional Coverage
 
 Top 10 Regions:
+
 1. **Bordeaux**: 250 wines
 2. **Burgundy**: 207 wines
 3. **Champagne**: 123 wines
@@ -71,12 +74,14 @@ Top 10 Regions:
 ## Impact on ML Training
 
 ### Current Blind Spots
+
 - **Rosé**: Essential for Mediterranean summer, completely missing
 - **Dessert**: Celebrations and special occasions need more variety
 - **Greek Whites**: Mediterranean summer simulation needs local wines
 - **Tropical Whites**: Caribbean winter needs light, crisp, refreshing styles
 
 ### Expected Improvements After Enhancement
+
 - **Model generalization**: +10-15%
 - **Rosé predictions**: Enabled (currently impossible)
 - **Dessert wine accuracy**: +20-30%

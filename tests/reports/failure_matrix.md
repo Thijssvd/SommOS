@@ -1,6 +1,7 @@
 # Test Failure Matrix - SommOS
 
 ## Executive Summary
+
 - **Total Tests**: 77
 - **Passing**: 26 (33.8%)
 - **Failing**: 51 (66.2%)
@@ -9,6 +10,7 @@
 ## Failure Categories
 
 ### 🚨 **Category 1: Missing Test Data (500 Errors)**
+
 *25 failures* - Backend endpoints returning 500 errors due to missing/incomplete test data
 
 | Test | Endpoint | Root Cause | Fix Required |
@@ -22,6 +24,7 @@
 | Vintage Intelligence | `/api/vintage/*` | Missing weather/vintage data | Add WeatherVintage fixtures |
 
 ### 🔍 **Category 2: Empty Data Responses (Assertion Failures)**  
+
 *6 failures* - Endpoints returning success but with missing `data` property
 
 | Test | Issue | Expected | Actual | Fix |
@@ -31,6 +34,7 @@
 | Wine Pairing | `data` is undefined | Pairing recommendations | `undefined` | Fix pairing logic/mock AI |
 
 ### 🌐 **Category 3: Frontend JSDOM Issues**
+
 *30 failures* - All frontend tests failing due to class loading issues
 
 | Error Type | Count | Root Cause |
@@ -42,6 +46,7 @@
 **Root Cause**: The frontend classes are loaded via `eval()` but not properly exposed to the global scope in JSDOM.
 
 ### ⚙️ **Category 4: Test Infrastructure Issues**
+
 *2 failures* - Jest/test configuration problems
 
 | Test | Issue | Fix |
@@ -52,16 +57,19 @@
 ## Priority Action Items
 
 ### 🚀 **Phase 1: Quick Wins (Next 2-4 hours)**
+
 1. **Fix Frontend Class Loading** - Highest impact, 30 tests
 2. **Add Basic Test Fixtures** - Fix 15-20 backend tests
 3. **Fix Empty Data Responses** - Fix 6 API assertion failures
 
 ### 🏗️ **Phase 2: Infrastructure (Next 1-2 days)**  
+
 4. **Complete Test Data Strategy** - Comprehensive fixtures
 5. **Improve Error Handling** - Better 404/422 responses
 6. **Increase Coverage** - Target 60%+
 
 ### 🔄 **Phase 3: Optimization (Next 1 week)**
+
 7. **Parallel Test Execution** - Faster CI/CD
 8. **Advanced Error Scenarios** - Edge cases & resilience
 9. **Documentation & Training** - Team knowledge transfer

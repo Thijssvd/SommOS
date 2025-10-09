@@ -1,17 +1,21 @@
 # SommOS Development Notebook
+
 *Technical decisions, lessons learned, and architectural insights*
 
 ## Architecture Decisions
 
 ### Database Design
+
 **Decision**: SQLite with normalized wine schema
-**Rationale**: 
+**Rationale**:
+
 - Lightweight for yacht deployment scenarios
 - ACID compliance for inventory transactions
 - No external database server dependencies
 - Easy backup and migration
 
 **Schema Evolution**:
+
 ```sql
 -- Core entities designed for scalability
 Wines → Vintages → Stock → Transactions
@@ -19,19 +23,23 @@ Suppliers ← PurchaseOrders → OrderItems
 ```
 
 **Lessons Learned**:
+
 - Proper normalization prevents data duplication
 - Vintage-level stock tracking provides flexibility
 - Transaction logging enables audit trails
 
 ### Frontend Architecture
+
 **Decision**: Vanilla JavaScript PWA over framework
 **Rationale**:
+
 - Lightweight for yacht bandwidth constraints
 - No build process complexity
 - Direct control over offline functionality
 - Easier debugging in marine environments
 
 **Key Patterns**:
+
 ```javascript
 class SommOS {
     constructor() {
@@ -43,13 +51,16 @@ class SommOS {
 ```
 
 **Lessons Learned**:
+
 - Modular class structure scales well
 - Event delegation prevents memory leaks
 - Progressive enhancement ensures core functionality
 
 ### API Design
+
 **Decision**: RESTful with logical grouping
 **Structure**:
+
 ```
 /api/inventory/*    - Stock management
 /api/pairing/*      - Wine recommendations  
@@ -59,6 +70,7 @@ class SommOS {
 ```
 
 **Lessons Learned**:
+
 - Consistent error response format improves frontend handling
 - Timeout handling critical for AI-powered features
 - CORS configuration must match deployment scenarios
@@ -66,9 +78,11 @@ class SommOS {
 ## Technical Challenges & Solutions
 
 ### Challenge 1: AI Integration Reliability
+
 **Problem**: OpenAI API timeouts causing user frustration
 **Initial Approach**: 10-second timeout with basic error
-**Solution**: 
+**Solution**:
+
 ```javascript
 // Extended timeout with graceful degradation
 this.timeout = 30000; // 30 seconds for AI processing
@@ -83,9 +97,11 @@ return await this.generateTraditionalPairings(dishContext, preferences);
 **Result**: 95% success rate with seamless fallback
 
 ### Challenge 2: Frontend-Backend Communication
+
 **Problem**: Development server on different ports causing CORS issues
 **Initial Approach**: Hardcoded localhost URLs
 **Solution**:
+
 ```javascript
 // Dynamic configuration based on environment
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -100,8 +116,10 @@ if (isDevelopment) {
 **Result**: Seamless development-to-production deployment
 
 ### Challenge 3: Content Security Policy
+
 **Problem**: External resources blocked in production
 **Solution**:
+
 ```javascript
 contentSecurityPolicy: {
     directives: {
@@ -117,6 +135,7 @@ contentSecurityPolicy: {
 ## Performance Optimizations
 
 ### Database Query Optimization
+
 ```sql
 -- Added indexes for common queries
 CREATE INDEX idx_stock_vintage ON Stock(vintage_id);
@@ -132,6 +151,7 @@ GROUP BY w.id, v.id;
 ```
 
 ### Frontend Optimizations
+
 ```javascript
 // Debounced search to reduce API calls
 searchInput.addEventListener('input', this.ui.debounce(() => {
@@ -145,6 +165,7 @@ const offset = (this.currentCatalogPage - 1) * limit;
 ```
 
 ### Caching Strategy
+
 - API responses cached in IndexedDB
 - Static assets cached with service worker
 - Inventory data refreshed on user actions
@@ -152,6 +173,7 @@ const offset = (this.currentCatalogPage - 1) * limit;
 ## Security Considerations
 
 ### API Security
+
 ```javascript
 // Rate limiting to prevent abuse
 const limiter = rateLimit({
@@ -166,11 +188,13 @@ app.use(helmet({
 ```
 
 ### Input Validation
+
 - SQL injection prevention through parameterized queries
 - XSS protection via content security policy
 - Input sanitization on all user-provided data
 
 ### Environment Variables
+
 - Sensitive keys stored in environment variables
 - Different configurations for development/production
 - API keys never committed to version control
@@ -178,6 +202,7 @@ app.use(helmet({
 ## Testing Strategy
 
 ### API Testing
+
 ```javascript
 // Automated endpoint testing
 describe('Pairing API', () => {
@@ -197,12 +222,14 @@ describe('Pairing API', () => {
 ```
 
 ### Error Scenario Testing
+
 - Network timeout scenarios
 - Invalid API responses  
 - Database connection failures
 - Malformed user input
 
 ### Browser Compatibility
+
 - PWA features tested across browsers
 - Offline functionality verification
 - Mobile responsive design validation
@@ -210,6 +237,7 @@ describe('Pairing API', () => {
 ## Deployment Lessons
 
 ### Docker Configuration
+
 ```dockerfile
 # Multi-stage build for production
 FROM node:18-alpine AS builder
@@ -226,6 +254,7 @@ CMD ["node", "backend/server.js"]
 ```
 
 ### Environment Configuration
+
 ```bash
 # Production environment variables
 NODE_ENV=production
@@ -238,6 +267,7 @@ OPENAI_API_KEY=${OPENAI_API_KEY}
 ```
 
 ### Health Monitoring
+
 ```javascript
 // Comprehensive health check
 app.get('/api/system/health', async (req, res) => {
@@ -264,6 +294,7 @@ app.get('/api/system/health', async (req, res) => {
 ## Future Architecture Considerations
 
 ### Scalability Plans
+
 - Database migration path to PostgreSQL for multi-vessel support
 - API versioning strategy for backward compatibility  
 - Microservices decomposition for enterprise features
@@ -271,9 +302,11 @@ app.get('/api/system/health', async (req, res) => {
 ### Performance Enhancements (Future)
 
 **Dashboard Data Aggregation Endpoint**
+
 - **Current Implementation**: Dashboard fetches full inventory via `getInventory()` for chart generation
 - **Performance Impact**: Works well for yacht-scale inventories (typically 100-500 wines)
 - **Future Optimization**: Create dedicated `/api/inventory/summary` endpoint
+
   ```javascript
   // Proposed endpoint structure
   GET /api/inventory/summary
@@ -288,16 +321,19 @@ app.get('/api/system/health', async (req, res) => {
     }
   }
   ```
+
 - **Benefits**: Reduces data transfer and client-side processing for large inventories
 - **Priority**: Low - only implement if performance issues are observed with large datasets (1000+ wines)
 - **Note**: Current implementation is fully cached client-side and performs well in practice
 
 ### Integration Readiness
+
 - Webhook endpoints for supplier integrations
 - API rate limiting and authentication for external access
 - Data export/import for backup and migration
 
 ### Mobile Strategy
+
 - PWA optimizations for offline-first mobile experience
 - React Native companion app considerations
 - Push notification infrastructure
@@ -305,6 +341,7 @@ app.get('/api/system/health', async (req, res) => {
 ## Code Quality Standards
 
 ### Error Handling Pattern
+
 ```javascript
 // Consistent error handling across all async functions
 async function handlePairingRequest() {
@@ -328,6 +365,7 @@ async function handlePairingRequest() {
 ```
 
 ### Code Organization
+
 - Single responsibility principle for classes and functions
 - Consistent naming conventions throughout codebase
 - Comprehensive inline documentation for complex algorithms
@@ -335,6 +373,7 @@ async function handlePairingRequest() {
 ## Performance Metrics
 
 ### Current Performance (Sept 25, 2025)
+
 - **API Response Time**: <200ms average for inventory queries
 - **Pairing Generation**: <10s with AI, <1s fallback
 - **Database Queries**: <50ms average with proper indexing
@@ -342,6 +381,7 @@ async function handlePairingRequest() {
 - **Offline Functionality**: 100% of core features work offline
 
 ### Optimization Targets
+
 - Reduce AI pairing time to <5s average
 - Implement request/response caching to reduce API calls by 40%
 - Add database connection pooling for concurrent requests

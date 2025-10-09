@@ -12,6 +12,7 @@ Content-Type: text/plain; version=0.0.4; charset=utf-8
 ```
 
 **Example:**
+
 ```bash
 curl http://localhost:3000/metrics
 ```
@@ -34,6 +35,7 @@ curl http://localhost:3000/metrics
 | `cache_operations` | counter | Cache operations (get/set) | operation, result |
 
 **Labels:**
+
 - `operation`: get, set
 - `result`: hit, miss, success
 
@@ -114,11 +116,13 @@ services:
 ### Grafana Dashboard Queries
 
 #### HTTP Request Rate
+
 ```promql
 rate(http_requests_total[5m])
 ```
 
 #### HTTP Request Duration (p95)
+
 ```promql
 histogram_quantile(0.95, 
   rate(http_request_duration_seconds_bucket[5m])
@@ -126,6 +130,7 @@ histogram_quantile(0.95,
 ```
 
 #### Cache Hit Rate
+
 ```promql
 100 * (
   rate(cache_operations{result="hit"}[5m]) / 
@@ -134,11 +139,13 @@ histogram_quantile(0.95,
 ```
 
 #### AI Success Rate
+
 ```promql
 ai_success_rate
 ```
 
 #### Memory Usage
+
 ```promql
 nodejs_heap_used_bytes / nodejs_heap_total_bytes * 100
 ```
@@ -190,11 +197,13 @@ exporter.setActiveConnections(8);
 ### Key Alerts to Configure
 
 1. **High Error Rate**
+
    ```promql
    rate(http_requests_total{status=~"5.."}[5m]) > 0.1
    ```
 
 2. **Slow Response Times**
+
    ```promql
    histogram_quantile(0.95, 
      rate(http_request_duration_seconds_bucket[5m])
@@ -202,16 +211,19 @@ exporter.setActiveConnections(8);
    ```
 
 3. **Low Cache Hit Rate**
+
    ```promql
    ai_cache_hit_rate < 50
    ```
 
 4. **AI Service Degradation**
+
    ```promql
    ai_success_rate < 90
    ```
 
 5. **High Memory Usage**
+
    ```promql
    nodejs_heap_used_bytes / nodejs_heap_total_bytes > 0.9
    ```
@@ -275,16 +287,19 @@ location /metrics {
 ### Metrics Not Appearing
 
 1. Check the endpoint is accessible:
+
    ```bash
    curl http://localhost:3000/metrics
    ```
 
 2. Verify Prometheus can scrape:
+
    ```bash
    curl http://localhost:9090/api/v1/targets
    ```
 
 3. Check Prometheus logs:
+
    ```bash
    docker logs prometheus
    ```

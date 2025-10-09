@@ -12,12 +12,14 @@ This document describes the implementation of user tracking for wine consumption
 ## Motivation
 
 Prior to this implementation, the `LearningConsumptionEvents` table tracked only:
+
 - Which wines were consumed (vintage_id, wine_id)
 - How much was consumed (quantity)
 - Where it was consumed (location)
 - When it was consumed (created_at)
 
 **The Gap**: There was no way to know **who** consumed the wine or whether it was part of a pairing session. This prevented the system from:
+
 1. Using consumption as implicit positive feedback for collaborative filtering
 2. Building user-specific consumption profiles
 3. Differentiating between owner consumption vs. guest consumption
@@ -40,11 +42,13 @@ ALTER TABLE LearningConsumptionEvents ADD COLUMN session_id INTEGER;
 ```
 
 **Indexes Added** (for query performance):
+
 - `idx_learning_consumption_user_id` - For querying by user
 - `idx_learning_consumption_session_id` - For querying by session
 - `idx_learning_consumption_user_created` - Compound index for user consumption patterns over time
 
 **Key Design Decisions**:
+
 - Both columns are **nullable** to support backward compatibility and anonymous consumption
 - No foreign key constraints in SQLite (enforced at application level)
 - user_id references `Users.id`
@@ -78,24 +82,28 @@ async recordConsumptionEvent({
 **New Methods Added**:
 
 1. **`getConsumptionFeedback(userId)`** - Retrieves consumption history for a user
+
    ```javascript
    // Returns: Array of consumption events with wine details
    const consumptions = await learningEngine.getConsumptionFeedback(userId);
    ```
 
 2. **`getImplicitRatingsFromConsumption(userId)`** - Converts consumption to implicit ratings
+
    ```javascript
    // Returns: Array with implicit_rating (4.0-5.0 scale), confidence scores
    const implicitRatings = await learningEngine.getImplicitRatingsFromConsumption(userId);
    ```
 
 3. **`incorporateConsumptionIntoPreferences(userId)`** - Updates user preference profiles
+
    ```javascript
    // Aggregates consumption by wine type, region, grape variety
    const prefs = await learningEngine.incorporateConsumptionIntoPreferences(userId);
    ```
 
 **Implicit Rating Algorithm**:
+
 - Base rating: 4.0 (consumption = positive signal)
 - Frequency bonus: +0.5 max (0.1 per consumption event)
 - Quantity bonus: +0.3 max (based on total quantity consumed)
@@ -107,6 +115,7 @@ async recordConsumptionEvent({
 **Updated Methods**:
 
 1. **`captureLearningConsumption(event)`** - Now accepts user_id and session_id
+
    ```javascript
    await this.captureLearningConsumption({
        vintage_id,
@@ -129,6 +138,7 @@ All methods maintain backward compatibility via optional parameters.
 **Updated Endpoints**:
 
 1. **`POST /api/inventory/consume`**
+
    ```javascript
    // Extracts user_id from JWT authentication
    const user_id = req.user?.id || null;
@@ -143,6 +153,7 @@ All methods maintain backward compatibility via optional parameters.
 2. **`POST /api/inventory/receive`** - Same pattern for tracking who receives inventory
 
 **Authentication Integration**:
+
 - Uses existing JWT auth middleware (`requireAuth()`)
 - Extracts `user_id` from `req.user.id`
 - Falls back to `null` for anonymous operations (maintains backward compatibility)
@@ -152,6 +163,7 @@ All methods maintain backward compatibility via optional parameters.
 **Updated Method**: `getUserRatings(userId, includeImplicitFromConsumption = true)`
 
 Now returns **combined ratings**:
+
 - **Explicit ratings** from `LearningPairingFeedbackEnhanced` (user provided feedback)
 - **Implicit ratings** from `LearningConsumptionEvents` (user consumed wine)
 
@@ -165,6 +177,7 @@ const ratings = await cfEngine.getUserRatings(userId, true);
 Converts consumption patterns to implicit ratings for collaborative filtering.
 
 **Deduplication Strategy**:
+
 - If a user has both explicit feedback AND consumption for the same wine
 - Explicit rating takes precedence (it's more direct feedback)
 - Implicit ratings are only used for wines without explicit ratings
@@ -333,16 +346,19 @@ The implementation maintains **full backward compatibility**:
 ## Testing Recommendations
 
 ### Unit Tests
+
 - Test `recordConsumptionEvent()` with and without user context
 - Test implicit rating calculation algorithm
 - Test deduplication logic (explicit vs. implicit ratings)
 
 ### Integration Tests
+
 - Test full flow: consume → store → query → recommend
 - Test authenticated vs. anonymous consumption
 - Test session linkage (consumption during pairing session)
 
 ### Edge Cases
+
 - NULL user_id (anonymous consumption)
 - NULL session_id (consumption not part of pairing)
 - Mixed data (some records with user_id, some without)
@@ -352,17 +368,21 @@ The implementation maintains **full backward compatibility**:
 ## Performance Considerations
 
 ### Indexes
+
 Three indexes were added to optimize queries:
+
 - `user_id` - For user-specific consumption queries
 - `session_id` - For session-based queries
 - `(user_id, created_at)` - Compound index for time-series analysis
 
 ### Query Optimization
+
 - Use `WHERE user_id = ?` for user-specific queries
 - Use `WHERE session_id = ?` for session-based queries
 - Avoid full table scans by always filtering on indexed columns
 
 ### Caching Strategy
+
 - Cache user preference profiles (updated periodically)
 - Cache implicit ratings (invalidate on new consumption)
 - Use existing collaborative filtering cache system
@@ -385,9 +405,11 @@ Three indexes were added to optimize queries:
 ## Files Modified
 
 ### Created
+
 - `backend/database/migrations/005_consumption_user_tracking.sql`
 
 ### Modified
+
 - `backend/core/learning_engine.js`
 - `backend/core/enhanced_learning_engine.js`
 - `backend/core/inventory_manager.js`
@@ -401,6 +423,7 @@ This implementation successfully addresses the gap identified in your original q
 > "Link Consumption to Specific Users or Sessions: In the base schema, LearningConsumptionEvents doesn't reference a user or a pairing session."
 
 **Now it does!** The system can:
+
 - ✅ Track which user consumed which wine
 - ✅ Link consumption to pairing sessions
 - ✅ Use consumption as implicit positive feedback

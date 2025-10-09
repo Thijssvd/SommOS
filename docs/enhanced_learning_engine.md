@@ -7,24 +7,28 @@ The Enhanced Learning Engine is a significant upgrade to SommOS's machine learni
 ## Key Features
 
 ### 1. Granular Feedback Collection
+
 - **Multi-dimensional ratings**: Overall, flavor harmony, texture balance, acidity match, tannin balance, body match, regional tradition
 - **Contextual data**: Occasion, guest count, time of day, season, weather context
 - **Behavioral tracking**: Selection patterns, time to select, viewing duration
 - **Additional feedback**: Notes, recommendation likelihood, price satisfaction
 
 ### 2. Advanced Feature Engineering
+
 - **Wine feature vectors**: Structured extraction of wine characteristics
 - **Dish feature vectors**: Parsed dish descriptions with semantic analysis
 - **Temporal features**: Season, time of day, day of week patterns
 - **Interaction features**: Cross-features between wine and dish characteristics
 
 ### 3. Machine Learning Enhancements
+
 - **Advanced weighting algorithms**: Confidence-based weighting with temporal decay
 - **User preference profiles**: Individual user modeling and adaptation
 - **Feature interactions**: Tracking successful wine-dish combinations
 - **Learning metrics**: Performance tracking and quality analysis
 
 ### 4. Data Quality Assurance
+
 - **Comprehensive validation**: Input validation with detailed error reporting
 - **Data sanitization**: Automatic cleaning and normalization
 - **Quality analysis**: Feedback quality scoring and issue detection
@@ -35,9 +39,11 @@ The Enhanced Learning Engine is a significant upgrade to SommOS's machine learni
 ### Enhanced Feedback Collection
 
 #### POST `/api/learning/feedback/enhanced`
+
 Record detailed pairing feedback with granular ratings.
 
 **Request Body:**
+
 ```json
 {
   "recommendation_id": "rec-123",
@@ -73,6 +79,7 @@ Record detailed pairing feedback with granular ratings.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -87,9 +94,11 @@ Record detailed pairing feedback with granular ratings.
 ### Feature Engineering
 
 #### POST `/api/learning/features/wine/extract`
+
 Extract structured features from wine data.
 
 **Request Body:**
+
 ```json
 {
   "wine_id": 123
@@ -97,6 +106,7 @@ Extract structured features from wine data.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -116,9 +126,11 @@ Extract structured features from wine data.
 ```
 
 #### POST `/api/learning/features/dish/extract`
+
 Extract structured features from dish descriptions.
 
 **Request Body:**
+
 ```json
 {
   "dish_description": "Grilled ribeye steak with roasted vegetables"
@@ -126,6 +138,7 @@ Extract structured features from dish descriptions.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -146,9 +159,11 @@ Extract structured features from dish descriptions.
 ### Learning Analytics
 
 #### GET `/api/learning/weights/enhanced`
+
 Get current enhanced pairing weights.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -170,9 +185,11 @@ Get current enhanced pairing weights.
 ```
 
 #### GET `/api/learning/metrics`
+
 Get learning performance metrics.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -197,9 +214,11 @@ Get learning performance metrics.
 ### Data Validation
 
 #### POST `/api/learning/validate/feedback`
+
 Validate feedback data quality.
 
 **Request Body:**
+
 ```json
 {
   "recommendation_id": "rec-123",
@@ -215,6 +234,7 @@ Validate feedback data quality.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -243,6 +263,7 @@ Validate feedback data quality.
 ## Database Schema
 
 ### Enhanced Feedback Table
+
 ```sql
 CREATE TABLE LearningPairingFeedbackEnhanced (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -282,6 +303,7 @@ CREATE TABLE LearningPairingFeedbackEnhanced (
 ```
 
 ### Feature Engineering Tables
+
 ```sql
 CREATE TABLE WineFeatures (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -456,16 +478,19 @@ await enhancedLearningEngine.recordEnhancedPairingFeedback({
 ## Performance Considerations
 
 ### 1. Feature Caching
+
 - Wine features are cached for frequently accessed wines
 - Dish features are cached by description hash
 - Cache is automatically refreshed when wine data changes
 
 ### 2. Batch Processing
+
 - Use batch endpoints for processing multiple items
 - Batch size is limited to 100 items per request
 - Consider rate limiting for high-volume operations
 
 ### 3. Database Optimization
+
 - Indexes are created for frequently queried fields
 - Feature vectors are stored as JSON for efficient retrieval
 - Consider partitioning for large datasets
@@ -473,16 +498,19 @@ await enhancedLearningEngine.recordEnhancedPairingFeedback({
 ## Monitoring and Maintenance
 
 ### 1. Learning Metrics
+
 - Monitor pairing accuracy and user satisfaction
 - Track feature extraction success rates
 - Analyze feedback quality scores
 
 ### 2. Data Quality
+
 - Regular validation of feedback data
 - Monitor for outliers and anomalies
 - Clean up low-quality data
 
 ### 3. Performance Monitoring
+
 - Track API response times
 - Monitor database query performance
 - Set up alerts for system issues
@@ -516,6 +544,7 @@ await enhancedLearningEngine.recordEnhancedPairingFeedback({
 ## Future Enhancements
 
 ### Planned Features
+
 1. **Machine Learning Models**: Neural networks and collaborative filtering
 2. **Real-time Learning**: Online learning algorithms
 3. **Advanced Analytics**: Predictive modeling and trend analysis
@@ -523,6 +552,7 @@ await enhancedLearningEngine.recordEnhancedPairingFeedback({
 5. **Export/Import**: Data portability and backup features
 
 ### Contributing
+
 1. Follow the existing code style
 2. Add comprehensive tests
 3. Update documentation
@@ -531,6 +561,7 @@ await enhancedLearningEngine.recordEnhancedPairingFeedback({
 ## Support
 
 For questions or issues:
+
 1. Check the troubleshooting section
 2. Review the API documentation
 3. Check the test files for examples

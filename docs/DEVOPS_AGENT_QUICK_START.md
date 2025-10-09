@@ -22,21 +22,25 @@
 ## 🎯 Fastest Path to Activation
 
 ### Step 1: Copy the Configuration (15 seconds)
+
 ```bash
 cat /Users/thijs/Documents/SommOS/Agent-MCP/create-devops-agent.json
 ```
 
 ### Step 2: Open Dashboard (5 seconds)
+
 ```bash
 open http://localhost:3847
 ```
 
 ### Step 3: Create Agent (30 seconds)
+
 1. Click "Agents" → "Create New Agent"
 2. Paste JSON configuration
 3. Note the worker token generated
 
 ### Step 4: Initialize Agent (2 minutes)
+
 Open new AI assistant window and paste:
 
 ```
@@ -85,11 +89,11 @@ AUTO --worker --memory
 
 ## 🔗 Infrastructure
 
-- **SommOS**: http://localhost:3000
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3002 (admin/admin)
-- **Agent-MCP**: http://localhost:8080
-- **Dashboard**: http://localhost:3847
+- **SommOS**: <http://localhost:3000>
+- **Prometheus**: <http://localhost:9090>
+- **Grafana**: <http://localhost:3002> (admin/admin)
+- **Agent-MCP**: <http://localhost:8080>
+- **Dashboard**: <http://localhost:3847>
 
 ---
 
@@ -104,18 +108,21 @@ AUTO --worker --memory
 ## 🆘 Quick Troubleshooting
 
 **Agent won't create?**
+
 ```bash
 curl http://localhost:8080/health
 # Should return success
 ```
 
 **Dashboard not loading?**
+
 ```bash
 open http://localhost:3847
 # Check browser console for errors
 ```
 
 **Can't find admin token?**
+
 ```bash
 cat /Users/thijs/Documents/SommOS/.agent/WORKER_AGENTS_INIT.md | grep "Admin Token"
 # Token: <use token from .agent/admin_token.txt>
@@ -136,14 +143,15 @@ The agent configuration includes:
 
 ---
 
-## 🎉 Success!
+## 🎉 Success
 
 When agent is active:
+
 1. It reads `DEVOPS_SPECIALIST_INIT.md` for context
 2. Reviews `DEVOPS_INTEGRATION_SUMMARY.md` for completed work
 3. Starts with Task 1: AlertManager setup
 4. Coordinates with Test Specialist for CI/CD
-5. You monitor progress at http://localhost:3847
+5. You monitor progress at <http://localhost:3847>
 
 ---
 

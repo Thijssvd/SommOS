@@ -7,6 +7,7 @@ A lightweight feedback system that allows SommOS to learn from procurement decis
 ## Files Created/Modified
 
 ### New Files
+
 1. **`/backend/database/migrations/006_procurement_feedback.sql`**
    - Adds feedback tracking fields to InventoryIntakeOrders
 
@@ -14,6 +15,7 @@ A lightweight feedback system that allows SommOS to learn from procurement decis
    - Complete implementation guide with examples and troubleshooting
 
 ### Modified Files
+
 1. **`/backend/middleware/validate.js`**
    - Added `procurementFeedback` validation schema
 
@@ -42,6 +44,7 @@ npm run migrate
 ```
 
 **Expected Output:**
+
 ```
 Starting database migrations...
 Applying migration: 006_procurement_feedback.sql
@@ -56,6 +59,7 @@ npm run migrate:status
 ```
 
 **Expected Output:**
+
 ```
 Migration Status:
 Applied: 6
@@ -66,12 +70,14 @@ Pending: 0
 ### 3. Test the New Endpoint
 
 **Get recommendations:**
+
 ```bash
 curl -X GET "http://localhost:3001/api/procurement/opportunities?budget=5000" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 **Response includes `recommendation_id`:**
+
 ```json
 {
   "success": true,
@@ -85,6 +91,7 @@ curl -X GET "http://localhost:3001/api/procurement/opportunities?budget=5000" \
 ```
 
 **Submit feedback:**
+
 ```bash
 curl -X POST "http://localhost:3001/api/procurement/feedback" \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -100,17 +107,20 @@ curl -X POST "http://localhost:3001/api/procurement/feedback" \
 ## Key Features
 
 ### 1. Track Recommendation Outcomes
+
 - Records which recommendations were accepted/rejected/modified
 - Links orders to recommendations via `intake_order_id`
 - Stores outcome ratings (1-5) and feedback notes
 
 ### 2. Adaptive Learning
+
 - Analyzes feedback patterns (last 90 days)
 - Calculates acceptance rate
 - Adjusts procurement scoring weights automatically
 - Blends learned weights with defaults (70/30 ratio)
 
 ### 3. Minimal Schema Changes
+
 - Only 3 new columns added to `InventoryIntakeOrders`
 - Leverages existing `Explainability` table
 - Two indexes for performance
@@ -122,6 +132,7 @@ curl -X POST "http://localhost:3001/api/procurement/feedback" \
 **Authentication**: Required (Admin or Crew)
 
 **Request Body**:
+
 ```json
 {
   "recommendation_id": 123,          // required
@@ -133,6 +144,7 @@ curl -X POST "http://localhost:3001/api/procurement/feedback" \
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -199,6 +211,7 @@ curl -X POST "http://localhost:3001/api/procurement/feedback" \
 ## Monitoring Queries
 
 ### Check Recent Feedback
+
 ```sql
 SELECT 
     e.id, 
@@ -214,6 +227,7 @@ LIMIT 20;
 ```
 
 ### View Current Procurement Weights
+
 ```sql
 SELECT parameter_value 
 FROM LearningParameters 
@@ -221,6 +235,7 @@ WHERE parameter_name = 'procurement_weights';
 ```
 
 ### Calculate Acceptance Rate
+
 ```sql
 SELECT 
     COUNT(*) as total,
@@ -290,18 +305,21 @@ describe('Procurement Feedback', () => {
 ## Next Steps
 
 ### Immediate (This Week)
+
 - [ ] Apply migration to development database
 - [ ] Test endpoint manually with curl/Postman
 - [ ] Update frontend to capture recommendation IDs
 - [ ] Add UI for feedback submission
 
 ### Short-term (Next 2 Weeks)
+
 - [ ] Monitor initial feedback submissions
 - [ ] Review weight adjustments
 - [ ] Gather team feedback on recommendations
 - [ ] Document any issues or edge cases
 
 ### Long-term (Future)
+
 - [ ] Analyze acceptance rate trends
 - [ ] Consider Phase 2 enhancements if valuable
 - [ ] A/B test recommendation algorithms
@@ -351,6 +369,7 @@ sqlite3 backend/database/sommos.db \
 ## Support
 
 For questions or issues:
+
 1. Check `/PROCUREMENT_FEEDBACK_IMPLEMENTATION.md` for detailed explanations
 2. Review test cases in `/tests/backend/procurement-feedback.test.js`
 3. Check database directly with monitoring queries above

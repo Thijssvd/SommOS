@@ -21,6 +21,7 @@ The reproducibility test **confirms that all three ML models produce stable, con
 ## 1. Simulation Data Comparison
 
 ### Seed 42 Results
+
 ```
 Simulation Period: 2024-01-01 to 2024-12-31
 Random Seed: 42
@@ -33,6 +34,7 @@ Average Rating: 4.20/5.0
 ```
 
 ### Seed 123 Results
+
 ```
 Simulation Period: 2024-01-01 to 2024-12-31
 Random Seed: 123
@@ -45,6 +47,7 @@ Average Rating: 4.24/5.0
 ```
 
 ### Data Consistency Analysis
+
 | Metric | Seed 42 | Seed 123 | Δ Difference | Δ % Change |
 |--------|---------|----------|--------------|------------|
 | **Days with Guests** | 142 | 147 | +5 days | +3.5% |
@@ -54,6 +57,7 @@ Average Rating: 4.24/5.0
 | **Average Rating** | 4.20 | 4.24 | +0.04 | +1.0% |
 
 **Assessment:** ✅ **Excellent consistency**
+
 - All metrics within ±10% (except procurement orders, which is small sample)
 - Similar guest activity patterns
 - Comparable rating distributions
@@ -72,6 +76,7 @@ Average Rating: 4.24/5.0
 | **R²** | -0.3250 | -0.2626 | +0.0624 | +19.2% | ±30% | ✅ Within |
 
 ### Training Data
+
 | Metric | Seed 42 | Seed 123 | Difference |
 |--------|---------|----------|------------|
 | **Total Samples** | 228 | 220 | -8 (-3.5%) |
@@ -101,6 +106,7 @@ The pairing model shows **consistent performance** across both seeds:
    - Not a bug - signal that more data needed
 
 **Key Insight:** The fact that both seeds produce negative R² values **validates our realism analysis**. This is not a training bug—it's a fundamental data limitation. The model is learning patterns but can't beat the simple baseline due to:
+
 - High baseline performance (4.2-4.24 mean rating)
 - Limited samples (220-228 vs 570+ needed)
 - Simple linear model (wine pairing is non-linear)
@@ -144,6 +150,7 @@ The collaborative filtering model shows **consistent excellent performance**:
    - Both models capture user preferences well
 
 **Conclusion:** ✅ **Collaborative model is reproducible and excellent**
+
 - Seed 42 MAE: 0.151 (Outstanding!)
 - Seed 123 MAE: 0.180 (Excellent!)
 - Both ready for production deployment
@@ -162,6 +169,7 @@ The collaborative filtering model shows **consistent excellent performance**:
 ### Time Series Statistics
 
 **Seed 42:**
+
 ```
 Red:      127 days, mean=2.36 bottles/day, seasonality=0.000
 White:    61 days, mean=2.90 bottles/day, seasonality=0.063
@@ -170,6 +178,7 @@ Dessert:   1 day, mean=1.00 bottles/day (excluded)
 ```
 
 **Seed 123:**
+
 ```
 Red:      113 days, mean=1.98 bottles/day, seasonality=0.000
 White:    61 days, mean=2.90 bottles/day, seasonality=0.000
@@ -202,6 +211,7 @@ The procurement model shows **consistent poor performance** (which is realistic)
    - Both seeds: ~60% of days have zero consumption
 
 **Conclusion:** ✅ **Procurement model is reproducible and realistically poor**
+
 - High MAPE is not a bug—it's expected for sparse event data
 - Both seeds show model can't forecast daily consumption well
 - Validates recommendation: Switch to weekly aggregation or event classification
@@ -221,6 +231,7 @@ The procurement model shows **consistent poor performance** (which is realistic)
 ### Statistical Analysis
 
 **Variance Summary:**
+
 | Model | Metric | Seed 42 | Seed 123 | Variance % | Expected % | Pass? |
 |-------|--------|---------|----------|------------|------------|-------|
 | **Pairing** | RMSE | 0.8906 | 0.7703 | 13.5% | ±20% | ✅ |
@@ -232,6 +243,7 @@ The procurement model shows **consistent poor performance** (which is realistic)
 **Overall Variance:** ✅ **4 of 5 metrics within expected range** (80% pass rate)
 
 The collaborative filtering variance (19.0%) is slightly above the expected 10%, but:
+
 - Both values are excellent (< 0.2 MAE threshold)
 - Higher variance expected with smaller sample size (220 vs 228)
 - Does not indicate instability or bugs
@@ -315,18 +327,21 @@ The collaborative filtering variance (19.0%) is slightly above the expected 10%,
 ### Short-Term Improvements 📈
 
 **For Pairing Model:**
+
 1. Run 5-year simulation (seed 42) → 1,140 sessions
 2. Implement non-linear model (random forest, neural net)
 3. Add wine chemistry features
 4. **Target:** RMSE < 0.5, R² > 0.3
 
 **For Procurement Model:**
+
 1. Switch to weekly forecasting (not daily)
 2. Use classification: "Will consumption occur?" (yes/no)
 3. Run 3-5 year simulation for seasonal patterns
 4. **Target:** MAPE < 40% on weekly aggregates
 
 **For Collaborative Model:**
+
 1. No immediate changes needed (already excellent)
 2. Monitor production performance
 3. Consider adding temporal dynamics (preferences change over time)
@@ -334,6 +349,7 @@ The collaborative filtering variance (19.0%) is slightly above the expected 10%,
 ### Long-Term Strategy 🚀
 
 1. **Multi-Year Simulation**
+
    ```bash
    # Modify simulate-year-data.js to run 2024-2028 (5 years)
    # Keeps reproducibility (same seed 42)
@@ -368,12 +384,14 @@ The collaborative filtering variance (19.0%) is slightly above the expected 10%,
 ### Interpretation
 
 **A Grade (85% Consistency):** ✅ **Excellent reproducibility**
+
 - Models are stable across different random seeds
 - Performance patterns are consistent
 - Training process is sound
 - No bugs or instability detected
 
 **What "85% consistency" means:**
+
 - Metrics vary by 15-26% across seeds
 - Expected for small sample sizes (220-228 samples)
 - All variations within statistical noise
@@ -386,6 +404,7 @@ The collaborative filtering variance (19.0%) is slightly above the expected 10%,
 ### Predicted vs Actual Variance
 
 **Before Test (Expected):**
+
 ```
 Pairing RMSE: ±20% (0.71-1.07)
 Pairing MAE: ±20% (0.59-0.89)
@@ -395,6 +414,7 @@ Collaborative MAE: ±10% (0.14-0.17)
 ```
 
 **After Test (Actual):**
+
 ```
 Pairing RMSE: 13.5% variance (0.77-0.89) ✅ Within range
 Pairing MAE: 20.6% variance (0.59-0.74) ✅ Within range
@@ -406,6 +426,7 @@ Collaborative MAE: 19.0% variance (0.151-0.180) ⚠️ Slightly high
 **Assessment:** ✅ **4 out of 5 metrics within predicted range (80%)**
 
 The collaborative model variance (19%) exceeded the expected 10%, but:
+
 - Still excellent performance (both MAE < 0.2)
 - Due to fewer wines in seed 123 (193 vs 206)
 - Not a concern for production use
@@ -425,6 +446,7 @@ The collaborative model variance (19%) exceeded the expected 10%, but:
 ### Deployment Checklist
 
 **Collaborative Filtering Model:**
+
 - [✅] Performance validated (MAE < 0.2)
 - [✅] Reproducibility confirmed (consistent across seeds)
 - [✅] Model file ready (`collaborative_model_v1.json`, 58 KB)
@@ -434,6 +456,7 @@ The collaborative model variance (19%) exceeded the expected 10%, but:
 - [ ] Fallback strategy (if model fails, use traditional algorithm)
 
 **Pairing Model:**
+
 - [✅] Baseline established (RMSE ~0.8, MAE ~0.6-0.7)
 - [✅] Known limitations documented (needs more data)
 - [ ] V2 training plan (5-year simulation)
@@ -536,6 +559,7 @@ The SommOS ML models demonstrate **excellent reproducibility** across different 
 **All performance patterns are reproducible, realistic, and well-understood.**
 
 The test confirms that:
+
 1. Training process is bug-free and stable
 2. Model performance is limited by data, not implementation
 3. Results are reproducible and trustworthy

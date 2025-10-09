@@ -16,12 +16,14 @@ This document provides a complete reference of all `data-testid` attributes adde
 ## Authentication Screen
 
 ### Member Login Tab
+
 | Element | Test ID | Selector | Description |
 |---------|---------|----------|-------------|
 | Member Tab Button | `auth-tab-member` | `[data-testid="auth-tab-member"]` | Member login tab button |
 | Guest Tab Button | `auth-tab-guest` | `[data-testid="auth-tab-guest"]` | Guest access tab button |
 
 ### Member Login Form
+
 | Element | Test ID | Selector | Description |
 |---------|---------|----------|-------------|
 | Login Form | `auth-form-member` | `[data-testid="auth-form-member"]` | Member login form container |
@@ -30,6 +32,7 @@ This document provides a complete reference of all `data-testid` attributes adde
 | Login Button | `auth-button-login` | `[data-testid="auth-button-login"]` | Submit login button |
 
 ### Guest Login Form
+
 | Element | Test ID | Selector | Description |
 |---------|---------|----------|-------------|
 | Event Code Input | `auth-input-guest-code` | `[data-testid="auth-input-guest-code"]` | Guest event code input |
@@ -42,6 +45,7 @@ This document provides a complete reference of all `data-testid` attributes adde
 ## Main Navigation
 
 ### Navigation Menu Items
+
 | Element | Test ID | Selector | Description |
 |---------|---------|----------|-------------|
 | Dashboard Nav | `nav-dashboard` | `[data-testid="nav-dashboard"]` | Navigate to Dashboard view |
@@ -52,6 +56,7 @@ This document provides a complete reference of all `data-testid` attributes adde
 | Glossary Nav | `nav-glossary` | `[data-testid="nav-glossary"]` | Navigate to Glossary view |
 
 ### Navigation Actions
+
 | Element | Test ID | Selector | Description |
 |---------|---------|----------|-------------|
 | Help Button | `nav-action-help` | `[data-testid="nav-action-help"]` | Open help/glossary modal |
@@ -64,6 +69,7 @@ This document provides a complete reference of all `data-testid` attributes adde
 ## Dashboard View
 
 ### Quick Actions
+
 | Element | Test ID | Selector | Description |
 |---------|---------|----------|-------------|
 | Quick Pairing Action | `dashboard-action-pairing` | `[data-testid="dashboard-action-pairing"]` | Quick wine pairing action card |
@@ -74,6 +80,7 @@ This document provides a complete reference of all `data-testid` attributes adde
 ## Usage in Tests
 
 ### TypeScript Example
+
 ```typescript
 import { test, expect } from '@playwright/test';
 
@@ -96,6 +103,7 @@ test('should login with valid credentials', async ({ page }) => {
 ```
 
 ### Using Selectors Utility
+
 ```typescript
 import { Selectors, testId } from './utils/selectors';
 
@@ -111,6 +119,7 @@ await page.click(testId('auth-button-login'));
 ## Best Practices
 
 ### DO ✅
+
 - Use semantic, descriptive test IDs
 - Follow the naming convention: `{component}-{type}-{name}`
 - Keep test IDs stable across refactors
@@ -118,6 +127,7 @@ await page.click(testId('auth-button-login'));
 - Use test IDs as primary selectors in E2E tests
 
 ### DON'T ❌
+
 - Use generated or random IDs (e.g., `button-12345`)
 - Change test IDs without updating tests
 - Duplicate test IDs across different elements
@@ -129,6 +139,7 @@ await page.click(testId('auth-button-login'));
 ## Adding New Test IDs
 
 ### Process
+
 1. **Identify the element**: Determine which UI element needs a test ID
 2. **Choose a name**: Follow the naming convention
 3. **Add the attribute**: `data-testid="component-type-name"`
@@ -137,6 +148,7 @@ await page.click(testId('auth-button-login'));
 6. **Write tests**: Use the new test ID in your E2E tests
 
 ### Example
+
 ```html
 <!-- Before -->
 <button id="add-bottle" class="btn primary">Add Bottle</button>
@@ -148,6 +160,7 @@ await page.click(testId('auth-button-login'));
 ```
 
 ### Update Docs
+
 ```markdown
 ## Inventory View
 
@@ -162,6 +175,7 @@ await page.click(testId('auth-button-login'));
 ## To Be Added
 
 ### High Priority
+
 - [ ] **Inventory View**
   - `inventory-search-input` - Search wine inventory
   - `inventory-filter-type` - Filter by wine type
@@ -197,6 +211,7 @@ await page.click(testId('auth-button-login'));
   - `form-button-cancel` - Cancel button
 
 ### Medium Priority
+
 - [ ] **Procurement View** (admin/crew only)
 - [ ] **Catalog View**
 - [ ] **Settings Modal**
@@ -204,6 +219,7 @@ await page.click(testId('auth-button-login'));
 - [ ] **Toast Notifications**
 
 ### Low Priority
+
 - [ ] **Loading States**
 - [ ] **Empty States**
 - [ ] **Error Boundaries**
@@ -215,26 +231,31 @@ await page.click(testId('auth-button-login'));
 When writing E2E tests, use selectors in this priority order:
 
 1. **`data-testid`** - Primary (most stable) ✅
+
    ```typescript
    page.locator('[data-testid="auth-button-login"]')
    ```
 
 2. **`aria-label`** - Secondary (semantic)
+
    ```typescript
    page.locator('[aria-label="Navigate to Dashboard"]')
    ```
 
 3. **`role`** - Tertiary (accessibility)
+
    ```typescript
    page.locator('button[role="menuitem"]')
    ```
 
 4. **`id`** - Fallback (functional IDs)
+
    ```typescript
    page.locator('#login-submit')
    ```
 
 5. **`class`** - Last resort (fragile) ⚠️
+
    ```typescript
    page.locator('.btn.primary') // Avoid if possible
    ```
@@ -244,17 +265,20 @@ When writing E2E tests, use selectors in this priority order:
 ## Migration Status
 
 ### Completed ✅
+
 - [x] Authentication forms (member & guest)
 - [x] Navigation menu (all items)
 - [x] Navigation actions (help, sync, settings, logout)
 - [x] Dashboard quick actions
 
 ### In Progress 🚧
+
 - [ ] Inventory view components
 - [ ] Pairing view components
 - [ ] Modal dialogs
 
 ### Not Started ❌
+
 - [ ] Procurement view
 - [ ] Catalog view
 - [ ] Settings modal

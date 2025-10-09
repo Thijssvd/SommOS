@@ -18,6 +18,7 @@ When you chat with Warp AI, the assistant can **automatically invoke MCP server 
 > "Review the pairing engine code and explain how it works"
 
 **Warp AI:**
+
 1. Uses **filesystem server** to read `backend/core/pairing_engine.js`
 2. Uses **sequential-thinking server** to break down the algorithm step-by-step
 3. Uses **memory server** to remember this analysis for future questions
@@ -30,6 +31,7 @@ When you chat with Warp AI, the assistant can **automatically invoke MCP server 
 The filesystem server allows Warp AI to read and write files in your project directory.
 
 ### Current Configuration
+
 ```json
 "filesystem": {
   "command": "mcp-server-filesystem",
@@ -41,25 +43,30 @@ The filesystem server allows Warp AI to read and write files in your project dir
 ### What It Can Do
 
 #### Read Files
+
 **Natural prompt:** "Show me the authentication middleware"
 
 Warp AI will automatically read `backend/middleware/auth.js`
 
 #### Write/Edit Files
+
 **Natural prompt:** "Add input validation to the pairing endpoint"
 
 Warp AI will:
+
 1. Read `backend/api/pairing.js`
 2. Understand the current code
 3. Generate the validation logic
 4. Write the changes back to the file
 
 #### Navigate Project Structure
+
 **Natural prompt:** "List all the database migration files"
 
 Warp AI will explore `backend/database/migrations/`
 
 #### Search for Code Patterns
+
 **Natural prompt:** "Find all files that use the DeepSeek API"
 
 Warp AI will search across the project for `DEEPSEEK_API_KEY` references
@@ -67,12 +74,14 @@ Warp AI will search across the project for `DEEPSEEK_API_KEY` references
 ### Best Practices for SommOS
 
 ✅ **Do:**
+
 - Ask to read specific files: "Check the wine inventory schema"
 - Request code reviews: "Review error handling in the API routes"
 - Ask for file creation: "Create a new migration for guest access"
 - Request refactoring: "Split the pairing engine into smaller modules"
 
 ❌ **Don't:**
+
 - Try to edit `.env` files (security risk)
 - Modify files in `node_modules/`
 - Change database files directly
@@ -85,6 +94,7 @@ Warp AI will search across the project for `DEEPSEEK_API_KEY` references
 The sequential-thinking server helps Warp AI break down complex problems into manageable steps.
 
 ### Current Configuration
+
 ```json
 "sequential-thinking": {
   "command": "mcp-server-sequential-thinking",
@@ -96,9 +106,11 @@ The sequential-thinking server helps Warp AI break down complex problems into ma
 ### What It Can Do
 
 #### Debug Complex Issues
+
 **Natural prompt:** "The wine pairing API returns 500 errors when the dish name is empty. Help me debug this."
 
 Warp AI will:
+
 1. Analyze the request flow from frontend to backend
 2. Check validation middleware
 3. Examine the pairing engine logic
@@ -107,9 +119,11 @@ Warp AI will:
 6. Suggest a fix
 
 #### Analyze Architecture
+
 **Natural prompt:** "Explain how offline sync works in SommOS"
 
 Warp AI will systematically trace:
+
 1. Service worker registration
 2. Cache strategies
 3. IndexedDB usage
@@ -117,9 +131,11 @@ Warp AI will systematically trace:
 5. Conflict resolution
 
 #### Plan Features
+
 **Natural prompt:** "How should we implement wine cellar temperature monitoring?"
 
 Warp AI will think through:
+
 1. Data model requirements
 2. API endpoints needed
 3. Database schema changes
@@ -130,6 +146,7 @@ Warp AI will think through:
 ### Best Practices for SommOS
 
 ✅ **Use for:**
+
 - Debugging authentication flows
 - Analyzing database query performance
 - Planning new features
@@ -137,6 +154,7 @@ Warp AI will think through:
 - Troubleshooting deployment issues
 
 ❌ **Avoid for:**
+
 - Simple questions that don't need step-by-step analysis
 - Questions already answered in documentation
 
@@ -147,6 +165,7 @@ Warp AI will think through:
 The memory server allows Warp AI to remember context across different chat sessions.
 
 ### Current Configuration
+
 ```json
 "memory": {
   "command": "mcp-server-memory",
@@ -158,21 +177,25 @@ The memory server allows Warp AI to remember context across different chat sessi
 ### What It Can Do
 
 #### Remember Architectural Decisions
+
 **Natural prompt:** "Remember that we use DeepSeek as the primary AI provider with OpenAI as fallback"
 
 Warp AI will store this and reference it in future conversations.
 
 #### Track Project Conventions
+
 **Natural prompt:** "Remember that all API endpoints should include rate limiting and request validation"
 
 Future code generation will follow this pattern.
 
 #### Maintain Testing Context
+
 **Natural prompt:** "Remember that we need to maintain 80% test coverage and all tests must pass before deployment"
 
 Warp AI will reference this when suggesting changes.
 
 #### Store Debugging Solutions
+
 **Natural prompt:** "Remember that CORS issues between ports 3000 and 3001 require explicit origin configuration in backend/config/security.js"
 
 Next time similar issues arise, Warp AI will recall the solution.
@@ -180,6 +203,7 @@ Next time similar issues arise, Warp AI will recall the solution.
 ### Best Practices for SommOS
 
 ✅ **Store:**
+
 - API endpoint documentation
 - Common debugging solutions
 - Deployment procedures
@@ -188,6 +212,7 @@ Next time similar issues arise, Warp AI will recall the solution.
 - Performance optimization notes
 
 ❌ **Don't store:**
+
 - Sensitive credentials or API keys
 - Temporary debugging notes
 - User-specific data
@@ -198,6 +223,7 @@ Next time similar issues arise, Warp AI will recall the solution.
 ## Practical SommOS Examples
 
 ### Example 1: Debugging Authentication
+
 ```
 You: "The JWT token isn't being set in cookies after login"
 
@@ -211,6 +237,7 @@ Warp AI will:
 ```
 
 ### Example 2: Adding a New Feature
+
 ```
 You: "Add a wine tasting notes export feature"
 
@@ -224,6 +251,7 @@ Warp AI will:
 ```
 
 ### Example 3: Performance Optimization
+
 ```
 You: "The wine search is slow with large inventories"
 
@@ -236,6 +264,7 @@ Warp AI will:
 ```
 
 ### Example 4: Code Review
+
 ```
 You: "Review the procurement engine for best practices"
 
@@ -253,6 +282,7 @@ Warp AI will:
 ### What's Protected
 
 The current configuration **automatically protects**:
+
 - Filesystem access is restricted to `/Users/thijs/Documents/SommOS`
 - Cannot access parent directories or system files
 - Cannot modify system configurations
@@ -273,14 +303,18 @@ The current configuration **automatically protects**:
 **Symptom**: Warp AI says "tool unavailable" or doesn't use MCP tools
 
 **Solutions**:
+
 1. Restart Warp: `Cmd + Q` and reopen
 2. Check server installation:
+
    ```bash
    which mcp-server-filesystem
    which mcp-server-sequential-thinking
    which mcp-server-memory
    ```
+
 3. Verify configuration:
+
    ```bash
    cat ~/Library/Application\ Support/Warp/mcp_config.json
    ```
@@ -290,6 +324,7 @@ The current configuration **automatically protects**:
 **Symptom**: Can't access project files
 
 **Solution**: Verify base path in config matches your project:
+
 ```json
 "args": ["/Users/thijs/Documents/SommOS"]
 ```
@@ -299,6 +334,7 @@ The current configuration **automatically protects**:
 **Symptom**: Warp AI forgets context between sessions
 
 **Solution**: Explicitly ask to remember:
+
 ```
 "Remember this solution for future reference"
 ```
@@ -310,26 +346,31 @@ The current configuration **automatically protects**:
 ### Useful Prompts for SommOS
 
 **Code Analysis:**
+
 - "Explain how the wine pairing algorithm works"
 - "Review the authentication flow for security issues"
 - "Analyze database schema for optimization opportunities"
 
 **Feature Development:**
+
 - "Create a new API endpoint for wine recommendations"
 - "Add input validation to the procurement routes"
 - "Implement real-time inventory updates via WebSocket"
 
 **Debugging:**
+
 - "Debug the CORS error on the pairing endpoint"
 - "Fix the JWT token refresh logic"
 - "Troubleshoot the offline sync not triggering"
 
 **Testing:**
+
 - "Generate test cases for the inventory manager"
 - "Review test coverage for API routes"
 - "Create integration tests for the pairing engine"
 
 **Documentation:**
+
 - "Generate API documentation for wine routes"
 - "Document the database migration process"
 - "Explain the deployment workflow"
@@ -341,6 +382,7 @@ The current configuration **automatically protects**:
 ### Combining Multiple Servers
 
 **Complex prompt example:**
+
 ```
 "I need to add a wine recommendation feature based on past orders. 
 Use sequential thinking to plan the architecture, then implement 
@@ -348,6 +390,7 @@ the code, and remember the design decisions for future reference."
 ```
 
 Warp AI will:
+
 1. [Sequential-thinking] Plan the feature systematically
 2. [Memory] Recall existing architecture patterns
 3. [Filesystem] Read relevant existing code
@@ -357,6 +400,7 @@ Warp AI will:
 ### Project-Specific Workflows
 
 **SommOS Development Workflow:**
+
 1. Planning: Use sequential-thinking for architecture
 2. Implementation: Use filesystem for code changes
 3. Testing: Use sequential-thinking for test strategies
@@ -377,8 +421,8 @@ Warp AI will:
 
 ## Additional Resources
 
-- **MCP Documentation**: https://modelcontextprotocol.io
-- **Warp MCP Guide**: https://docs.warp.dev/features/ai/mcp-servers
+- **MCP Documentation**: <https://modelcontextprotocol.io>
+- **Warp MCP Guide**: <https://docs.warp.dev/features/ai/mcp-servers>
 - **SommOS Architecture**: `docs/PROJECT_WORKFLOW.md`
 - **Enhanced MCP Config**: `docs/MCP_ENHANCED_CONFIG.json`
 

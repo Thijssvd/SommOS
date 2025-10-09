@@ -67,6 +67,7 @@ async reserveWineModal(vintageId, wineName) {
 ```
 
 Helper functions:
+
 - `isGuestUser()` - Returns true if current user role is 'guest'
 - `canManageInventory()` - Returns true for crew/admin
 - `ensureCrewAccess(message)` - Shows toast and returns false for guests
@@ -119,6 +120,7 @@ npm run test:e2e:debug
 ### Test Coverage
 
 #### Navigation Tests (`guest-permissions.spec.js`)
+
 - ✓ Procurement nav button is hidden for guests
 - ✓ Dashboard, pairing, inventory, catalog are accessible
 - ✓ Sync button is hidden for guests
@@ -127,6 +129,7 @@ npm run test:e2e:debug
 - ✓ "Record Service" dashboard action is hidden
 
 #### Inventory Tests (`guest-inventory-tests.spec.js`)
+
 - ✓ Guest can navigate to inventory view
 - ✓ Read-only messages are displayed in wine cards
 - ✓ Location details show "🔒 Location hidden"
@@ -137,6 +140,7 @@ npm run test:e2e:debug
 - ✓ `ensureCrewAccess()` returns false for guests
 
 #### Session Tests (planned in `guest-session.spec.js`)
+
 - Valid event code login
 - Invalid event code handling
 - PIN-protected event codes

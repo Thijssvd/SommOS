@@ -5,6 +5,7 @@ SommOS now uses **Open-Meteo** as its primary source for historical weather data
 ## 🎯 What is Open-Meteo?
 
 [Open-Meteo](https://open-meteo.com/) is a free, open-source weather API that provides:
+
 - ✅ **80+ years of historical weather data** (1940-present)
 - ✅ **High resolution data** (1-11km precision)
 - ✅ **No API key required** - completely free for non-commercial use
@@ -16,6 +17,7 @@ SommOS now uses **Open-Meteo** as its primary source for historical weather data
 For each vintage, SommOS now retrieves comprehensive weather data including:
 
 ### 🌡️ Temperature Data
+
 - **Daily max/min temperatures** for growing season (April-October)
 - **Mean temperatures** for precise calculations
 - **Diurnal temperature range** (day-night variation)
@@ -23,12 +25,14 @@ For each vintage, SommOS now retrieves comprehensive weather data including:
 - **Frost days** (<0°C) monitoring
 
 ### 🌧️ Precipitation Data  
+
 - **Daily rainfall** amounts
 - **Total growing season precipitation**
 - **Wet days** counting (>1mm rain)
 - **Drought stress** assessment
 
 ### ☀️ Additional Metrics
+
 - **Sunshine duration** (hours of direct sun)
 - **Daylight hours** for photoperiod calculations
 - **Wind speed** and **gusts**
@@ -39,22 +43,26 @@ For each vintage, SommOS now retrieves comprehensive weather data including:
 The Open-Meteo data is processed into wine industry standard metrics:
 
 ### Growing Degree Days (GDD)
+
 - **Base temperature**: 10°C
 - **Calculation**: Sum of (daily mean temp - 10°C) for temps >10°C
 - **Use**: Grape ripeness and phenology timing
 
 ### Huglin Index
+
 - **Heat accumulation** with day length adjustment
 - **Optimal range**: 1400-2200 for most wine grapes
 - **Use**: Variety suitability assessment
 
 ### Phenological Stages
+
 - **Budbreak**: ~50 GDD
 - **Flowering**: ~400 GDD  
 - **Véraison**: ~900 GDD
 - **Harvest**: ~1300 GDD
 
 ### Weather Quality Scoring
+
 - **Ripeness Score**: Based on GDD and temperature (1-5 scale)
 - **Acidity Score**: Based on diurnal range and cool nights (1-5 scale)
 - **Tannin Score**: Based on sunshine and heat accumulation (1-5 scale)
@@ -64,6 +72,7 @@ The Open-Meteo data is processed into wine industry standard metrics:
 ## 🌍 Global Wine Region Support
 
 ### Pre-configured Major Regions
+
 SommOS includes coordinates for 25+ major wine regions:
 
 **France**: Bordeaux, Burgundy, Champagne, Rhône, Loire, Alsace
@@ -78,7 +87,9 @@ SommOS includes coordinates for 25+ major wine regions:
 **South Africa**: Stellenbosch
 
 ### Automatic Geocoding
+
 For unlisted regions, SommOS automatically:
+
 1. **Geocodes** the region name using Open-Meteo's geocoding API
 2. **Caches** coordinates for future use
 3. **Falls back** to country-level coordinates if needed
@@ -87,13 +98,16 @@ For unlisted regions, SommOS automatically:
 ## 📈 Data Quality & Accuracy
 
 ### High Confidence Data
+
 - **Resolution**: 1-11km grid (higher resolution than most services)
 - **Sources**: National weather services and meteorological institutions
 - **Coverage**: Global, with 80+ years of consistent records
 - **Updates**: Continuously maintained and improved
 
 ### Validation Results
+
 Recent tests show excellent accuracy for wine regions:
+
 - **Bordeaux 2018**: GDD 1843 (exceptional vintage confirmed)
 - **Tuscany 2016**: GDD 1857, Quality Score 86/100
 - **Napa Valley 2019**: GDD 2098, Diurnal Range 15.1°C
@@ -102,12 +116,14 @@ Recent tests show excellent accuracy for wine regions:
 ## 🚀 Performance & Reliability
 
 ### Speed
+
 - **Single request**: ~300-500ms per vintage
 - **Concurrent requests**: 3 regions in ~1000ms
 - **Caching**: Database storage prevents duplicate API calls
 - **Timeout**: 10-second timeout with graceful fallback
 
 ### Reliability  
+
 - **No API keys**: No authentication failures
 - **Free service**: No rate limits for reasonable use
 - **Fallback system**: Multiple layers of error handling
@@ -116,6 +132,7 @@ Recent tests show excellent accuracy for wine regions:
 ## 🔧 Technical Implementation
 
 ### Service Architecture
+
 ```
 VintageIntelligenceService
 ├── WeatherAnalysisService
@@ -125,10 +142,12 @@ VintageIntelligenceService
 ```
 
 ### API Endpoints Used
+
 - **Historical Archive**: `https://archive-api.open-meteo.com/v1/archive`
 - **Geocoding**: `https://geocoding-api.open-meteo.com/v1/search`
 
 ### Data Flow
+
 1. **Wine Added** → Region & year extracted
 2. **Open-Meteo API** → Historical weather data fetched
 3. **Processing** → Wine-specific metrics calculated  
@@ -139,7 +158,9 @@ VintageIntelligenceService
 ## 📱 Usage Examples
 
 ### Automatic Analysis
+
 When you add a wine, weather analysis happens automatically:
+
 ```bash
 curl -X POST http://localhost:3001/api/wines \
   -H "Content-Type: application/json" \
@@ -147,12 +168,15 @@ curl -X POST http://localhost:3001/api/wines \
 ```
 
 ### Manual Testing
+
 Test Open-Meteo integration:
+
 ```bash
 npm run test:weather
 ```
 
 ### Get Vintage Analysis
+
 ```bash
 curl -X GET http://localhost:3001/api/vintage/analysis/1
 ```
@@ -160,18 +184,21 @@ curl -X GET http://localhost:3001/api/vintage/analysis/1
 ## 🎯 Benefits for SommOS
 
 ### Accuracy
+
 - **Real historical data** instead of estimates
 - **Precise calculations** based on actual weather conditions
 - **Regional specificity** down to 1km resolution
 - **Consistent methodology** across all wine regions
 
 ### Reliability
+
 - **No API keys** to manage or expire
 - **Free service** with no usage limits for reasonable use
 - **Multiple fallbacks** ensure system always works
 - **Global coverage** supports all wine regions
 
 ### Intelligence
+
 - **Professional vintage summaries** based on real weather
 - **Accurate procurement recommendations** using weather quality scores
 - **Vintage comparison** across years and regions
@@ -180,12 +207,15 @@ curl -X GET http://localhost:3001/api/vintage/analysis/1
 ## 🔄 Testing & Validation
 
 ### Test Coverage
+
 Run comprehensive tests:
+
 ```bash
 npm run test:weather
 ```
 
 Tests include:
+
 - ✅ Major wine regions (Bordeaux, Tuscany, Napa)
 - ✅ Historical data access (back to 1970s)
 - ✅ Global region support (Europe, USA, Australia, etc.)
@@ -195,7 +225,9 @@ Tests include:
 - ✅ Integration with existing services
 
 ### Validation Data
+
 Compare SommOS weather analysis with known vintage conditions:
+
 - **2018 Bordeaux**: Excellent vintage confirmed by weather data
 - **2016 Tuscany**: High-quality conditions validated
 - **2019 Napa**: Warm, dry conditions match reports
@@ -203,6 +235,7 @@ Compare SommOS weather analysis with known vintage conditions:
 ## 🔮 Future Enhancements
 
 ### Planned Improvements
+
 - **Soil temperature** data integration
 - **UV index** for grape skin development
 - **Humidity levels** for disease modeling
@@ -210,6 +243,7 @@ Compare SommOS weather analysis with known vintage conditions:
 - **Climate change** trend analysis
 
 ### Extended Coverage
+
 - **More regions**: Expanding pre-configured coordinates
 - **Micro-climates**: Sub-regional weather analysis
 - **Vineyard sites**: GPS coordinate-based analysis
@@ -220,22 +254,27 @@ Compare SommOS weather analysis with known vintage conditions:
 ### Common Issues
 
 #### "Failed to fetch weather data"
+
 - Check internet connection
 - Open-Meteo service may be temporarily down
 - System will fallback to template analysis
 
 #### "Using fallback coordinates"
+
 - Region name not in pre-configured list
 - Geocoding API failed
 - Data quality may be slightly lower but still accurate
 
 #### "Low confidence data"
+
 - Limited historical data for very old vintages or remote regions
 - Analysis is still performed but marked as lower confidence
 - Template analysis may be used as fallback
 
 ### Support
+
 If you encounter issues:
+
 1. Run diagnostic test: `npm run test:weather`
 2. Check server logs for specific error messages
 3. Verify internet connectivity
@@ -305,6 +344,7 @@ RUM Data Flow:
 ## 📋 Database Schema
 
 ### RumSessions Table
+
 Stores user session information:
 
 ```sql
@@ -323,6 +363,7 @@ CREATE TABLE RumSessions (
 ```
 
 ### RumMetrics Table
+
 Stores all performance metrics:
 
 ```sql
@@ -340,6 +381,7 @@ CREATE TABLE RumMetrics (
 ```
 
 ### RumErrors Table
+
 Stores JavaScript errors and exceptions:
 
 ```sql
@@ -359,6 +401,7 @@ CREATE TABLE RumErrors (
 ### Indexes for Performance
 
 Optimized indexes for fast queries:
+
 - `session_id` + `timestamp` composite indexes on all tables
 - `metric_type` index for filtering metrics
 - `created_at` indexes for cleanup operations
@@ -366,12 +409,14 @@ Optimized indexes for fast queries:
 ## 📈 Data Retention Policies
 
 ### Memory Cache (24 hours)
+
 - **Purpose**: Fast access to recent data
 - **Storage**: JavaScript Maps in Node.js memory
 - **Cleanup**: Automatic every monitoring interval
 - **Use Case**: Real-time dashboards, immediate analysis
 
 ### Database Storage (90 days)
+
 - **Purpose**: Historical analysis and trends
 - **Storage**: SQLite database
 - **Cleanup**: Daily automated cleanup of old data
@@ -390,6 +435,7 @@ Metrics are written to the database in batches for efficiency:
 ```
 
 **Benefits**:
+
 - **Faster writes**: Single transaction vs. multiple
 - **Atomic operations**: All-or-nothing guarantee
 - **Reduced I/O**: Fewer disk operations
@@ -412,6 +458,7 @@ if (querying recent data) {
 ## 📊 SQL Query Examples
 
 ### Get All Metrics for a Session
+
 ```sql
 SELECT 
     rm.*,
@@ -423,6 +470,7 @@ WHERE rm.session_id = 'your-session-id';
 ```
 
 ### Find Slowest Page Loads (Last 7 Days)
+
 ```sql
 SELECT 
     session_id,
@@ -438,6 +486,7 @@ LIMIT 10;
 ```
 
 ### Analyze Error Trends Over Time
+
 ```sql
 SELECT 
     date(created_at/1000, 'unixepoch') as error_date,
@@ -450,6 +499,7 @@ ORDER BY error_date DESC, error_count DESC;
 ```
 
 ### Calculate P75, P95, P99 for Web Vitals
+
 ```sql
 WITH ranked_metrics AS (
     SELECT 
@@ -472,6 +522,7 @@ GROUP BY metric_name;
 ## 🧪 Testing
 
 ### Run Test Suite
+
 ```bash
 npm run test:rum
 ```
@@ -537,6 +588,7 @@ npm run test:rum
 **Cause**: SQLite database locked or corrupted
 
 **Solution**:
+
 1. Check database file permissions
 2. Verify no other process has DB locked
 3. Restart server to release locks
@@ -547,6 +599,7 @@ npm run test:rum
 **Cause**: Memory cache not being populated
 
 **Solution**:
+
 1. Verify POST requests are successful (200 response)
 2. Check server logs for processing errors
 3. Ensure metrics object structure is correct
@@ -556,6 +609,7 @@ npm run test:rum
 **Cause**: Cleanup function not running or failing
 
 **Solution**:
+
 1. Check server logs for cleanup errors
 2. Verify created_at timestamps are in milliseconds
 3. Manually run cleanup query to test
@@ -565,6 +619,7 @@ npm run test:rum
 **Cause**: Database file too large or indexes missing
 
 **Solution**:
+
 1. Check database file size: `du -h data/sommos.db`
 2. Verify indexes exist: `sqlite3 data/sommos.db ".schema"`
 3. Run VACUUM: `sqlite3 data/sommos.db "VACUUM;"`
@@ -592,9 +647,11 @@ npm run test:rum
 ## 📚 API Endpoints
 
 ### POST /api/performance/rum
+
 Submit RUM metrics from frontend
 
 **Request Body**:
+
 ```json
 {
   "sessionId": "unique-session-id",
@@ -619,17 +676,21 @@ Submit RUM metrics from frontend
 ```
 
 ### GET /api/performance/rum/sessions
+
 Retrieve session data with optional filters
 
 **Query Parameters**:
+
 - `startTime`: Timestamp filter (ms)
 - `endTime`: Timestamp filter (ms)
 - `userId`: Filter by user ID
 
 ### GET /api/performance/rum/metrics
+
 Retrieve metrics with optional filters
 
 **Query Parameters**:
+
 - `sessionId`: Filter by session
 - `type`: Filter by metric type
 - `metricName`: Filter by specific metric
@@ -637,25 +698,31 @@ Retrieve metrics with optional filters
 - `endTime`: Timestamp filter (ms)
 
 ### GET /api/performance/rum/errors
+
 Retrieve error data with optional filters
 
 **Query Parameters**:
+
 - `sessionId`: Filter by session
 - `type`: Filter by error type
 - `startTime`: Timestamp filter (ms)
 - `endTime`: Timestamp filter (ms)
 
 ### GET /api/performance/rum/summary
+
 Get aggregated performance summary
 
 **Query Parameters**:
+
 - `startTime`: Timestamp filter (ms) (default: last 24h)
 - `endTime`: Timestamp filter (ms) (default: now)
 
 ### GET /api/performance/rum/analytics
+
 Get detailed analytics with time grouping
 
 **Query Parameters**:
+
 - `startTime`: Timestamp filter (ms)
 - `endTime`: Timestamp filter (ms)
 - `groupBy`: Time grouping ('minute', 'hour', 'day')

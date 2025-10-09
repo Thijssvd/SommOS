@@ -1,6 +1,7 @@
 # Conditional Test Skip Guide
 
 ## Purpose
+
 This document justifies and categorizes all conditional `test.skip()` usage in the SommOS test suite.
 
 ---
@@ -8,12 +9,14 @@ This document justifies and categorizes all conditional `test.skip()` usage in t
 ## Philosophy
 
 ### When Conditional Skips Are Acceptable ✅
+
 1. **Environment-based:** Features not available in all environments
 2. **Optional features:** Features that may not be implemented yet
 3. **Data-dependent E2E:** Testing against real systems that may have varying data states
 4. **Platform-specific:** Browser/OS specific functionality
 
 ### When Conditional Skips Are NOT Acceptable ❌
+
 1. **Unit tests:** Should always have controlled test data
 2. **Integration tests:** Should seed required data in beforeEach
 3. **Core features:** Critical functionality should never be skipped
@@ -25,28 +28,36 @@ This document justifies and categorizes all conditional `test.skip()` usage in t
 ### Category 1: Environment-Based Skips ✅ JUSTIFIED
 
 #### Offline PWA Tests (17 skips)
+
 **File:** `tests/e2e/offline-pwa.spec.ts`
 **Reason:** Service worker support varies by browser/environment
 **Examples:**
+
 ```typescript
 test.skip(!serviceWorkerSupported, 'Service workers not supported in this environment');
 test.skip(!offlineCapable, 'Offline mode not available');
 ```
+
 **Status:** ✅ Keep as-is
 
 #### Auth Tests (11 skips)
-**Files:** 
+
+**Files:**
+
 - `tests/e2e/auth/member-login.spec.ts` (5 skips)
 - `tests/e2e/auth/guest-login.spec.ts` (6 skips)
 
 **Reason:** Dev environment may bypass authentication
 **Examples:**
+
 ```typescript
 test.skip(!isAuthVisible, 'Auth screen not accessible in dev mode');
 ```
+
 **Status:** ✅ Keep as-is
 
 #### Config Tests (3 skips)
+
 **File:** `tests/config/env.test.js`
 **Reason:** Environment variables not set in all contexts
 **Status:** ✅ Keep as-is
@@ -60,22 +71,27 @@ test.skip(!isAuthVisible, 'Auth screen not accessible in dev mode');
 These features are genuinely optional and may not be implemented:
 
 #### Refresh Buttons
+
 **Files:** `inventory-crud.spec.ts`, `procurement-workflow.spec.ts`
 **Count:** 2 skips
 **Justification:** Refresh button is a convenience feature, not required
 **Examples:**
+
 ```typescript
 test.skip(!refreshButton.isVisible(), 'Refresh button not available');
 ```
+
 **Status:** ⚠️ Keep but add "(Optional Feature)" to test name
 
 #### Sort Controls
+
 **Files:** `inventory-crud.spec.ts`
 **Count:** 1 skip
 **Test name:** "should sort wines (if supported)"
 **Status:** ✅ Already documented as optional in name
 
 #### Pagination
+
 **Files:** `inventory-crud.spec.ts`, `procurement-workflow.spec.ts`
 **Count:** 2 skips
 **Test name:** "should handle pagination (if exists)"
@@ -90,14 +106,17 @@ test.skip(!refreshButton.isVisible(), 'Refresh button not available');
 E2E tests run against real app instances and may encounter empty states:
 
 #### Inventory CRUD (3 skips)
+
 **File:** `tests/e2e/inventory-crud.spec.ts`
 **Lines:** 109, 224, 262
 **Pattern:**
+
 ```typescript
 test.skip(count === 0, 'No wines available to test');
 ```
 
-**Justification:** 
+**Justification:**
+
 - E2E tests run against real database
 - Database may be empty in fresh environments
 - Tests document behavior when data exists
@@ -106,14 +125,17 @@ test.skip(count === 0, 'No wines available to test');
 **Status:** ✅ Keep as-is (valid E2E pattern)
 
 #### Procurement Workflow (16 skips)
+
 **File:** `tests/e2e/procurement-workflow.spec.ts`
 **Pattern:**
+
 ```typescript
 test.skip(count === 0, 'No procurement opportunities available');
 test.skip(!element.isVisible(), 'Feature not available');
 ```
 
 **Justification:**
+
 - Procurement opportunities are dynamic
 - May not exist in all test scenarios
 - Tests validate behavior when opportunities exist
@@ -122,13 +144,16 @@ test.skip(!element.isVisible(), 'Feature not available');
 **Status:** ✅ Keep as-is (valid E2E pattern)
 
 #### Pairing Recommendations UI (9 skips)
+
 **File:** `tests/e2e/pairing-recommendations-ui.spec.ts`
 **Pattern:**
+
 ```typescript
 test.skip(count === 0, 'No pairing recommendations available');
 ```
 
 **Justification:**
+
 - Pairing engine may return no results
 - Depends on ML model and wine database
 - Tests validate behavior when pairings exist
@@ -143,11 +168,13 @@ test.skip(count === 0, 'No pairing recommendations available');
 ### Category 4: Feature Detection Skips ✅ JUSTIFIED
 
 #### A11y Tests (3 skips)
+
 **File:** `tests/e2e/a11y.spec.ts`
 **Reason:** Accessibility features may not be implemented
 **Status:** ✅ Keep as-is
 
 #### Smoke Tests (1 skip)
+
 **File:** `tests/e2e/smoke.spec.ts`
 **Reason:** Critical path validation
 **Status:** ✅ Keep as-is
@@ -171,15 +198,19 @@ test.skip(count === 0, 'No pairing recommendations available');
 ## Recommendations
 
 ### ✅ Keep As-Is (62 skips)
+
 These skips are appropriate and follow E2E best practices:
+
 - Environment and platform checks
 - Data-dependent E2E tests
 - Feature detection
 
 ### ⚠️ Improve Documentation (6 skips)
+
 Add "(Optional Feature)" to test names for clarity:
 
-#### Changes Needed:
+#### Changes Needed
+
 ```typescript
 // inventory-crud.spec.ts line 158
 test('should refresh inventory (Optional Feature)', async ({ ... }) => {
@@ -196,13 +227,16 @@ test('should refresh procurement data (Optional Feature)', async ({ ... }) => {
 
 ## Best Practices for Future Tests
 
-### ✅ DO Use Conditional Skips For:
+### ✅ DO Use Conditional Skips For
+
 1. **Environment checks:**
+
    ```typescript
    test.skip(typeof window === 'undefined', 'Browser-only test');
    ```
 
 2. **Optional features (with clear naming):**
+
    ```typescript
    test('should use advanced filter (Optional)', async () => {
      if (!await advancedFilter.isVisible()) {
@@ -212,11 +246,13 @@ test('should refresh procurement data (Optional Feature)', async ({ ... }) => {
    ```
 
 3. **Platform-specific:**
+
    ```typescript
    test.skip(process.platform !== 'darwin', 'macOS only');
    ```
 
 4. **Data-dependent E2E (with empty state test):**
+
    ```typescript
    test('should display items when available', async () => {
      const count = await items.count();
@@ -229,8 +265,10 @@ test('should refresh procurement data (Optional Feature)', async ({ ... }) => {
    });
    ```
 
-### ❌ DON'T Use Conditional Skips For:
+### ❌ DON'T Use Conditional Skips For
+
 1. **Unit tests with missing test data:**
+
    ```typescript
    // BAD:
    test.skip(testData.length === 0, 'No test data');
@@ -242,6 +280,7 @@ test('should refresh procurement data (Optional Feature)', async ({ ... }) => {
    ```
 
 2. **Core features that should always exist:**
+
    ```typescript
    // BAD:
    test.skip(!searchBox.exists(), 'Search not implemented');
@@ -251,6 +290,7 @@ test('should refresh procurement data (Optional Feature)', async ({ ... }) => {
    ```
 
 3. **Integration tests:**
+
    ```typescript
    // BAD:
    test.skip(db.isEmpty(), 'Database empty');
@@ -266,12 +306,14 @@ test('should refresh procurement data (Optional Feature)', async ({ ... }) => {
 ## Implementation Status
 
 ### Completed ✅
+
 - [x] Audit all conditional skips (68 found)
 - [x] Categorize by type and justification
 - [x] Document best practices
 - [x] Identify improvements needed
 
 ### To Do
+
 - [ ] Add "(Optional Feature)" to 6 test names
 - [ ] Add this guide reference to README
 - [ ] Review in next test suite addition
@@ -279,6 +321,7 @@ test('should refresh procurement data (Optional Feature)', async ({ ... }) => {
 ---
 
 ## Related Documents
+
 - `TEST_QUALITY_AUDIT.md` - Comprehensive quality audit
 - `tests/README.md` - General testing guidelines
 - `SESSION_SUMMARY_2025-10-04.md` - Implementation session notes

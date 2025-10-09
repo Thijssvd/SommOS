@@ -89,4 +89,3 @@ When testing updates locally, open DevTools > Application > Service Workers and 
 - `public/`: Static assets copied as-is, including the base `manifest.json` and PWA icons (hashed during build).
 - `sw.js`: Service worker source injected with the production precache list via `build-sw.mjs`.
 - `build-sw.mjs`: Script that runs Workbox `injectManifest` after the Vite build.
-

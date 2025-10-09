@@ -17,6 +17,7 @@ OpenAI embedding API error in batch starting at X: Error code: 404 -
 ```
 
 **Root Cause Analysis:**
+
 - Agent-MCP was configured to use DeepSeek API (`https://api.deepseek.com`)
 - DeepSeek provides **chat/reasoning models only** (deepseek-chat, deepseek-reasoner)
 - DeepSeek does **NOT provide embedding models** (no text-embedding-3-large or similar)
@@ -31,7 +32,7 @@ OpenAI embedding API error in batch starting at X: Error code: 404 -
 
 #### Step 1: Get an OpenAI API Key
 
-1. Go to https://platform.openai.com/api-keys
+1. Go to <https://platform.openai.com/api-keys>
 2. Sign in or create an account
 3. Click "Create new secret key"
 4. Copy the key (starts with `sk-proj-...` or `sk-...`)
@@ -91,6 +92,7 @@ uv run -m agent_mcp.cli --port 8080 --project-dir /Users/thijs/Documents/SommOS 
 ```
 
 **Limitations:**
+
 - ❌ Agents cannot query project context via `ask_project_rag`
 - ❌ No semantic search capabilities
 - ❌ Agents will not have access to documentation and MCD content
@@ -107,6 +109,7 @@ After adding the OpenAI API key and restarting:
 Monitor the server output for about 20 seconds. You should see:
 
 ✅ **Success messages:**
+
 ```
 Starting RAG index update cycle (simple mode: markdown, context only)...
 Found X markdown files to consider for indexing...
@@ -188,7 +191,7 @@ The RAG (Retrieval-Augmented Generation) system works as follows:
    - Markdown files are split into chunks
    - Each chunk is converted to a vector embedding (1536-dimensional array)
    - Embeddings are stored in SQLite database with sqlite-vec extension
-   
+
 2. **Query Phase** (requires embeddings):
    - User query is converted to embedding
    - Semantic search finds similar chunks via vector similarity
@@ -206,7 +209,7 @@ Agent-MCP supports OpenAI-compatible embedding APIs:
 
 1. **OpenAI** (recommended)
    - Models: text-embedding-3-large, text-embedding-3-small
-   - Endpoint: https://api.openai.com/v1
+   - Endpoint: <https://api.openai.com/v1>
    - Best quality and compatibility
 
 2. **Azure OpenAI** (enterprise)
@@ -225,7 +228,7 @@ Agent-MCP supports OpenAI-compatible embedding APIs:
 
 - Agent-MCP server running (PID: 4341)
 - Port 8080 listening
-- Dashboard accessible at http://localhost:3847
+- Dashboard accessible at <http://localhost:3847>
 - SommOS backend healthy (port 3001)
 - Test Specialist agent created
 - 10 tasks defined (3 assigned)
@@ -277,20 +280,24 @@ OPENAI_BASE_URL=https://api-inference.huggingface.co/models/sentence-transformer
 ## Summary
 
 **The Issue:**
+
 - DeepSeek API cannot provide embeddings → RAG system cannot index content
 
 **The Fix:**
-1. Get OpenAI API key from https://platform.openai.com/api-keys
+
+1. Get OpenAI API key from <https://platform.openai.com/api-keys>
 2. Add it to `/Users/thijs/Documents/SommOS/Agent-MCP/.env`
 3. Restart Agent-MCP server
 4. Wait for automatic indexing (20 seconds)
 5. Verify chunks in database
 
 **Cost Impact:**
+
 - ~$0.05-$0.50/month for embeddings
 - DeepSeek still used for agent chat (cost savings maintained)
 
 **Timeline:**
+
 - 5 minutes to get API key
 - 2 minutes to update config and restart
 - 20-30 seconds for initial indexing

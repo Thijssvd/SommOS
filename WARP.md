@@ -7,6 +7,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 **SommOS** (Sommelier Operating System) is a luxury yacht wine management system featuring AI-powered wine pairing recommendations, comprehensive inventory management, procurement intelligence, and weather-based vintage analysis. It's built as an **offline-first Progressive Web App (PWA)** designed specifically for yacht environments with limited connectivity.
 
 ### Core Features
+
 - **AI-Powered Wine Pairing**: DeepSeek (primary) or OpenAI (fallback) integration with traditional sommelier fallback
 - **Offline-First Architecture**: Full PWA capabilities with IndexedDB and service workers
 - **Weather Intelligence**: Historical weather data integration for vintage quality analysis
@@ -18,6 +19,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 ## Essential Development Commands
 
 ### Development Servers
+
 ```bash
 # Run both backend and frontend concurrently (uses vanilla JS frontend)
 npm run dev
@@ -30,6 +32,7 @@ npm run dev:frontend
 ```
 
 ### Testing
+
 ```bash
 # Run all tests with coverage
 npm test
@@ -44,6 +47,7 @@ npm test -- --watch
 ```
 
 ### Database Operations
+
 ```bash
 # Setup database schema from scratch
 npm run setup:db
@@ -66,6 +70,7 @@ npm run summary
 ```
 
 ### Building
+
 ```bash
 # Build vanilla JS frontend for production
 cd frontend && npm run build
@@ -78,6 +83,7 @@ npm start
 ```
 
 ### Production Deployment
+
 ```bash
 # One-command deployment (Docker + nginx)
 ./deployment/deploy.sh
@@ -90,6 +96,7 @@ curl http://localhost/api/system/health
 ```
 
 ### Utility Scripts
+
 ```bash
 # Verify environment configuration
 npm run verify:env
@@ -114,6 +121,7 @@ npm run test:weather
 **Port**: 3001 (development), reverse proxied in production
 
 **Directory Layout**:
+
 - **`api/`**: Express.js route handlers and API endpoints
   - `routes.js`: Main API router with all endpoints
   - `auth.js`: Authentication endpoints (login, register, refresh)
@@ -159,6 +167,7 @@ npm run test:weather
 ### Frontend Structure
 
 **Vanilla JavaScript PWA** (`/frontend`): **Port 3000** (Vite dev server)
+
 - **`index.html`**: Main application entry point
 - **`js/`**: Application modules
   - `app.js`: Main SommOS application class (~174KB, core application logic)
@@ -173,6 +182,7 @@ npm run test:weather
 - **`vite.config.js`**: Vite build configuration with code splitting
 
 **React/TypeScript POC** (`/frontend-react`): ⚠️ **ARCHIVED** - Incomplete alternative implementation
+
 - This is an incomplete proof-of-concept and is NOT actively developed
 - Production frontend is the vanilla JavaScript PWA in `/frontend`
 - See `FRONTEND_COMPARISON.md` for full details on feature parity
@@ -180,29 +190,34 @@ npm run test:weather
 ### Key Architectural Patterns
 
 **Offline-First Design**:
+
 - Service workers cache static assets and API responses
 - IndexedDB for local data persistence
 - Background sync for deferred operations
 - Graceful degradation when offline
 
 **AI Integration Strategy**:
+
 - Primary: DeepSeek API (`DEEPSEEK_API_KEY`)
 - Fallback: OpenAI API (`OPENAI_API_KEY`)
 - Final fallback: Traditional sommelier pairing algorithm
 - 30-second timeout for AI calls, 10 seconds for other APIs
 
 **Wine Domain Modeling**:
+
 - Normalized schema: `Wines → Vintages → Stock → Ledger`
 - Vintage-specific tracking (not just wine names)
 - Location-based storage: `main-cellar`, `service-bar`, `deck-storage`, `private-reserve`
 - Transaction logging for audit trails
 
 **WebSocket Real-Time Updates**:
+
 - Server: `backend/core/websocket_server.js`
 - Client: `frontend/js/realtime-sync.js`
 - Events: inventory changes, pairing updates, system notifications
 
 **Response Format Standard**:
+
 ```javascript
 // Success
 { success: true, data: any, meta?: object }
@@ -212,6 +227,7 @@ npm run test:weather
 ```
 
 **Security Architecture**:
+
 - JWT authentication with 15-minute access tokens, 7-day refresh tokens
 - HttpOnly cookies for refresh tokens
 - Helmet for security headers, CSP for XSS protection
@@ -221,6 +237,7 @@ npm run test:weather
 ## Development Environment
 
 ### Port Configuration
+
 - **Backend API**: 3001
 - **Frontend (Vite dev)**: 3000
 - **Frontend Preview**: 4173
@@ -229,6 +246,7 @@ npm run test:weather
 ### Environment Setup
 
 1. **Install dependencies**:
+
 ```bash
 npm install
 cd frontend && npm install
@@ -236,12 +254,14 @@ cd frontend && npm install
 ```
 
 2. **Configure environment**:
+
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
 ```
 
 3. **Key environment variables**:
+
 ```bash
 # Core
 NODE_ENV=development
@@ -263,12 +283,14 @@ SOMMOS_AUTH_DISABLED=true         # Bypasses all auth checks
 ```
 
 4. **Database setup**:
+
 ```bash
 npm run setup:db
 npm run seed
 ```
 
 ### Requirements
+
 - **Node.js**: >= 16.0.0 (tested with v24.8.0)
 - **npm**: >= 8.0.0
 - **Docker**: 20.0+ (for production deployment)
@@ -277,6 +299,7 @@ npm run seed
 ## Code Conventions
 
 ### JavaScript Standards
+
 - **ES6+ syntax**: Use `async`/`await`, arrow functions, destructuring
 - **Variable declarations**: `const` preferred, `let` when reassignment needed, never `var`
 - **Naming**:
@@ -287,6 +310,7 @@ npm run seed
 - **JSDoc**: Required for complex functions and all exported classes
 
 ### Database Naming
+
 - Tables and columns: `snake_case`
 - Primary keys: `id`
 - Foreign keys: `{table}_id`
@@ -294,6 +318,7 @@ npm run seed
 - Always use parameterized queries (no string concatenation for SQL)
 
 ### API Design Principles
+
 - RESTful resource paths: `/api/{resource}/{action}`
 - Authentication: JWT bearer tokens in Authorization header
 - Rate limiting: Different limits for auth (100/15min), API (1000/15min), general endpoints
@@ -305,6 +330,7 @@ npm run seed
 **Wine Types**: `Red`, `White`, `Sparkling`, `Rosé`, `Dessert`, `Fortified`
 
 **Storage Locations**:
+
 - `main-cellar`: Long-term, temperature-controlled
 - `service-bar`: Ready-to-serve, limited quantity
 - `deck-storage`: Casual dining, weather considerations
@@ -317,6 +343,7 @@ npm run seed
 ## Testing
 
 ### Test Infrastructure
+
 - **Framework**: Jest 30.x with jsdom for frontend tests
 - **Configuration**: `jest.config.js` at project root
 - **Test suites**: Backend API, Auth, Frontend Unit, Integration, Performance, Security, Browser Compatibility, Sync Workflows
@@ -324,6 +351,7 @@ npm run seed
 - **Setup files**: `tests/setup-env.js`, `tests/setup.js`, `tests/frontend-setup.js`
 
 ### Running Tests
+
 ```bash
 # All tests with coverage
 npm test
@@ -339,6 +367,7 @@ npm test -- --coverage --coverageReporters=text
 ```
 
 ### Test File Locations
+
 - Backend: `tests/backend/**/*.test.js`
 - Frontend: `tests/frontend/**/*.test.js`
 - Integration: `tests/integration/**/*.test.js`
@@ -349,12 +378,14 @@ npm test -- --coverage --coverageReporters=text
 ## Database
 
 ### Architecture
+
 - **Type**: SQLite for offline-first, ACID compliance
 - **File**: `data/sommos.db` (in production) or `backend/database/sommos.db` (in dev)
 - **Migrations**: Versioned migrations in `backend/database/migrations/`
 - **Connection**: Singleton pattern in `backend/database/connection.js`
 
 ### Core Tables
+
 - **Wines**: Base wine information (producer, region, type, style)
 - **Vintages**: Year-specific wine records linked to wines
 - **Stock**: Inventory quantities by vintage and location
@@ -366,6 +397,7 @@ npm test -- --coverage --coverageReporters=text
 - **Explainability**: Pairing recommendation explanations
 
 ### Migration System
+
 ```bash
 # Apply pending migrations
 npm run migrate
@@ -377,6 +409,7 @@ npm run migrate:status
 ```
 
 ### Seed Data
+
 - **Lookups**: Reference data (wine types, regions, grape varieties)
 - **Users**: Default admin and test accounts
 - **Wines**: Sample inventory from `backend/database/example_cellar.csv`
@@ -384,19 +417,23 @@ npm run migrate:status
 ## AI Integration
 
 ### Architecture
+
 - **Primary provider**: DeepSeek (`DEEPSEEK_API_KEY`)
 - **Fallback provider**: OpenAI (`OPENAI_API_KEY`)
 - **Final fallback**: Traditional pairing algorithm (no API required)
 - **Timeout**: 30 seconds for AI calls, automatic fallback on timeout
 
 ### Key Files
+
 - `backend/core/pairing_engine.js`: Main AI pairing logic with multi-tier fallback
 - `backend/core/learning_engine.js`: Basic learning from user feedback
 - `backend/core/enhanced_learning_engine.js`: Advanced ML-based learning
 - `backend/core/wine_guidance_service.js`: Expert wine guidance system
 
 ### Graceful Degradation
+
 System fully functional without AI keys:
+
 1. Attempts DeepSeek if `DEEPSEEK_API_KEY` is set
 2. Falls back to OpenAI if `OPENAI_API_KEY` is set
 3. Falls back to traditional sommelier algorithm (always available)
@@ -404,6 +441,7 @@ System fully functional without AI keys:
 ## Deployment
 
 ### Docker Production
+
 ```bash
 # Automated deployment script
 ./deployment/deploy.sh
@@ -416,12 +454,14 @@ docker-compose -f deployment/production.yml logs -f
 ```
 
 ### Production Configuration
+
 - **Files**: `deployment/production.yml`, `deployment/nginx.conf`
 - **Containers**: sommos-app (Node.js), sommos-nginx (reverse proxy)
 - **Volumes**: Persistent data in `/opt/sommos/data`, logs in `/opt/sommos/logs`
 - **Health checks**: `GET /api/system/health` endpoint
 
 ### Nginx Configuration
+
 - Static file serving for frontend
 - API proxy to backend on port 3001
 - Gzip compression enabled
@@ -431,6 +471,7 @@ docker-compose -f deployment/production.yml logs -f
 ## Important Files Reference
 
 ### Documentation
+
 - `README.md`: Quick start, system overview, deployment instructions
 - `PROJECT_WORKFLOW.md`: Development timeline, technical stack, API endpoints, troubleshooting
 - `DEVELOPMENT_NOTEBOOK.md`: Architecture decisions, technical challenges, performance metrics
@@ -440,7 +481,9 @@ docker-compose -f deployment/production.yml logs -f
 - `API_KEYS.md`: API key setup instructions
 
 ### Cursor AI Rules
+
 Located in `.cursor/rules/`:
+
 - `wine-domain.mdc`: Wine industry domain rules and business logic
 - `architecture-patterns.mdc`: SommOS architecture and code organization
 - `api-development.mdc`: API development standards
@@ -452,17 +495,21 @@ Located in `.cursor/rules/`:
 ## Documentation and Report Generation
 
 ### Policy
+
 **IMPORTANT**: Do NOT automatically create report, summary, or session documentation files when working on this codebase.
 
 ### User Preference
+
 - The user prefers **brief overviews in chat** rather than lengthy markdown documents
 - Session reports and progress summaries should be communicated verbally, not saved as files
 - Only permanent, essential project documentation should be committed to the repository
 
 ### Approved Documentation Files
+
 The following documentation files are maintained in the repository:
 
 **Root Directory**:
+
 - `README.md` - Project overview and quick start
 - `WARP.md` - This file, guidance for AI assistants
 - `SECURITY.md` - Security considerations
@@ -474,17 +521,21 @@ The following documentation files are maintained in the repository:
 - `DEVELOPMENT_NOTEBOOK.md` - Architecture decisions and technical notes
 
 **Subdirectories**:
+
 - `docs/**/*.md` - Feature-specific documentation
 - `tests/README.md` - Testing infrastructure overview
 - `frontend/README.md` - Frontend-specific documentation
 - `backend/test/ml/README.md` - ML testing documentation
 
 ### Excluded Patterns
+
 The following patterns are excluded from git tracking (see `.gitignore`):
+
 - Test artifacts: `playwright-report/`, `test-results/`, `test-results.json/`
 - Temporary reports: `*_REPORT.md`, `*_SUMMARY.md`, `*_COMPLETE.md`, `*_FIXES*.md`, `*_PROGRESS*.md`, `*_STATUS*.md`, `*_EXECUTION*.md`, `*_AUDIT*.md`, `*_IMPLEMENTATION*.md`, `*_SESSION*.md`
 
 ### Guidelines
+
 - When completing tasks, provide concise summaries in the chat interface
 - Avoid creating files with names ending in `_REPORT`, `_SUMMARY`, `_COMPLETE`, `_FIXES`, `_PROGRESS`, `_STATUS`, `_EXECUTION`, `_AUDIT`, `_IMPLEMENTATION`, or `_SESSION`
 - If documentation is truly needed, discuss with the user first before creating new files
@@ -493,19 +544,24 @@ The following patterns are excluded from git tracking (see `.gitignore`):
 ## Development Tips
 
 ### Concurrent Frontend Options
+
 The project has two frontend implementations:
+
 - **Vanilla JS PWA** (primary, in `frontend/`): Lightweight, no framework, production-ready
 - **React/TypeScript** (alternative, in `frontend-react/`): Modern stack, TypeScript support
 
 Both connect to the same backend API on port 3001.
 
 ### Vite Proxy Setup
+
 Both frontends use Vite with automatic proxy:
+
 - Frontend runs on port 3000
 - API requests to `/api/*` automatically proxy to `http://localhost:3001`
 - No CORS issues in development
 
 ### Database Utilities
+
 ```bash
 # Quick database stats
 npm run summary
@@ -518,6 +574,7 @@ npm run import:cellar
 ```
 
 ### Testing Specific Features
+
 ```bash
 # Test weather API integration
 npm run test:weather
@@ -532,6 +589,7 @@ npm run spec:parity
 ### Common Development Scenarios
 
 **Starting fresh**:
+
 ```bash
 npm install
 npm run setup:db
@@ -540,12 +598,14 @@ npm run dev
 ```
 
 **Running with React frontend instead**:
+
 ```bash
 npm run dev:backend
 cd frontend-react && npm run dev
 ```
 
 **Testing production build locally**:
+
 ```bash
 cd frontend && npm run build && npm run preview
 # OR
@@ -553,6 +613,7 @@ cd frontend-react && npm run build && npm run preview
 ```
 
 **Debugging authentication issues**:
+
 ```bash
 # Temporarily disable auth for development
 echo "SOMMOS_AUTH_DISABLED=true" >> .env

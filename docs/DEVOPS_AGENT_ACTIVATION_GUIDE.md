@@ -2,7 +2,7 @@
 
 **Date**: 2025-10-06  
 **Project**: SommOS  
-**Agent-MCP Server**: http://localhost:8080  
+**Agent-MCP Server**: <http://localhost:8080>  
 **Admin Token**: `<use token from .agent/admin_token.txt>`
 
 ---
@@ -25,15 +25,18 @@ This guide walks through activating the DevOps Specialist agent in the Agent-MCP
 ## 🚀 Method 1: Using Agent-MCP Dashboard
 
 ### Step 1: Access the Dashboard
+
 ```bash
 open http://localhost:3847
 ```
 
 ### Step 2: Navigate to Agent Management
+
 1. Click on "Agents" in the sidebar
 2. Click "Create New Agent" button
 
 ### Step 3: Load Configuration
+
 1. Upload the configuration file: `/Users/thijs/Documents/SommOS/Agent-MCP/create-devops-agent.json`
 2. Or manually enter agent details:
    - **Name**: DevOps Specialist
@@ -43,6 +46,7 @@ open http://localhost:3847
    - **Admin Token**: `<use token from .agent/admin_token.txt>`
 
 ### Step 4: Verify Creation
+
 - Check the agent appears in the agent list
 - Note the worker token generated for the agent
 
@@ -53,6 +57,7 @@ open http://localhost:3847
 If you are using Windsurf with MCP enabled, you can create the agent directly from Windsurf:
 
 ### Step 1: Call create_agent Tool
+
 ```
 Use the create_agent MCP tool with the following configuration:
 
@@ -76,6 +81,7 @@ Use the create_agent MCP tool with the following configuration:
 ```
 
 ### Step 2: Store the Worker Token
+
 The `create_agent` tool will return a worker token. Save this token for initializing the agent.
 
 ---
@@ -83,6 +89,7 @@ The `create_agent` tool will return a worker token. Save this token for initiali
 ## 🚀 Method 3: Using Agent-MCP Python API
 
 ### Step 1: Create Agent via Python
+
 ```python
 import requests
 import json
@@ -114,6 +121,7 @@ else:
 ## 🚀 Method 4: Direct API Call with curl
 
 ### Step 1: Create Agent
+
 ```bash
 curl -X POST http://localhost:8080/api/agents/create \
   -H "Content-Type: application/json" \
@@ -135,6 +143,7 @@ curl -X POST http://localhost:8080/api/agents/create \
 ```
 
 ### Step 2: Verify Agent Creation
+
 ```bash
 # List all agents
 curl -X GET "http://localhost:8080/api/agents/list?admin_token=<use token from .agent/admin_token.txt>"
@@ -233,6 +242,7 @@ AUTO --worker --memory
 ## 📊 Monitoring Agent Activity
 
 ### Via Agent-MCP Dashboard
+
 ```bash
 # Open dashboard
 open http://localhost:3847
@@ -245,6 +255,7 @@ open http://localhost:3847
 ```
 
 ### Via API Calls
+
 ```bash
 # Check agent status
 curl "http://localhost:8080/api/agents/devops-specialist-sommos/status?admin_token=<use token from .agent/admin_token.txt>"
@@ -261,12 +272,14 @@ curl "http://localhost:8080/api/messages?agent_id=devops-specialist-sommos&admin
 ## 📝 Assigning Initial Tasks
 
 ### Method 1: Via Dashboard
+
 1. Go to Tasks tab
 2. Click "Create Task"
 3. Assign to `devops-specialist-sommos`
 4. Use tasks from `DEVOPS_SPECIALIST_INIT.md`
 
 ### Method 2: Via MCP Tools
+
 ```
 Use the assign_task MCP tool:
 
@@ -285,6 +298,7 @@ Use the assign_task MCP tool:
 ```
 
 ### Method 3: Via API
+
 ```bash
 curl -X POST http://localhost:8080/api/tasks/assign \
   -H "Content-Type: application/json" \
@@ -307,6 +321,7 @@ curl -X POST http://localhost:8080/api/tasks/assign \
 Based on `DEVOPS_SPECIALIST_INIT.md`, assign tasks in this order:
 
 ### Task 1: AlertManager Setup (Priority: CRITICAL)
+
 ```
 Title: Set up AlertManager for Prometheus alerts
 Estimated Time: 2-3 hours
@@ -314,6 +329,7 @@ Files: monitoring/alertmanager.yml, monitoring/alert-rules.yml
 ```
 
 ### Task 2: CI/CD Pipeline (Priority: HIGH)
+
 ```
 Title: Create GitHub Actions CI/CD pipeline
 Estimated Time: 4-5 hours
@@ -321,6 +337,7 @@ Files: .github/workflows/ci.yml, .github/workflows/docker-build.yml
 ```
 
 ### Task 3: Grafana Dashboards (Priority: MEDIUM)
+
 ```
 Title: Enhance Grafana dashboards with AI metrics
 Estimated Time: 3-4 hours
@@ -328,6 +345,7 @@ Files: monitoring/grafana/dashboards/ai-performance.json
 ```
 
 ### Task 4: Structured Logging (Priority: MEDIUM)
+
 ```
 Title: Implement structured JSON logging with Winston
 Estimated Time: 2-3 hours
@@ -335,6 +353,7 @@ Files: backend/core/logger.js, backend/server.js
 ```
 
 ### Task 5: Docker Resources (Priority: LOW)
+
 ```
 Title: Set up Docker resource limits and health monitoring
 Estimated Time: 2 hours
@@ -360,6 +379,7 @@ After agent activation, verify:
 ## 🔍 Troubleshooting
 
 ### Agent Creation Failed
+
 ```bash
 # Check Agent-MCP server logs
 tail -f /tmp/agent-mcp.log
@@ -372,6 +392,7 @@ curl http://localhost:8080/health
 ```
 
 ### Agent Not Appearing in Dashboard
+
 ```bash
 # Refresh dashboard
 open http://localhost:3847
@@ -381,6 +402,7 @@ curl "http://localhost:8080/api/agents/list?admin_token=<use token from .agent/a
 ```
 
 ### Agent Cannot Access Files
+
 ```bash
 # Verify project path is correct
 ls -la /Users/thijs/Documents/SommOS
@@ -390,6 +412,7 @@ ls -la /Users/thijs/Documents/SommOS/docs/DEVOPS_SPECIALIST_INIT.md
 ```
 
 ### Knowledge Graph Queries Failing
+
 ```bash
 # Check if knowledge graph database exists
 ls -la /Users/thijs/Documents/SommOS/.agent/mcp_state.db
@@ -403,20 +426,23 @@ sqlite3 /Users/thijs/Documents/SommOS/.agent/mcp_state.db ".tables"
 ## 📚 Additional Resources
 
 ### Configuration Files
+
 - `/Users/thijs/Documents/SommOS/Agent-MCP/create-devops-agent.json` - Agent configuration
 - `/Users/thijs/Documents/SommOS/docs/DEVOPS_SPECIALIST_INIT.md` - Complete initialization guide
 - `/Users/thijs/Documents/SommOS/.agent/WORKER_AGENTS_INIT.md` - All worker agent profiles
 
 ### Documentation
+
 - `/Users/thijs/Documents/SommOS/Agent-MCP/agent-mcp-thijsinfo.md` - Complete Agent-MCP guide
 - `/Users/thijs/Documents/SommOS/Agent-MCP/README.md` - Agent-MCP documentation
 - `/Users/thijs/Documents/SommOS/SOMMOS_MCD.md` - SommOS project architecture
 
 ### Monitoring
-- Agent-MCP Dashboard: http://localhost:3847
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3002
-- SommOS Backend: http://localhost:3000
+
+- Agent-MCP Dashboard: <http://localhost:3847>
+- Prometheus: <http://localhost:9090>
+- Grafana: <http://localhost:3002>
+- SommOS Backend: <http://localhost:3000>
 
 ---
 
@@ -434,7 +460,7 @@ After successful activation:
    - Set up AlertManager for Prometheus alerts
 
 4. **Monitor progress via dashboard**
-   - http://localhost:3847
+   - <http://localhost:3847>
 
 5. **Coordinate with other agents**
    - Test Specialist for CI/CD integration

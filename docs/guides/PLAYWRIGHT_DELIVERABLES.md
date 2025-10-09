@@ -17,9 +17,11 @@ I've successfully set up a **robust, production-ready Playwright E2E testing inf
 ### 1. Configuration Files
 
 #### `playwright.config.ts`
+
 **Location**: `/Users/thijs/Documents/SommOS/playwright.config.ts`
 
 **Features**:
+
 - ✅ BaseURL: `http://localhost:3000` (override with `BASE_URL` env var)
 - ✅ Timeouts: 30s global, 10s per action, 30s navigation
 - ✅ Retries: 2 on CI, 0 locally (no flakes allowed locally)
@@ -34,6 +36,7 @@ I've successfully set up a **robust, production-ready Playwright E2E testing inf
 - ✅ Test directory: `./tests/e2e`
 
 **How it works**:
+
 ```bash
 # Playwright automatically starts backend + frontend before tests
 # No need to run `npm run dev` manually!
@@ -45,9 +48,11 @@ npm run test:e2e
 ### 2. Test Infrastructure
 
 #### Authentication Fixtures
+
 **File**: `tests/e2e/fixtures/auth.ts`
 
 **Exports**:
+
 ```typescript
 // Test account constants
 export const TEST_USERS = {
@@ -77,6 +82,7 @@ test.extend<AuthFixtures>({
 ```
 
 **Usage Example**:
+
 ```typescript
 import { test, expect } from './fixtures/auth';
 
@@ -90,9 +96,11 @@ test('admin can view procurement', async ({ authenticatedAsAdmin: page }) => {
 ---
 
 #### Centralized Selectors
+
 **File**: `tests/e2e/utils/selectors.ts`
 
 **Structure**:
+
 ```typescript
 export const Selectors = {
   auth: { screen, memberLoginTab, guestLoginTab, emailInput, passwordInput, ... },
@@ -119,9 +127,11 @@ role(roleName: string, name?: string): string  // [role="..."]
 ---
 
 #### Test Helpers
+
 **File**: `tests/e2e/utils/helpers.ts`
 
 **20+ Helper Functions**:
+
 ```typescript
 // Notifications
 waitForToast(page, expectedMessage?, expectedType?)
@@ -170,9 +180,11 @@ waitForAnimation(page, selector)
 ---
 
 #### Test Data Factories
+
 **File**: `tests/e2e/fixtures/test-data.ts`
 
 **Predefined Data**:
+
 ```typescript
 // 6 predefined wines for consistent testing
 export const TEST_WINES = {
@@ -214,9 +226,11 @@ class SeededRandom {
 ### 3. Test Suites
 
 #### Smoke Tests
+
 **File**: `tests/e2e/smoke.spec.ts`
 
 **11 Tests**:
+
 1. ✅ Application loads without console errors
 2. ✅ Auth screen displays on first visit
 3. ✅ All critical resources load (no 404s)
@@ -230,6 +244,7 @@ class SeededRandom {
 11. ✅ No critical console errors
 
 **Run**:
+
 ```bash
 npm run test:e2e tests/e2e/smoke.spec.ts
 ```
@@ -239,17 +254,21 @@ npm run test:e2e tests/e2e/smoke.spec.ts
 ## 🚀 Quick Start Guide
 
 ### Step 1: Install Playwright Browsers
+
 ```bash
 npx playwright install --with-deps
 ```
+
 **Status**: ✅ Chromium already installed
 
 ### Step 2: Run Smoke Tests
+
 ```bash
 npm run test:e2e tests/e2e/smoke.spec.ts
 ```
 
 ### Step 3: View Results
+
 ```bash
 # Open HTML report
 npm run test:e2e:report
@@ -263,6 +282,7 @@ npx playwright show-trace playwright-report/traces/trace-xyz.zip
 ## 📋 Available Commands
 
 ### Test Execution
+
 ```bash
 # Run all tests
 npm run test:e2e
@@ -290,6 +310,7 @@ npm run test:e2e --project="Mobile Safari"
 ```
 
 ### Debugging
+
 ```bash
 # Show HTML report
 npm run test:e2e:report
@@ -306,9 +327,11 @@ await page.pause();
 ## 📚 Documentation Created
 
 ### IMPLEMENTATION_STATUS.md
+
 **Location**: `tests/e2e/IMPLEMENTATION_STATUS.md`
 
 **Contents**:
+
 - ✅ What's completed (Phase 1)
 - 🚧 What's in progress (next steps)
 - 🎯 Success criteria
@@ -325,10 +348,11 @@ await page.pause();
 ## 🎯 Next Steps (Priority Order)
 
 ### **CRITICAL** (Do Immediately)
+
 1. ✅ Install Playwright browsers: `npx playwright install --with-deps`
 2. ⏳ **Create `scripts/seed-test-data.js`**
    - Reset database to known state
-   - Seed test users (admin@test.com, crew@test.com, guest@test.com)
+   - Seed test users (<admin@test.com>, <crew@test.com>, <guest@test.com>)
    - Create 10-15 wines with predictable IDs
    - Generate guest event codes (YACHT2024, GUEST2024)
    - Make idempotent
@@ -336,6 +360,7 @@ await page.pause();
 4. ⏳ **Fix any smoke test failures**
 
 ### **HIGH PRIORITY** (This Week)
+
 5. ⏳ **Create authentication test suites**:
    - `tests/e2e/auth/member-login.spec.ts`
    - `tests/e2e/auth/guest-login.spec.ts`
@@ -346,12 +371,14 @@ await page.pause();
    - Table rows: `data-testid="table-row-id"`
 
 ### **MEDIUM PRIORITY** (Next Sprint)
+
 7. ⏳ Create inventory CRUD tests
 8. ⏳ Create pairing tests
 9. ⏳ Create permissions tests (migrate existing JS tests to TS)
 10. ⏳ Create responsive/mobile tests
 
 ### **LOWER PRIORITY** (Future)
+
 11. ⏳ Create offline/PWA tests
 12. ⏳ Create visual regression tests
 13. ⏳ Add Axe accessibility audits
@@ -403,6 +430,7 @@ await page.pause();
 ## 🧪 Test Writing Patterns
 
 ### Pattern 1: Basic Test with Helpers
+
 ```typescript
 import { test, expect } from '@playwright/test';
 import { Selectors } from './utils/selectors';
@@ -425,6 +453,7 @@ test('user can navigate to inventory', async ({ page }) => {
 ```
 
 ### Pattern 2: Using Pre-Authenticated Fixtures
+
 ```typescript
 import { test, expect } from './fixtures/auth';
 import { Selectors } from './utils/selectors';
@@ -444,6 +473,7 @@ test('guest cannot access procurement', async ({ authenticatedAsGuest: page }) =
 ```
 
 ### Pattern 3: Using Test Data
+
 ```typescript
 import { test, expect } from './fixtures/auth';
 import { TEST_WINES, TEST_PAIRINGS } from './fixtures/test-data';
@@ -476,6 +506,7 @@ test('can create new wine bottle', async ({ authenticatedAsAdmin: page }) => {
 Our tests follow these principles to **eliminate flakes**:
 
 ### 1. Explicit Waits (Not setTimeout)
+
 ```typescript
 // ❌ BAD - Arbitrary timeout
 await page.waitForTimeout(2000);
@@ -485,6 +516,7 @@ await expect(page.locator('#element')).toBeVisible({ timeout: 5000 });
 ```
 
 ### 2. Wait for Network Responses
+
 ```typescript
 // ❌ BAD - Hope API finishes
 await page.click('#submit');
@@ -498,6 +530,7 @@ await expect(page.locator('#result')).toBeVisible();
 ```
 
 ### 3. Robust Selectors
+
 ```typescript
 // ❌ BAD - Fragile class selector
 await page.click('.btn.primary.large');
@@ -507,6 +540,7 @@ await page.click('[data-testid="inventory-add-bottle"]');
 ```
 
 ### 4. Deterministic Test Data
+
 ```typescript
 // ❌ BAD - Random data
 const wine = generateRandomWine();
@@ -518,6 +552,7 @@ const wine = generateDeterministicWine(12345); // Same seed = same data
 ```
 
 ### 5. Clean State Between Tests
+
 ```typescript
 test.beforeEach(async ({ page }) => {
   // Clear session
@@ -534,10 +569,12 @@ test.beforeEach(async ({ page }) => {
 ## 🎨 UI/UX Improvements Needed
 
 ### Add `data-testid` Attributes
+
 **Priority**: HIGH  
 **Files to Update**: `frontend/index.html`, `frontend/js/*.js`
 
 **Examples**:
+
 ```html
 <!-- Auth screen -->
 <input id="login-email" data-testid="auth-email-input" type="email" />
@@ -564,6 +601,7 @@ test.beforeEach(async ({ page }) => {
 ```
 
 ### Standardize Empty States
+
 ```html
 <div class="empty-state" data-testid="inventory-empty-state">
   <span class="empty-icon" aria-hidden="true">📦</span>
@@ -574,6 +612,7 @@ test.beforeEach(async ({ page }) => {
 ```
 
 ### Add Loading States
+
 ```html
 <!-- Skeleton loader for tables -->
 <div class="skeleton-loader" data-testid="inventory-loading">
@@ -594,6 +633,7 @@ test.beforeEach(async ({ page }) => {
 ## 🏆 Success Criteria
 
 ### Phase 1 (✅ DONE)
+
 - [x] Dependencies installed
 - [x] Playwright config created
 - [x] Test infrastructure (fixtures, helpers, selectors) created
@@ -601,6 +641,7 @@ test.beforeEach(async ({ page }) => {
 - [x] Chromium browser installed
 
 ### Phase 2 (🚧 IN PROGRESS)
+
 - [ ] Seed script created
 - [ ] Smoke tests pass
 - [ ] Auth tests created and passing
@@ -608,12 +649,14 @@ test.beforeEach(async ({ page }) => {
 - [ ] Inventory tests created
 
 ### Phase 3 (⏳ TODO)
+
 - [ ] All test suites completed (pairing, permissions, responsive, offline)
 - [ ] Visual regression tests
 - [ ] Accessibility audits (Axe)
 - [ ] CI/CD workflow
 
 ### Final Validation
+
 - [ ] All tests pass 3 consecutive runs (zero flakes)
 - [ ] Each test <30s execution time
 - [ ] Total suite <10 minutes
@@ -629,6 +672,7 @@ test.beforeEach(async ({ page }) => {
 
 **Issue**: `Error: Test timeout of 30000ms exceeded`
 **Solution**: Increase timeout for specific test or check for missing waits
+
 ```typescript
 test('slow test', async ({ page }) => {
   test.setTimeout(60000); // 60 seconds
@@ -638,6 +682,7 @@ test('slow test', async ({ page }) => {
 
 **Issue**: `Element not found` or `Element is not visible`
 **Solution**: Add proper waits
+
 ```typescript
 // Wait for element before interacting
 await expect(page.locator('#element')).toBeVisible();
@@ -646,6 +691,7 @@ await page.click('#element');
 
 **Issue**: `Connection refused` when running tests
 **Solution**: Ensure backend/frontend are running, or let Playwright auto-start them
+
 ```bash
 # Manual start
 npm run dev
@@ -655,7 +701,8 @@ npm run test:e2e
 ```
 
 **Issue**: Tests flaking on CI but passing locally
-**Solution**: 
+**Solution**:
+
 1. Check if using deterministic test data
 2. Increase retries in CI
 3. Review traces from CI artifacts
@@ -668,12 +715,14 @@ npm run test:e2e
 **Current Status**: Phase 1 Complete ✅
 
 **Your Next Actions**:
+
 1. Run smoke tests: `npm run test:e2e tests/e2e/smoke.spec.ts`
 2. Create `scripts/seed-test-data.js`
 3. Start building out auth test suites
 4. Add `data-testid` to UI elements
 
 **Questions?**:
+
 - Review `tests/e2e/IMPLEMENTATION_STATUS.md` for detailed docs
 - Check smoke tests for examples: `tests/e2e/smoke.spec.ts`
 - Use fixtures for auth: `tests/e2e/fixtures/auth.ts`
@@ -683,6 +732,7 @@ npm run test:e2e
 ## 🎉 Summary
 
 You now have a **production-grade Playwright E2E testing infrastructure** with:
+
 - ✅ Multi-browser/device testing (6 projects)
 - ✅ Auto-start web servers
 - ✅ TypeScript for type safety

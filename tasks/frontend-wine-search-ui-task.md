@@ -16,20 +16,25 @@ Create a responsive wine search interface for the SommOS wine inventory system.
 ## 🎯 Requirements
 
 ### 1. Real-Time Search Functionality
+
 - Search input with debouncing (300ms delay)
 - Search as user types
 - Clear search button
 - Search across: wine name, producer, region, vintage
 
 ### 2. Filter Controls
+
 Implement filtering by:
+
 - **Wine Type**: Red, White, Rosé, Sparkling, Dessert
 - **Region/Country**: Dropdown or autocomplete
 - **Vintage Year Range**: Slider or dual input (min/max)
 - **Stock Status**: In Stock, Low Stock, Out of Stock
 
 ### 3. Results Display
+
 Show results in responsive card grid:
+
 - Wine label image (if available)
 - Wine name (bold)
 - Producer name
@@ -40,6 +45,7 @@ Show results in responsive card grid:
 - Quick action buttons (View Details, Add to Event)
 
 ### 4. User Experience Features
+
 - Loading states during search
 - Empty state message ("No wines found")
 - Error handling with user-friendly messages
@@ -48,6 +54,7 @@ Show results in responsive card grid:
 - Pagination or infinite scroll (if >50 results)
 
 ### 5. Mobile Responsiveness
+
 - Touch-friendly filter controls
 - Collapsible filter panel on mobile
 - Swipeable cards on mobile
@@ -58,11 +65,13 @@ Show results in responsive card grid:
 ## 🔌 API Integration
 
 ### Endpoint
+
 ```
 GET /api/inventory/stock
 ```
 
 ### Query Parameters
+
 ```javascript
 {
   search: string,        // Search term
@@ -79,6 +88,7 @@ GET /api/inventory/stock
 ```
 
 ### Expected Response
+
 ```javascript
 {
   stocks: [
@@ -106,11 +116,13 @@ GET /api/inventory/stock
 ## 📁 Files to Create/Modify
 
 ### New Files
+
 - `frontend/js/modules/wine-search.js` - Search component logic
 - `frontend/css/wine-search.css` - Search UI styles
 - `frontend/js/components/wine-card.js` - Wine result card component
 
 ### Modified Files
+
 - `frontend/js/app.js` - Import and initialize search module
 - `frontend/index.html` - Add search container section
 - `frontend/js/api.js` - Add search API method (if not exists)
@@ -120,6 +132,7 @@ GET /api/inventory/stock
 ## 🎨 UI Design Guidelines
 
 ### Search Bar
+
 ```html
 <div class="wine-search-container">
   <div class="search-header">
@@ -133,6 +146,7 @@ GET /api/inventory/stock
 ```
 
 ### Filter Panel
+
 ```html
 <div class="filter-panel">
   <div class="filter-group">
@@ -149,6 +163,7 @@ GET /api/inventory/stock
 ```
 
 ### Results Grid
+
 ```html
 <div class="search-results">
   <div class="results-header">
@@ -185,16 +200,19 @@ GET /api/inventory/stock
 ## 🧪 Testing Requirements
 
 ### Unit Tests
+
 - Search debouncing logic
 - Filter combination logic
 - API query parameter building
 
 ### Integration Tests
+
 - Search with various terms
 - Filter combinations
 - Pagination/sorting
 
 ### E2E Tests (Playwright)
+
 - User searches for "Bordeaux"
 - User filters by "Red" wine type
 - User sorts by vintage year
@@ -224,6 +242,7 @@ GET /api/inventory/stock
 ## 📝 Implementation Notes
 
 ### Debouncing Example
+
 ```javascript
 let searchTimeout;
 function handleSearchInput(event) {
@@ -235,6 +254,7 @@ function handleSearchInput(event) {
 ```
 
 ### API Integration Example
+
 ```javascript
 async function searchWines(params) {
   const queryString = new URLSearchParams(params).toString();
@@ -245,6 +265,7 @@ async function searchWines(params) {
 ```
 
 ### State Management
+
 ```javascript
 const searchState = {
   query: '',

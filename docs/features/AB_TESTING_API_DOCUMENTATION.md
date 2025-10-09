@@ -23,6 +23,7 @@ Complete REST API for managing experiments, tracking events, and analyzing resul
 ## Overview
 
 The A/B Testing API provides comprehensive endpoints for:
+
 - Creating and managing experiments
 - Assigning users to variants (with sticky assignments)
 - Tracking experiment events (impressions, clicks, conversions, ratings)
@@ -41,6 +42,7 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 Or via cookies:
+
 ```
 Cookie: sommos_access_token=YOUR_ACCESS_TOKEN
 ```
@@ -74,6 +76,7 @@ Creates a new A/B test experiment.
 **Permissions**: Admin only
 
 **Request Body**:
+
 ```json
 {
   "name": "New Algorithm Test",
@@ -112,6 +115,7 @@ Creates a new A/B test experiment.
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "success": true,
@@ -137,16 +141,19 @@ Get all experiments with optional filtering.
 **Permissions**: Admin, Crew
 
 **Query Parameters**:
+
 - `status` (optional): Filter by status (`draft`, `running`, `paused`, `completed`)
 - `limit` (optional): Number of results (default: 50)
 - `offset` (optional): Pagination offset (default: 0)
 
 **Example**:
+
 ```
 GET /api/experiments?status=running&limit=20
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -178,6 +185,7 @@ Get detailed information about a specific experiment.
 **Permissions**: Admin, Crew
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -219,6 +227,7 @@ Update experiment details (only draft/paused experiments).
 **Permissions**: Admin only
 
 **Request Body**:
+
 ```json
 {
   "name": "Updated Experiment Name",
@@ -228,6 +237,7 @@ Update experiment details (only draft/paused experiments).
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -251,6 +261,7 @@ Start a draft experiment.
 **Permissions**: Admin only
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -294,6 +305,7 @@ Complete/stop an experiment and declare a winner.
 **Permissions**: Admin only
 
 **Request Body**:
+
 ```json
 {
   "winner_variant_id": "var_456",
@@ -302,6 +314,7 @@ Complete/stop an experiment and declare a winner.
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -338,6 +351,7 @@ Assign a user to a variant (sticky assignment - user will always get the same va
 **Permissions**: Admin, Crew, Guest
 
 **Request Body**:
+
 ```json
 {
   "user_id": "user_abc123",
@@ -349,6 +363,7 @@ Assign a user to a variant (sticky assignment - user will always get the same va
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -378,6 +393,7 @@ Get a user's current variant assignment.
 **Permissions**: Admin, Crew, Guest
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -401,6 +417,7 @@ Get all user assignments for an experiment.
 **Permissions**: Admin only
 
 **Query Parameters**:
+
 - `limit` (optional): Number of results (default: 100)
 - `offset` (optional): Pagination offset (default: 0)
 
@@ -417,6 +434,7 @@ Track a single experiment event.
 **Permissions**: Admin, Crew, Guest
 
 **Request Body**:
+
 ```json
 {
   "experiment_id": "exp_1234567890",
@@ -433,12 +451,14 @@ Track a single experiment event.
 ```
 
 **Event Types**:
+
 - `impression`: User saw the recommendation
 - `click`: User clicked on a recommendation
 - `conversion`: User completed the desired action (purchase, rating, etc.)
 - `rating`: User rated a wine (event_value = rating score)
 
 **Response** (202 Accepted):
+
 ```json
 {
   "success": true,
@@ -457,6 +477,7 @@ Track multiple events in a single request (up to 100 events).
 **Permissions**: Admin, Crew, Guest
 
 **Request Body**:
+
 ```json
 {
   "events": [
@@ -477,6 +498,7 @@ Track multiple events in a single request (up to 100 events).
 ```
 
 **Response** (202 Accepted):
+
 ```json
 {
   "success": true,
@@ -498,6 +520,7 @@ Convenience endpoint for tracking impressions.
 **Permissions**: Admin, Crew, Guest
 
 **Request Body**:
+
 ```json
 {
   "user_id": "user_abc123",
@@ -516,6 +539,7 @@ Convenience endpoint for tracking conversions.
 **Permissions**: Admin, Crew, Guest
 
 **Request Body**:
+
 ```json
 {
   "user_id": "user_abc123",
@@ -537,6 +561,7 @@ Get aggregated metrics for all variants in an experiment.
 **Permissions**: Admin, Crew
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -594,6 +619,7 @@ Get funnel analysis showing progression from impression → click → conversion
 **Permissions**: Admin, Crew
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -628,6 +654,7 @@ Run statistical analysis on experiment results.
 **Permissions**: Admin, Crew
 
 **Request Body**:
+
 ```json
 {
   "metric_name": "conversion_rate",
@@ -638,12 +665,14 @@ Run statistical analysis on experiment results.
 ```
 
 **Parameters**:
+
 - `metric_name` (optional): Specific metric to analyze (defaults to target metric)
 - `analysis_type`: `frequentist`, `bayesian`, or `both` (default: `both`)
 - `confidence_level`: Confidence level for analysis (default: 0.95)
 - `minimum_sample_size`: Minimum sample size required (default: 100)
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -698,6 +727,7 @@ Get previously stored analysis results.
 **Permissions**: Admin, Crew
 
 **Query Parameters**:
+
 - `latest` (optional): Get only the latest analysis (default: true)
 
 ---
@@ -711,6 +741,7 @@ Check if any guardrail metrics have been violated.
 **Permissions**: Admin, Crew
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -749,6 +780,7 @@ Get automated recommendation for experiment decision.
 **Permissions**: Admin, Crew
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -772,6 +804,7 @@ Get automated recommendation for experiment decision.
 ```
 
 **Recommendation Types**:
+
 - `LAUNCH`: High confidence to launch treatment variant
 - `CONTINUE`: Continue running the experiment
 - `STOP`: Stop the experiment (no significant difference or negative results)
@@ -790,6 +823,7 @@ Get a summary of all experiments for dashboard display.
 **Permissions**: Admin, Crew
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -814,6 +848,7 @@ Get real-time statistics for an experiment (optimized for dashboards).
 **Permissions**: Admin, Crew
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -1102,6 +1137,7 @@ Before deploying to production, test:
 ## Support
 
 For issues or questions:
+
 - Check error codes and messages
 - Review the statistical analyzer logs
 - Verify sample sizes meet minimum requirements

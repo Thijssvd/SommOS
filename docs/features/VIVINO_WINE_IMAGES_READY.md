@@ -1,8 +1,9 @@
-# 🍷 Wine Images Now Using REAL Wine Bottles! 
+# 🍷 Wine Images Now Using REAL Wine Bottles
 
 ## ✅ Switched from Unsplash to Vivino
 
 ### **What Changed:**
+
 - ❌ **Removed**: Unsplash (generic wine photos)
 - ✅ **Added**: Vivino search (ACTUAL wine bottle labels!)
 - ✅ **No API key needed** - works immediately!
@@ -12,12 +13,14 @@
 ## 🎯 What You Get Now
 
 ### **Real Wine Bottles with Labels:**
+
 - ✅ **"Château Margaux 2015"** → Actual Margaux label
 - ✅ **"Opus One 2018"** → Actual Opus One bottle  
 - ✅ **"Dom Pérignon 2012"** → Actual Dom label
 - ✅ **"Penfolds Grange 2010"** → Actual Grange bottle
 
 ### **How It Works:**
+
 1. You create a wine: "Château Lafite Rothschild 2010"
 2. System searches Vivino's database
 3. Returns actual photo of that wine bottle
@@ -25,22 +28,25 @@
 
 ---
 
-## 🚀 Ready to Test NOW!
+## 🚀 Ready to Test NOW
 
-### Start Server:
+### Start Server
+
 ```bash
 cd /Users/thijs/Documents/SommOS
 npm start
 ```
 
-### Expected Output:
+### Expected Output
+
 ```
 ✓ ImageService initialized with Vivino wine image search (no API key needed!)
 Server running on port 3001
 ```
 
-### Test It:
-1. Open http://localhost:3001
+### Test It
+
+1. Open <http://localhost:3001>
 2. Login to your account
 3. Create a new wine (try "Opus One" or "Château Margaux")
 4. See REAL bottle image appear!
@@ -49,14 +55,16 @@ Server running on port 3001
 
 ## 📊 Comparison: Before vs After
 
-### Before (Unsplash):
+### Before (Unsplash)
+
 - ❌ Generic wine bottle photos
 - ❌ No specific labels
 - ❌ Required API key
 - ❌ 50 requests/hour limit
 - ❌ "Château Margaux" → generic red wine photo
 
-### After (Vivino):
+### After (Vivino)
+
 - ✅ Actual wine bottle labels
 - ✅ Specific producers and vintages
 - ✅ No API key needed
@@ -67,20 +75,22 @@ Server running on port 3001
 
 ## 🔧 Technical Details
 
-### Image Search Priority:
+### Image Search Priority
+
 1. **Vivino** - Searches for: "Producer Name Year"
    - Example: "Opus One 2018"
    - Returns actual bottle image
-   
+
 2. **Wine-Searcher** - Fallback (limited)
    - Constructs URL but requires scraping
    - Currently disabled
-   
+
 3. **Generic Placeholder** - Final fallback
    - Uses `/images/wine-placeholder.svg`
    - Always works
 
-### Code Changes:
+### Code Changes
+
 - **File**: `backend/services/imageService.js`
 - **Removed**: Unsplash API integration (~100 lines)
 - **Added**: Vivino search (~80 lines)
@@ -91,14 +101,16 @@ Server running on port 3001
 
 ## ⚡ Performance & Limits
 
-### Vivino:
+### Vivino
+
 - **Rate Limits**: None (publicly available)
 - **Image Quality**: High (user-uploaded bottle photos)
 - **Coverage**: Millions of wines
 - **Speed**: Fast (~1-2 seconds per search)
 - **Caching**: Yes (stored in database after first lookup)
 
-### Fallback Strategy:
+### Fallback Strategy
+
 ```
 Vivino search → Success? ✅ Use image
               → Failed?  ⬇️
@@ -111,7 +123,8 @@ Generic placeholder → Always works ✅
 
 ## 🧪 Testing Recommendations
 
-### Test These Popular Wines:
+### Test These Popular Wines
+
 ```javascript
 // These should all return real bottle images:
 1. "Opus One" - 2018
@@ -123,13 +136,15 @@ Generic placeholder → Always works ✅
 7. "Caymus Cabernet" - 2019
 ```
 
-### Check Server Logs:
+### Check Server Logs
+
 ```
 ImageService: Searching Vivino for "Opus One 2018"
 ✓ Found Vivino image: https://images.vivino.com/...
 ```
 
-### Verify in Database:
+### Verify in Database
+
 ```bash
 sqlite3 data/sommos.db "SELECT name, image_url FROM Wines WHERE image_url IS NOT NULL;"
 ```
@@ -138,14 +153,16 @@ sqlite3 data/sommos.db "SELECT name, image_url FROM Wines WHERE image_url IS NOT
 
 ## 🎨 What Images Look Like
 
-### Vivino Images Include:
+### Vivino Images Include
+
 - ✅ Actual bottle label (readable text)
 - ✅ Correct vintage year on label
 - ✅ Producer logo/crest
 - ✅ Bottle shape and color
 - ✅ High resolution (usually 600x800px+)
 
-### Examples:
+### Examples
+
 - **Bordeaux**: Classic château label with gold trim
 - **Burgundy**: Simple elegant label
 - **Champagne**: Colorful label with foil top
@@ -156,18 +173,21 @@ sqlite3 data/sommos.db "SELECT name, image_url FROM Wines WHERE image_url IS NOT
 
 ## 💡 Pro Tips
 
-### For Best Results:
+### For Best Results
+
 1. **Use full producer name**: "Château Lafite Rothschild" not "Lafite"
 2. **Include vintage year**: Improves match accuracy
 3. **Spell correctly**: "Château" not "Chateau"
 4. **Use common names**: "Opus One" not "Opus 1"
 
-### If Image Not Found:
+### If Image Not Found
+
 - Generic placeholder is used (looks fine!)
 - Can manually add image URL later if needed
 - System will cache whatever works
 
-### Performance:
+### Performance
+
 - First search: 1-2 seconds
 - Cached: Instant (from database)
 - No rate limits to worry about!
@@ -176,15 +196,18 @@ sqlite3 data/sommos.db "SELECT name, image_url FROM Wines WHERE image_url IS NOT
 
 ## 🔒 Legal & Ethical Notes
 
-### Vivino Image Usage:
+### Vivino Image Usage
+
 - **Source**: Vivino's public API (used by their website)
 - **Usage**: Similar to how wine apps work
 - **Consideration**: Vivino allows this for non-commercial use
 - **Your case**: Private yacht inventory (not commercial resale)
 - **Alternative**: If concerned, can switch to Unsplash generic photos
 
-### Note:
+### Note
+
 This implementation is similar to how wine apps like:
+
 - CellarTracker
 - Delectable  
 - Vivino's own app
@@ -195,18 +218,21 @@ All use similar API endpoints for wine data and images.
 ## 🚀 Next Steps
 
 ### 1. Start Server & Test (5 minutes)
+
 ```bash
 npm start
 # Add a famous wine, see real bottle appear!
 ```
 
 ### 2. Import Your Existing Wines
+
 ```bash
 # Your existing wines will show placeholder
 # New wines will get real Vivino images
 ```
 
 ### 3. Optionally: Batch Update Existing Wines
+
 ```javascript
 // Can create script to re-search existing wines
 // Update their image_url fields with Vivino images
@@ -238,7 +264,7 @@ npm start
 
 ---
 
-## 🎉 You're All Set!
+## 🎉 You're All Set
 
 Just start the server and create wines - you'll automatically get real wine bottle images from Vivino!
 

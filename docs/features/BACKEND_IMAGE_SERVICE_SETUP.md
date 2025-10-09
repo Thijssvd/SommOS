@@ -16,6 +16,7 @@ npm install unsplash-js node-fetch
 ```
 
 Or add to package.json dependencies:
+
 ```json
 {
   "dependencies": {
@@ -35,7 +36,8 @@ UNSPLASH_ACCESS_KEY=your_access_key_here
 ```
 
 **Get API Key:**
-1. Visit https://unsplash.com/developers
+
+1. Visit <https://unsplash.com/developers>
 2. Sign up / Log in
 3. Create new application: "SommOS Wine Manager"
 4. Copy Access Key (NOT Secret Key)
@@ -76,7 +78,8 @@ const imageService = new ImageService(db);
 
 In `backend/api/routes.js` around line 1132 (POST /api/wines):
 
-### Before (existing code):
+### Before (existing code)
+
 ```javascript
 router.post('/wines', requireRole('admin', 'crew'), 
   validate(validators.winesCreate), 
@@ -91,7 +94,8 @@ router.post('/wines', requireRole('admin', 'crew'),
   })));
 ```
 
-### After (with image lookup):
+### After (with image lookup)
+
 ```javascript
 router.post('/wines', requireRole('admin', 'crew'), 
   validate(validators.winesCreate), 
@@ -126,6 +130,7 @@ router.post('/wines', requireRole('admin', 'crew'),
 ```
 
 **Key Points:**
+
 - Image lookup happens BEFORE saving to database
 - Errors are caught and logged, but don't fail wine creation
 - If imageService is unavailable, wine creation still succeeds
@@ -136,12 +141,14 @@ router.post('/wines', requireRole('admin', 'crew'),
 Run the migration to add image_url column to existing databases:
 
 ### Method 1: Using sqlite3 command line
+
 ```bash
 cd /Users/thijs/Documents/SommOS/backend
 sqlite3 data/sommos.db < database/migrations/008_add_wine_images.sql
 ```
 
 ### Method 2: Using Node.js script
+
 Create `backend/scripts/migrate-images.js`:
 
 ```javascript
@@ -174,6 +181,7 @@ Run with: `node backend/scripts/migrate-images.js`
 ## 🧪 Testing the Image Service
 
 ### Test 1: Search for a wine image
+
 ```bash
 node -e "
 const ImageService = require('./backend/services/imageService');
@@ -188,6 +196,7 @@ service.searchWineImage({
 ```
 
 ### Test 2: Check service stats
+
 ```bash
 node -e "
 const sqlite3 = require('sqlite3').verbose();
@@ -202,6 +211,7 @@ service.getStats().then(stats => {
 ```
 
 ### Test 3: Create wine with image via API
+
 ```bash
 curl -X POST http://localhost:3001/api/wines \
   -H "Content-Type: application/json" \
@@ -240,6 +250,7 @@ console.log('Image URL:', wine.image_url || 'None (will use placeholder)');
 ```
 
 Check logs for:
+
 - ✓ Successful image lookups
 - ⚠ Rate limit warnings
 - ❌ API errors
@@ -247,21 +258,27 @@ Check logs for:
 ## 🔍 Troubleshooting
 
 ### Issue: "ImageService initialized without Unsplash API key"
+
 **Solution:** Add UNSPLASH_ACCESS_KEY to .env file
 
 ### Issue: "unsplash-js module not found"
+
 **Solution:** Run `npm install unsplash-js node-fetch` in backend directory
 
 ### Issue: "Rate Limit Exceeded"
+
 **Solution:** Unsplash free tier allows 50 requests/hour. Wait or upgrade plan.
 
 ### Issue: Images not appearing in database
+
 **Solution:** Check that image_url column exists:
+
 ```bash
 sqlite3 data/sommos.db "PRAGMA table_info(Wines);"
 ```
 
 ### Issue: All wines getting placeholder
+
 **Solution:** Check Unsplash API key is valid and network connection works
 
 ## ✅ Verification Checklist
@@ -279,6 +296,7 @@ Before moving to frontend implementation, verify:
 ## 🚀 Next Steps
 
 Once backend is complete and verified:
+
 1. Move to frontend implementation (Task 4-7)
 2. Add images to wine cards
 3. Integrate ImageOptimizer

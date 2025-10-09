@@ -65,6 +65,7 @@ SELECT * FROM EventConsumptionSummary WHERE event_id = 1;
 ```
 
 **Columns**:
+
 - `event_id`, `event_name`, `event_type`, `start_date`, `end_date`, `guest_count`
 - `total_consumption_events` - Number of consumption records
 - `unique_wines_consumed` - Count of distinct vintages
@@ -74,6 +75,7 @@ SELECT * FROM EventConsumptionSummary WHERE event_id = 1;
 - `wine_types_consumed` - Comma-separated list of wine types consumed
 
 **Example**:
+
 ```sql
 -- Get consumption summary for all charter events this year
 SELECT 
@@ -97,6 +99,7 @@ SELECT * FROM EventPairingSuccessRates WHERE event_id = 1;
 ```
 
 **Columns**:
+
 - `event_id`, `event_name`, `event_type`, `start_date`, `end_date`
 - `total_pairing_sessions` - Number of pairing sessions
 - `total_feedback_entries` - Number of feedback records
@@ -109,6 +112,7 @@ SELECT * FROM EventPairingSuccessRates WHERE event_id = 1;
 - `selection_rate` - Percentage of recommendations selected
 
 **Example**:
+
 ```sql
 -- Compare AI vs traditional pairing success by event type
 SELECT 
@@ -131,6 +135,7 @@ SELECT * FROM EventWinePreferences WHERE event_type = 'charter' LIMIT 10;
 ```
 
 **Columns**:
+
 - `event_type`, `event_name`, `wine_type`, `region`, `country`
 - `consumption_count` - Number of consumption events
 - `total_bottles` - Total bottles consumed
@@ -139,6 +144,7 @@ SELECT * FROM EventWinePreferences WHERE event_type = 'charter' LIMIT 10;
 - `avg_bottles_per_event` - Average consumption per event
 
 **Example**:
+
 ```sql
 -- Find top wine preferences for charter events
 SELECT 
@@ -164,11 +170,13 @@ SELECT * FROM EventOverview ORDER BY start_date DESC LIMIT 10;
 ```
 
 **Columns**: All event details plus:
+
 - `bottles_consumed`, `unique_wines`, `pairing_sessions`
 - `avg_pairing_rating`, `recommendation_selection_rate`
 - `duration_days`, `bottles_per_guest`
 
 **Example**:
+
 ```sql
 -- Get overview of recent high-consumption events
 SELECT 
@@ -344,6 +352,7 @@ Performance indexes are automatically created for common query patterns:
 ## Migration Compatibility
 
 The migration is **backward compatible**:
+
 - All `event_id` columns are **nullable**
 - Existing data is not affected
 - Foreign keys use `ON DELETE SET NULL`
@@ -369,6 +378,7 @@ Potential future improvements to the Events system:
 Consider adding these API endpoints to expose event functionality:
 
 ### Events Management
+
 - `POST /api/events` - Create new event
 - `GET /api/events` - List all events (with filters)
 - `GET /api/events/:id` - Get event details
@@ -376,12 +386,14 @@ Consider adding these API endpoints to expose event functionality:
 - `DELETE /api/events/:id` - Delete event
 
 ### Event Analytics
+
 - `GET /api/events/:id/consumption` - Event consumption summary
 - `GET /api/events/:id/pairings` - Event pairing success metrics
 - `GET /api/events/:id/preferences` - Event wine preferences
 - `GET /api/events/:id/overview` - Comprehensive event overview
 
 ### Event-Based Recommendations
+
 - `GET /api/events/:id/recommendations` - Get wine recommendations based on similar events
 - `POST /api/events/:id/pairings` - Generate pairings for specific event
 - `GET /api/events/analytics/performance` - Charter performance report
@@ -392,6 +404,7 @@ Consider adding these API endpoints to expose event functionality:
 ## Example Queries
 
 ### Query 1: Best Performing Charter Destinations
+
 ```sql
 SELECT 
     location,
@@ -408,6 +421,7 @@ ORDER BY avg_satisfaction DESC, visit_count DESC;
 ```
 
 ### Query 2: Seasonal Wine Preferences
+
 ```sql
 SELECT 
     CASE strftime('%m', e.start_date)
@@ -435,6 +449,7 @@ ORDER BY season, bottles_consumed DESC;
 ```
 
 ### Query 3: Charter Company Performance
+
 ```sql
 SELECT 
     charter_company,
@@ -466,6 +481,7 @@ ORDER BY avg_satisfaction DESC, charter_count DESC;
 ## Support
 
 For questions or issues with the Events entity feature:
+
 1. Check existing event data: `SELECT * FROM Events LIMIT 10;`
 2. Verify views are working: `SELECT * FROM EventOverview LIMIT 5;`
 3. Check foreign key relationships are properly linked

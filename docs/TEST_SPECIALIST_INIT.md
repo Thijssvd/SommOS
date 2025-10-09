@@ -14,6 +14,7 @@ Ensure SommOS has robust, maintainable, and comprehensive test coverage across u
 ## Current Test Infrastructure
 
 ### Test Frameworks
+
 - **Jest 30.2.0**: Unit & integration tests
 - **Playwright 1.55.1**: E2E tests (Chromium, Firefox, Webkit, Mobile)
 - **Supertest 7.1.4**: API testing
@@ -21,6 +22,7 @@ Ensure SommOS has robust, maintainable, and comprehensive test coverage across u
 - **axe-core/playwright**: Accessibility testing
 
 ### Test Organization (11 Projects)
+
 ```
 tests/
 ├── backend/        # Backend API & core logic (Backend API Tests project)
@@ -49,6 +51,7 @@ __tests__/          # ML algorithm tests (ML Algorithm Tests project)
 ### Current Test Status
 
 **Latest Run** (2025-10-06):
+
 ```
 Test Suites: 8 failed, 31 passed, 39 total
 Tests:       39 failed, 3 skipped, 656 passed, 698 total
@@ -56,6 +59,7 @@ Time:        42.524 s
 ```
 
 **Coverage Thresholds** (jest.config.js):
+
 - Global: 40% lines, 30% branches, 35% functions, 40% statements
 - Per-module targets:
   - `inventory_manager.js`: 80%
@@ -66,12 +70,14 @@ Time:        42.524 s
 ### Test Setup Files
 
 **tests/setup-env.js**: Pre-framework env vars
+
 - Sets `NODE_ENV=test`
 - Mock AI keys (DEEPSEEK, OPENAI)
 - Test database path `:memory:`
 - Auth test bypass mode
 
 **tests/setup.js**: Jest setup
+
 - TextEncoder/TextDecoder polyfills
 - Custom matchers (`toBeOneOf`)
 - OpenAI & axios mocks
@@ -81,6 +87,7 @@ Time:        42.524 s
 - 30s global timeout
 
 **playwright.config.ts**: E2E configuration
+
 - 6 browser projects (Chrome, Firefox, Safari, Mobile Safari, Mobile Chrome, iPad Pro)
 - Parallel execution (3 workers locally, 50% in CI)
 - 2 retries in CI, 0 locally
@@ -96,6 +103,7 @@ Time:        42.524 s
 ### Remaining Test Failures (39)
 
 Analysis needed for:
+
 - API error handling tests
 - Pairing engine tests
 - Explainability tests
@@ -108,11 +116,13 @@ Analysis needed for:
 ## Test Specialist Mission Tasks
 
 ### ✅ Phase 1: Initial Analysis (COMPLETED)
+
 - [x] Analyze test infrastructure and configuration
 - [x] Run full test suite and document current state
 - [x] Fix critical blocking issues (pairing_engine.js syntax error, pwa.test.js import)
 
 ### 🎯 Phase 2: Test Fixes & Coverage (CURRENT)
+
 - [ ] Investigate and fix remaining 39 test failures
 - [ ] Run tests with full coverage report
 - [ ] Identify modules below coverage thresholds
@@ -125,6 +135,7 @@ Analysis needed for:
   - Multi-stage Docker health checks
 
 ### 🎯 Phase 3: Test Utilities & Infrastructure
+
 - [ ] Create reusable test helpers:
   - Database setup/teardown utilities
   - API request factories
@@ -138,6 +149,7 @@ Analysis needed for:
 - [ ] Create test database seeders with known fixtures
 
 ### 🎯 Phase 4: Performance & Quality
+
 - [ ] Add performance benchmarks:
   - API response time budgets
   - Cache hit rate targets
@@ -148,6 +160,7 @@ Analysis needed for:
 - [ ] Verify Prometheus metrics in tests
 
 ### 🎯 Phase 5: Documentation & CI/CD
+
 - [ ] Document testing best practices
 - [ ] Create test writing guidelines
 - [ ] Document CI/CD integration strategy
@@ -159,6 +172,7 @@ Analysis needed for:
 ## Testing Best Practices
 
 ### Unit Tests
+
 - **Location**: tests/backend/, tests/frontend/
 - **Focus**: Individual functions, classes, modules
 - **Mocking**: Mock external dependencies (DB, APIs, AI)
@@ -166,6 +180,7 @@ Analysis needed for:
 - **Coverage Target**: 70-80% for critical modules
 
 ### Integration Tests
+
 - **Location**: tests/integration/
 - **Focus**: Multiple components working together
 - **Database**: In-memory SQLite (`:memory:`)
@@ -173,6 +188,7 @@ Analysis needed for:
 - **Coverage Target**: Key user flows and API contracts
 
 ### E2E Tests
+
 - **Location**: tests/e2e/
 - **Focus**: Complete user journeys
 - **Browsers**: Multi-browser (Chromium, Firefox, WebKit, Mobile)
@@ -180,6 +196,7 @@ Analysis needed for:
 - **Coverage Target**: Critical paths, authentication, offline mode
 
 ### Performance Tests
+
 - **Location**: tests/performance/
 - **Focus**: Response times, load handling, caching efficiency
 - **Metrics**: Aligned with Prometheus monitoring
@@ -190,6 +207,7 @@ Analysis needed for:
   - DB query < 50ms (p95)
 
 ### Property-Based Tests
+
 - **Tool**: fast-check
 - **Focus**: Input validation, edge cases, invariants
 - **Examples**:
@@ -203,6 +221,7 @@ Analysis needed for:
 ## Test Utilities Available
 
 ### Global testUtils (tests/setup.js)
+
 ```javascript
 // Mock data generators
 testUtils.generateMockWine(overrides)
@@ -217,6 +236,7 @@ await testUtils.wait(ms)
 ```
 
 ### Mocked Services
+
 - **OpenAI**: Returns mock pairing recommendations
 - **axios**: Returns mock weather data
 - **ParallelProcessingEngine**: Synchronous mock implementation
@@ -259,11 +279,13 @@ npm run clean
 ## Coverage Reports
 
 Coverage reports generated in `coverage/` directory:
+
 - **HTML**: `coverage/index.html` (visual browser report)
 - **LCOV**: `coverage/lcov.info` (CI/CD integration)
 - **Text**: Terminal summary
 
 Current coverage command:
+
 ```bash
 npm test -- --coverage --collectCoverageFrom='backend/**/*.js'
 ```
@@ -273,21 +295,25 @@ npm test -- --coverage --collectCoverageFrom='backend/**/*.js'
 ## Integration with Other Agents
 
 ### Backend Specialist
+
 - Tests validate database performance indexes
 - Tests verify cache manager integration
 - Tests check API endpoint functionality
 
 ### Frontend Specialist
+
 - E2E tests verify service worker caching
 - Tests validate Web Vitals tracking
 - Tests check PWA offline functionality
 
 ### AI Integration Specialist
+
 - Tests verify AI pairing cache hits
 - Tests check fallback mechanisms
 - Tests validate confidence scoring
 
 ### DevOps Specialist
+
 - Tests verify Prometheus metrics export
 - Tests check Docker health checks
 - Tests validate multi-stage build
@@ -297,17 +323,20 @@ npm test -- --coverage --collectCoverageFrom='backend/**/*.js'
 ## Success Metrics
 
 ### Coverage Targets
+
 - [ ] Global coverage: 40% → 60% (lines)
 - [ ] Critical modules: Meet per-module targets
 - [ ] New features: 70%+ coverage
 
 ### Test Health
+
 - [ ] Zero failing tests on main branch
 - [ ] < 5% flaky test rate
 - [ ] Test suite < 60s execution time
 - [ ] E2E suite < 5 minutes
 
 ### Quality Metrics
+
 - [ ] All API endpoints have contract tests
 - [ ] All critical flows have E2E tests
 - [ ] All security features have dedicated tests
@@ -320,7 +349,7 @@ npm test -- --coverage --collectCoverageFrom='backend/**/*.js'
 1. **Fix remaining 39 test failures**
    - Group failures by type
    - Priority: API tests → Integration → Security
-   
+
 2. **Add tests for recent DevOps work**
    - Prometheus `/metrics` endpoint test
    - Cache manager Prometheus integration test
@@ -341,12 +370,14 @@ npm test -- --coverage --collectCoverageFrom='backend/**/*.js'
 ## Agent Coordination
 
 **Test Specialist works with**:
+
 - Backend Specialist: Validates performance optimizations
 - Frontend Specialist: E2E tests for PWA features
 - AI Integration Specialist: Tests for AI caching and fallbacks
 - DevOps Specialist: Validates monitoring and health checks
 
 **Test Specialist provides**:
+
 - Quality gates for new features
 - Performance regression detection
 - Integration validation

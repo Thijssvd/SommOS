@@ -1,4 +1,5 @@
 # SommOS: Main Context Document (MCD)
+
 ## Yacht Sommelier Operating System
 
 **Document Version**: 1.0  
@@ -11,9 +12,11 @@
 ## 1. 🎯 Overview & Goals
 
 ### Project Vision
+
 SommOS is an **offline-first Progressive Web App (PWA)** designed specifically for **luxury yacht wine management**. It combines enterprise-grade inventory tracking with AI-powered wine intelligence, creating a sommelier assistant that works seamlessly in maritime environments with intermittent internet connectivity.
 
 ### Target Users
+
 1. **Yacht Crew (Primary)**:
    - Sommeliers and stewards managing wine collections at sea
    - Require offline-first functionality
@@ -31,6 +34,7 @@ SommOS is an **offline-first Progressive Web App (PWA)** designed specifically f
    - Event-code based authentication
 
 ### Core Features (Priority Order)
+
 1. **Offline-First Wine Inventory Management** - Complete CRUD with real-time sync
 2. **AI-Powered Wine Pairing** - 4-line recommendations using DeepSeek/OpenAI
 3. **Vintage Intelligence** - Weather-based quality scoring and aging analysis
@@ -39,6 +43,7 @@ SommOS is an **offline-first Progressive Web App (PWA)** designed specifically f
 6. **PWA Installation** - Native-like app experience on iOS/Android/Desktop
 
 ### Success Criteria
+
 - ✅ Works offline for minimum 72 hours without internet
 - ✅ Responds within 2 seconds for all core inventory operations
 - ✅ AI pairing recommendations delivered in <10 seconds
@@ -48,7 +53,9 @@ SommOS is an **offline-first Progressive Web App (PWA)** designed specifically f
 - ✅ Docker-deployable for yacht network environments
 
 ### Business Context
+
 SommOS addresses the unique challenge of wine management in maritime environments where:
+
 - Internet connectivity is expensive, slow, or unavailable
 - Wine collections are valuable and require precise tracking
 - Service staff need instant access to pairing recommendations
@@ -60,6 +67,7 @@ SommOS addresses the unique challenge of wine management in maritime environment
 ## 2. 🏗️ Technical Architecture
 
 ### Stack Overview
+
 ```
 Frontend (PWA)
 ├── Vanilla JavaScript (ES6+)
@@ -85,6 +93,7 @@ Deployment
 ### Technology Justifications
 
 #### Why Vanilla JavaScript (not React/Vue)?
+
 - **Smaller bundle size** (~200KB vs 1MB+) critical for slow yacht networks
 - **Faster initial load** - no framework parsing overhead
 - **Offline-first reliability** - fewer dependencies to cache
@@ -92,6 +101,7 @@ Deployment
 - **Team familiarity** - simpler for crew with basic dev knowledge
 
 #### Why SQLite (not PostgreSQL/MySQL)?
+
 - **Zero-conf deployment** - no database server to manage
 - **Atomic writes** - ACID compliance prevents corruption during power loss
 - **Single-file portability** - easy backups for yacht administrators
@@ -99,12 +109,14 @@ Deployment
 - **Low memory footprint** - runs on yacht servers with limited resources
 
 #### Why DeepSeek AI?
+
 - **Cost-effective** - 90% cheaper than OpenAI for equivalent quality
 - **Fast inference** - <2s response times for pairing recommendations
 - **OpenAI-compatible API** - seamless fallback if DeepSeek unavailable
 - **Privacy-friendly** - can self-host if needed for sensitive data
 
 ### System Architecture Diagram
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   FRONTEND (PWA)                     │
@@ -133,12 +145,14 @@ Deployment
 ```
 
 ### Infrastructure
+
 - **Docker Containers**: `sommos-frontend`, `sommos-backend`, `nginx-proxy`
 - **Network**: `sommos-network` (internal bridge)
 - **Volumes**: `./data` (SQLite DB), `./frontend/dist` (static assets)
 - **Ports**: 80 (HTTP), 3001 (backend API), 3000 (frontend dev)
 
 ### External Services
+
 1. **DeepSeek AI** (Primary) - `https://api.deepseek.com`
    - Wine pairing recommendations
    - Natural language dish parsing
@@ -162,6 +176,7 @@ Deployment
 #### Core Tables (12 total)
 
 **Wines** (wine labels and basic information)
+
 ```sql
 CREATE TABLE Wines (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,6 +195,7 @@ CREATE INDEX idx_wines_type ON Wines(wine_type);
 ```
 
 **Vintages** (specific years and quality data)
+
 ```sql
 CREATE TABLE Vintages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,6 +215,7 @@ CREATE INDEX idx_vintages_year ON Vintages(vintage_year);
 ```
 
 **Stock** (bottle inventory by location)
+
 ```sql
 CREATE TABLE Stock (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -213,6 +230,7 @@ CREATE INDEX idx_stock_location ON Stock(location);
 ```
 
 **Ledger** (transaction history for audit trail)
+
 ```sql
 CREATE TABLE Ledger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -234,6 +252,7 @@ CREATE INDEX idx_ledger_timestamp ON Ledger(timestamp);
 ```
 
 **WeatherVintage** (historical weather impact)
+
 ```sql
 CREATE TABLE WeatherVintage (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -252,6 +271,7 @@ CREATE TABLE WeatherVintage (
 ```
 
 **Users** (authentication and roles)
+
 ```sql
 CREATE TABLE Users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -266,6 +286,7 @@ CREATE INDEX idx_users_email ON Users(email);
 ```
 
 **GuestInvites** (temporary access codes)
+
 ```sql
 CREATE TABLE GuestInvites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -287,6 +308,7 @@ CREATE INDEX idx_invites_code ON GuestInvites(event_code);
 ### 3.2 API Endpoints (RESTful)
 
 #### Authentication (`/api/auth`)
+
 ```javascript
 POST /api/auth/login
   Body: { email, password }
@@ -307,6 +329,7 @@ POST /api/auth/logout
 ```
 
 #### Inventory (`/api/inventory`)
+
 ```javascript
 GET /api/inventory/stock
   Query: ?location=string&wine_type=string&min_quantity=number
@@ -331,6 +354,7 @@ GET /api/inventory/transactions
 ```
 
 #### Wine Pairing (`/api/pairing`)
+
 ```javascript
 POST /api/pairing/recommend
   Body: { 
@@ -352,6 +376,7 @@ POST /api/pairing/quick
 ```
 
 #### Procurement (`/api/procurement`)
+
 ```javascript
 GET /api/procurement/opportunities
   Query: ?wine_type=string&max_price=number&region=string
@@ -378,6 +403,7 @@ POST /api/procurement/order
 ```
 
 #### Vintage Intelligence (`/api/vintage`)
+
 ```javascript
 GET /api/vintage/:wine_id/:year/weather
   Returns: {
@@ -393,6 +419,7 @@ POST /api/vintage/:wine_id/:year/refresh
 ```
 
 #### System (`/api/system`)
+
 ```javascript
 GET /api/system/health
   Returns: {
@@ -416,6 +443,7 @@ GET /api/system/stats
 ### 3.3 Frontend Components (Modular Architecture)
 
 #### Core Modules (`frontend/js/`)
+
 ```
 app.js                 # Main application orchestrator
 ├── init()             # Initialize PWA, register service worker
@@ -465,6 +493,7 @@ modules/
 ```
 
 #### Service Worker (`sw.js`)
+
 ```javascript
 const CACHE_VERSION = 'v1.2.0';
 const STATIC_CACHE = [
@@ -609,6 +638,7 @@ SommOS/
 ### Naming Conventions
 
 #### Files
+
 - **Frontend**: `kebab-case.js` (e.g., `pairing-engine.js`)
 - **Backend**: `snake_case.js` (e.g., `vintage_intelligence.js`)
 - **Components**: `PascalCase.js` (if using frameworks, but N/A here)
@@ -616,6 +646,7 @@ SommOS/
 - **Config**: `lowercase.config.js` (e.g., `vite.config.js`)
 
 #### Code
+
 - **Variables**: `camelCase` (e.g., `wineCollection`, `userToken`)
 - **Constants**: `UPPER_SNAKE_CASE` (e.g., `API_TIMEOUT`, `MAX_RETRIES`)
 - **Functions**: `camelCase` (e.g., `fetchWineData()`, `calculateQuality()`)
@@ -624,6 +655,7 @@ SommOS/
 - **Database Columns**: `snake_case` (e.g., `wine_id`, `created_at`)
 
 #### Routes
+
 - **REST endpoints**: `/api/<resource>/<action>` (e.g., `/api/inventory/consume`)
 - **Parameterized**: `/api/<resource>/:id/<action>` (e.g., `/api/vintage/:wine_id/:year/weather`)
 
@@ -632,9 +664,11 @@ SommOS/
 ## 5. ✅ Task Breakdown & Implementation Plan
 
 ### Phase 1: Foundation & Core Features ✅ COMPLETE
+
 **Status**: Production-ready, deployed via Docker
 
 #### Task 1.1: Backend API Foundation
+
 - [x] Express server setup with middleware (helmet, CORS, compression)
 - [x] SQLite database schema (12 tables with indexes)
 - [x] Connection pooling and error handling
@@ -643,6 +677,7 @@ SommOS/
 - **Acceptance Criteria**: Server runs, database connects, health check returns 200
 
 #### Task 1.2: Authentication System
+
 - [x] JWT token generation and validation
 - [x] Password hashing (bcrypt)
 - [x] Role-based access control (admin/crew/guest)
@@ -651,6 +686,7 @@ SommOS/
 - **Acceptance Criteria**: Users can login, roles enforced, guest access works
 
 #### Task 1.3: Inventory Management
+
 - [x] Stock CRUD operations
 - [x] Multi-location tracking (4 locations)
 - [x] Transaction ledger for audit trail
@@ -659,6 +695,7 @@ SommOS/
 - **Acceptance Criteria**: Inventory accurate, ledger complete, no negative stock
 
 #### Task 1.4: Wine Pairing Engine
+
 - [x] DeepSeek API integration (primary)
 - [x] OpenAI fallback mechanism
 - [x] Prompt engineering for 4-line recommendations
@@ -667,6 +704,7 @@ SommOS/
 - **Acceptance Criteria**: <10s response, fallback works, quality recommendations
 
 #### Task 1.5: Frontend PWA
+
 - [x] Vite build configuration
 - [x] Service worker with offline caching
 - [x] IndexedDB for local storage
@@ -677,6 +715,7 @@ SommOS/
 ### Phase 2: Advanced Features ✅ COMPLETE
 
 #### Task 2.1: Vintage Intelligence
+
 - [x] Open-Meteo API integration
 - [x] Weather data fetching and caching
 - [x] Quality scoring algorithm
@@ -685,6 +724,7 @@ SommOS/
 - **Acceptance Criteria**: Weather data accurate, quality scores reasonable
 
 #### Task 2.2: Procurement Assistant
+
 - [x] Opportunity scanner (low stock detection)
 - [x] Price trend analysis
 - [x] ROI calculations
@@ -693,6 +733,7 @@ SommOS/
 - **Acceptance Criteria**: Recommends wines correctly, ROI makes sense
 
 #### Task 2.3: Guest Access System
+
 - [x] Event code generation
 - [x] PIN protection (optional)
 - [x] Time-based expiration
@@ -703,6 +744,7 @@ SommOS/
 ### Phase 3: Testing & Quality ✅ COMPLETE
 
 #### Task 3.1: Test Suite Implementation
+
 - [x] Jest unit tests (600+ tests)
 - [x] Playwright E2E tests (critical workflows)
 - [x] Integration tests (API + DB)
@@ -711,6 +753,7 @@ SommOS/
 - **Acceptance Criteria**: >90% coverage, all tests pass, CI green
 
 #### Task 3.2: Docker Deployment
+
 - [x] Multi-stage Dockerfiles
 - [x] Docker Compose orchestration
 - [x] Nginx reverse proxy
@@ -721,6 +764,7 @@ SommOS/
 ### Phase 4: Production Hardening ✅ COMPLETE
 
 #### Task 4.1: Security Hardening
+
 - [x] Content Security Policy (CSP)
 - [x] Rate limiting
 - [x] Input validation and sanitization
@@ -729,6 +773,7 @@ SommOS/
 - **Acceptance Criteria**: Passes OWASP top 10 security checks
 
 #### Task 4.2: Performance Optimization
+
 - [x] Response compression (gzip)
 - [x] API response caching
 - [x] Database query optimization (indexes)
@@ -737,6 +782,7 @@ SommOS/
 - **Acceptance Criteria**: <2s page load, <500ms API response (p95)
 
 #### Task 4.3: Documentation
+
 - [x] API documentation (OpenAPI/Swagger)
 - [x] Deployment guide
 - [x] User guide (crew + admin)
@@ -751,6 +797,7 @@ SommOS/
 ### Internal Dependencies
 
 #### Module Dependency Graph
+
 ```
 app.js
 ├── api.js (HTTP client)
@@ -773,6 +820,7 @@ app.js
 ```
 
 #### Backend Dependencies
+
 ```
 server.js
 ├── api/routes.js (all routes)
@@ -788,6 +836,7 @@ server.js
 ### External Dependencies
 
 #### NPM Packages (Backend)
+
 ```json
 {
   "express": "^4.18.2",              // Web framework
@@ -804,6 +853,7 @@ server.js
 ```
 
 #### NPM Packages (Frontend)
+
 ```json
 {
   "vite": "^6.0.0",                  // Build tool
@@ -813,6 +863,7 @@ server.js
 ```
 
 #### Test Dependencies
+
 ```json
 {
   "jest": "^29.7.0",                 // Test framework
@@ -824,6 +875,7 @@ server.js
 ### API Integrations
 
 #### DeepSeek AI (Primary)
+
 - **Endpoint**: `https://api.deepseek.com/v1/chat/completions`
 - **Authentication**: Bearer token (`DEEPSEEK_API_KEY`)
 - **Model**: `deepseek-chat`
@@ -832,6 +884,7 @@ server.js
 - **Fallback**: OpenAI if unavailable
 
 #### OpenAI (Fallback)
+
 - **Endpoint**: `https://api.openai.com/v1/chat/completions`
 - **Authentication**: Bearer token (`OPENAI_API_KEY`)
 - **Model**: `gpt-4` or `gpt-3.5-turbo`
@@ -839,6 +892,7 @@ server.js
 - **Use Case**: Automatic failover from DeepSeek
 
 #### Open-Meteo (Weather Data)
+
 - **Endpoint**: `https://archive-api.open-meteo.com/v1/archive`
 - **Authentication**: None (free tier)
 - **Parameters**: `latitude`, `longitude`, `start_date`, `end_date`, `daily=temperature_2m_mean,precipitation_sum`
@@ -846,6 +900,7 @@ server.js
 - **Caching**: 1 year (weather data doesn't change)
 
 ### Data Flow Diagram
+
 ```
 ┌──────────┐
 │  User    │ Enters dish "Grilled Salmon"
@@ -894,6 +949,7 @@ server.js
 ### Test Strategy
 
 #### Test Pyramid
+
 ```
       /\
      /E2E\     10% - Critical user workflows (Playwright)
@@ -907,6 +963,7 @@ server.js
 ### Unit Tests (Jest) - 600+ tests
 
 #### Backend Tests (`tests/unit/backend/`)
+
 ```javascript
 // Example: inventory_manager.test.js
 describe('InventoryManager', () => {
@@ -964,6 +1021,7 @@ describe('PairingEngine', () => {
 ```
 
 #### Frontend Tests (`tests/unit/frontend/`)
+
 ```javascript
 // Example: api.test.js
 describe('SommOSAPI', () => {
@@ -998,6 +1056,7 @@ describe('SommOSAPI', () => {
 ```
 
 ### Integration Tests (`tests/integration/`)
+
 ```javascript
 // Example: inventory-api.test.js
 const request = require('supertest');
@@ -1046,6 +1105,7 @@ describe('Inventory API Integration', () => {
 ```
 
 ### E2E Tests (Playwright) (`tests/e2e/`)
+
 ```javascript
 // Example: pairing.spec.js
 const { test, expect } = require('@playwright/test');
@@ -1103,6 +1163,7 @@ test.describe('Wine Pairing Workflow', () => {
 ```
 
 ### Flakiness Detection
+
 ```bash
 # Run tests multiple times to detect flaky tests
 npm run test:flaky       # Jest tests 5x
@@ -1117,6 +1178,7 @@ npm run test:e2e:flaky   # Playwright tests 3x
 ```
 
 ### Test Coverage Goals
+
 - **Unit Tests**: >90% line coverage
 - **Integration Tests**: All API endpoints covered
 - **E2E Tests**: All critical user workflows
@@ -1124,6 +1186,7 @@ npm run test:e2e:flaky   # Playwright tests 3x
 - **Flakiness**: <2% flaky test rate
 
 ### Acceptance Criteria Summary
+
 - ✅ All unit tests pass (600+ tests)
 - ✅ All integration tests pass (API + DB)
 - ✅ All E2E tests pass (critical workflows)
@@ -1137,6 +1200,7 @@ npm run test:e2e:flaky   # Playwright tests 3x
 ## 8. 📚 References & Resources
 
 ### Design & Planning Documents
+
 - **Project README**: `README.md` - System overview and quick start
 - **Quick Start Guide**: `QUICK_START_GUIDE.md` - Docker deployment
 - **Project Workflow**: `PROJECT_WORKFLOW.md` - Development history
@@ -1146,22 +1210,26 @@ npm run test:e2e:flaky   # Playwright tests 3x
 - **Flakiness Detection**: `docs/FLAKINESS_DETECTION.md` - Test quality
 
 ### Database Documentation
+
 - **Schema Definition**: `backend/database/schema.sql`
 - **Setup Guide**: `DATABASE_SETUP.md`
 - **Migration Scripts**: `backend/database/migrations/`
 
 ### Docker & Deployment
+
 - **Docker Compose**: `deployment/production.yml`
 - **Deployment Script**: `deployment/deploy.sh`
 - **Docker Success Report**: `DOCKER_DEPLOYMENT_SUCCESS.md`
 - **Nginx Configuration**: `deployment/nginx.conf`
 
 ### Testing Resources
+
 - **Playwright Deliverables**: `PLAYWRIGHT_DELIVERABLES.md`
 - **Pagination Testing**: `PAGINATION_TESTING_GUIDE.md`
 - **Jest Configuration**: `jest.config.js`
 
 ### Code Quality
+
 - **Cursor Rules**: `.cursor/rules/` - AI-assisted coding guidelines
   - `architecture-patterns.mdc`
   - `database-patterns.mdc`
@@ -1171,26 +1239,30 @@ npm run test:e2e:flaky   # Playwright tests 3x
   - `wine-domain.mdc`
 
 ### External Resources
-- **DeepSeek API**: https://platform.deepseek.com/docs
-- **OpenAI API**: https://platform.openai.com/docs
-- **Open-Meteo**: https://open-meteo.com/en/docs/historical-weather-api
-- **SQLite Documentation**: https://www.sqlite.org/docs.html
-- **Express.js**: https://expressjs.com/
-- **Vite**: https://vitejs.dev/
-- **Playwright**: https://playwright.dev/
-- **Jest**: https://jestjs.io/
+
+- **DeepSeek API**: <https://platform.deepseek.com/docs>
+- **OpenAI API**: <https://platform.openai.com/docs>
+- **Open-Meteo**: <https://open-meteo.com/en/docs/historical-weather-api>
+- **SQLite Documentation**: <https://www.sqlite.org/docs.html>
+- **Express.js**: <https://expressjs.com/>
+- **Vite**: <https://vitejs.dev/>
+- **Playwright**: <https://playwright.dev/>
+- **Jest**: <https://jestjs.io/>
 
 ### Style Guides
+
 - **JavaScript**: Airbnb JavaScript Style Guide (ES6+)
 - **CSS**: BEM naming convention
 - **Git Commits**: Conventional Commits (feat:, fix:, docs:, etc.)
 
 ### Production Monitoring
+
 - **Health Check**: `http://localhost/api/system/health`
 - **System Stats**: `http://localhost/api/system/stats` (admin only)
 - **API Documentation**: `http://localhost/docs` (Swagger/OpenAPI)
 
 ### Environment Variables Reference
+
 ```bash
 # Core Configuration
 NODE_ENV=production
@@ -1223,8 +1295,10 @@ COMPOSE_PROJECT_NAME=sommos
 
 ## Implementation Notes for Agent-MCP
 
-### For Admin Agent:
+### For Admin Agent
+
 This MCD represents a **production-ready** system with:
+
 - ✅ All core features implemented and tested
 - ✅ 600+ unit tests passing
 - ✅ E2E tests covering critical workflows
@@ -1233,6 +1307,7 @@ This MCD represents a **production-ready** system with:
 - ✅ Documentation complete
 
 **Key Strengths**:
+
 1. **Offline-first architecture** - Works without internet for 72+ hours
 2. **AI integration** - DeepSeek/OpenAI for wine pairing
 3. **Comprehensive testing** - Jest + Playwright + flakiness detection
@@ -1240,14 +1315,17 @@ This MCD represents a **production-ready** system with:
 5. **Security-hardened** - CSP, rate limiting, input validation
 
 **Suggested Agent Team Structure**:
+
 1. **Backend Specialist** - API optimization, database tuning
 2. **Frontend Specialist** - PWA enhancements, UI polish
 3. **AI Integration Specialist** - Pairing engine refinement
 4. **DevOps Specialist** - Monitoring, logging, performance
 5. **Test Specialist** - Expand test coverage, reduce flakiness
 
-### For Worker Agents:
+### For Worker Agents
+
 Use this MCD as your **single source of truth**. Key sections:
+
 - **Section 3**: Detailed implementation (DB schema, API endpoints, components)
 - **Section 4**: File structure and naming conventions
 - **Section 5**: Task breakdown (reference for completed work)
@@ -1255,6 +1333,7 @@ Use this MCD as your **single source of truth**. Key sections:
 - **Section 7**: Testing requirements and acceptance criteria
 
 **Before implementing**:
+
 1. Query the knowledge graph for existing implementations
 2. Check file structure to understand module organization
 3. Review API documentation for endpoint contracts
@@ -1262,6 +1341,7 @@ Use this MCD as your **single source of truth**. Key sections:
 5. Follow existing patterns (e.g., error handling, logging)
 
 ### Project Maturity: Production-Ready ✅
+
 - **Current State**: Deployed, tested, documented
 - **Next Phase**: Enhancements, monitoring, optimization
 - **Recommended Work**: Focus on observability, performance tuning, user feedback
