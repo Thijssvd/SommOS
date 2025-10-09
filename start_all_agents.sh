@@ -56,7 +56,7 @@ start_agent() {
     echo "✗ No available task found for $agent_id; skipping" | tee -a "$LOG_FILE"
     return 1
   fi
-  local payload='{"token": '\"'$admin_token'\"', "agent_id": '\"'$agent_id'\"', "task_ids": [ '\"'$task_id'\"' ]}'
+  local payload=$(printf '{"token": "%s", "agent_id": "%s", "task_ids": ["%s"]}' "$admin_token" "$agent_id" "$task_id")
   local response=$(curl -s -w "\n%{http_code}" -X POST "http://localhost:8080/api/create-agent" \
     -H "Content-Type: application/json" \
     -d "$payload")
@@ -72,19 +72,17 @@ start_agent() {
       admin_token=$(curl -s http://localhost:8080/api/tokens | jq -r '.admin_token' 2>/dev/null)
     fi
     if [ -z "$admin_token" ] || [ "$admin_token" = "null" ]; then
-      admin_token=$(cat "$SOMMOS_DIR/.agent/admin_token.txt" 2>/dev/null)
     fi
     if [ -z "$admin_token" ] || [ "$admin_token" = "null" ]; then
       echo "✗ Admin token still unavailable after refresh; skipping $agent_id" | tee -a "$LOG_FILE"
       return 1
     fi
-    payload='{"token": '\"'$admin_token'\"', "agent_id": '\"'$agent_id'\"', "task_ids": [ '\"'$task_id'\"' ]}'
+    payload=$(printf '{"token": "%s", "agent_id": "%s", "task_ids": ["%s"]}' "$admin_token" "$agent_id" "$task_id")
     response=$(curl -s -w "\n%{http_code}" -X POST "http://localhost:8080/api/create-agent" \
       -H "Content-Type: application/json" \
-      -d "$payload")
+      -d "$payload" 2>/dev/null)
     http_code=$(echo "$response" | tail -n1)
     if [ "$http_code" = "200" ] || [ "$http_code" = "201" ] || [ "$http_code" = "409" ]; then
-      echo "✓ Retry succeeded for $agent_id (HTTP $http_code)" | tee -a "$LOG_FILE"
     else
       echo "✗ Retry failed for $agent_id (HTTP $http_code). Response: $(echo "$response" | head -n1)" | tee -a "$LOG_FILE"
       return 1

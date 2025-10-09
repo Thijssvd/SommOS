@@ -88,7 +88,8 @@ if [ -z "$TASK_ID" ]; then
 fi
 
 # Create agent via API (with task_ids)
-PAYLOAD='{"token": '"'"$ADMIN_TOKEN"'"', "agent_id": '"'"$AGENT_ID"'"', "task_ids": [ '"'"$TASK_ID"'"' ]}'
+# Use printf to avoid shell escaping issues
+PAYLOAD=$(printf '{"token": "%s", "agent_id": "%s", "task_ids": ["%s"]}' "$ADMIN_TOKEN" "$AGENT_ID" "$TASK_ID")
 CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "http://localhost:8080/api/create-agent" \
   -H "Content-Type: application/json" \
   -d "$PAYLOAD")
