@@ -154,6 +154,7 @@ docs/**/*_IMPLEMENTATION.md
 
 # Agent local state (tokens, logs, runtime state)
 .agent/
+Agent-MCP/
 # Ignore SQLite sidecar files (repo-specific)
 *.db-wal
 *.db-shm
