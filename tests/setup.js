@@ -35,10 +35,42 @@ process.env.JWT_SECRET = 'test-jwt-secret-key-for-ci-and-local-testing-only-not-
 process.env.SESSION_SECRET = 'test-session-secret-key-for-ci-and-local-testing-only-not-for-production-use-at-least-32-characters';
 process.env.OPEN_METEO_BASE = 'https://archive-api.open-meteo.com/v1/archive';
 
-const { refreshConfig } = require('../backend/config/env');
-refreshConfig();
+// Database schema initialization for tests
+async function initializeTestDatabase() {
+    const fs = require('fs').promises;
+    const path = require('path');
+    const Database = require('../backend/database/connection');
 
-// Mock OpenAI API for tests
+    const db = Database.getInstance(':memory:');
+    await db.initialize();
+
+    // Run all migrations
+    const migrationsDir = path.join(__dirname, '../backend/database/migrations');
+    const migrationFiles = await fs.readdir(migrationsDir);
+    migrationFiles.sort();
+
+    for (const file of migrationFiles) {
+        if (file.endsWith('.sql')) {
+            const migrationPath = path.join(migrationsDir, file);
+            const migrationSQL = await fs.readFile(migrationPath, 'utf8');
+            await db.exec(migrationSQL);
+            console.log(`✅ Applied migration: ${file}`);
+        }
+    }
+
+    console.log('✅ Test database initialized with all migrations');
+    return db;
+}
+
+// Initialize database before tests
+beforeAll(async () => {
+    // Initialize test database with all migrations
+    global.testDb = await initializeTestDatabase();
+
+    // Make database available globally for tests
+    global.Database = require('../backend/database/connection');
+    global.AuthService = require('../backend/core/auth_service');
+}, 60000);
 jest.mock('openai', () => {
   return jest.fn().mockImplementation(() => ({
     chat: {
@@ -138,6 +170,7 @@ const originalConsoleWarn = console.warn;
 const originalConsoleLog = console.log;
 
 beforeAll(() => {
+  // Don't mock console during database initialization
   console.error = jest.fn();
   console.warn = jest.fn();
   console.log = jest.fn();

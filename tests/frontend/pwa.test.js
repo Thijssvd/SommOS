@@ -2,8 +2,13 @@ const path = require('path');
 const fs = require('fs/promises');
 const vm = require('vm');
 
+// Mock the ES module instead of requiring it
+jest.mock('../../frontend/js/sw-registration-core.js', () => ({
+  registerServiceWorker: jest.fn(),
+  setupServiceWorkerLifecycle: jest.fn()
+}));
+
 const serviceWorkerPath = path.join(__dirname, '../../frontend/sw.js');
-const swRegistrationCore = require('../../frontend/js/sw-registration-core.js');
 
 async function evaluateServiceWorker(manifestEntries) {
   const code = await fs.readFile(serviceWorkerPath, 'utf8');

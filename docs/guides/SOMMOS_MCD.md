@@ -173,25 +173,32 @@ Deployment
 
 ### 3.1 Database Schema (SQLite)
 
-#### Core Tables (12 total)
+#### Core Tables (15+ total)
 
 **Wines** (wine labels and basic information)
 
 ```sql
 CREATE TABLE Wines (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    label TEXT NOT NULL UNIQUE,
-    producer TEXT,
-    region TEXT,
-    country TEXT,
-    wine_type TEXT CHECK(wine_type IN ('Red','White','Rosé','Sparkling','Dessert','Fortified')),
-    grapes TEXT, -- JSON array
-    abv REAL,
-    style_notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    name TEXT NOT NULL,
+    producer TEXT NOT NULL,
+    region TEXT NOT NULL,
+    country TEXT NOT NULL,
+    wine_type TEXT NOT NULL CHECK (wine_type IN ('Red', 'White', 'Rosé', 'Sparkling', 'Dessert', 'Fortified')),
+    grape_varieties TEXT NOT NULL, -- JSON array of grape varieties
+    alcohol_content REAL,
+    style TEXT, -- Light, Medium, Full-bodied, etc.
+    tasting_notes TEXT,
+    food_pairings TEXT, -- JSON array of pairing suggestions
+    serving_temp_min INTEGER,
+    serving_temp_max INTEGER,
+    image_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server'
 );
-CREATE INDEX idx_wines_region ON Wines(region);
-CREATE INDEX idx_wines_type ON Wines(wine_type);
 ```
 
 **Vintages** (specific years and quality data)
@@ -200,18 +207,24 @@ CREATE INDEX idx_wines_type ON Wines(wine_type);
 CREATE TABLE Vintages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     wine_id INTEGER NOT NULL,
-    vintage_year INTEGER NOT NULL,
-    quality_score INTEGER CHECK(quality_score BETWEEN 0 AND 100),
-    peak_drinking_start INTEGER,
-    peak_drinking_end INTEGER,
-    acquisition_cost REAL,
-    market_value REAL,
-    notes TEXT,
-    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE CASCADE,
-    UNIQUE(wine_id, vintage_year)
+    year INTEGER NOT NULL,
+    harvest_date DATE,
+    bottling_date DATE,
+    release_date DATE,
+    peak_drinking_start INTEGER, -- Years from vintage
+    peak_drinking_end INTEGER, -- Years from vintage
+    quality_score INTEGER CHECK (quality_score >= 0 AND quality_score <= 100),
+    weather_score INTEGER CHECK (weather_score >= 0 AND weather_score <= 100),
+    critic_score INTEGER CHECK (critic_score >= 0 AND critic_score <= 100),
+    production_notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server',
+    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE RESTRICT,
+    UNIQUE(wine_id, year)
 );
-CREATE INDEX idx_vintages_wine ON Vintages(wine_id);
-CREATE INDEX idx_vintages_year ON Vintages(vintage_year);
 ```
 
 **Stock** (bottle inventory by location)
@@ -220,13 +233,22 @@ CREATE INDEX idx_vintages_year ON Vintages(vintage_year);
 CREATE TABLE Stock (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     vintage_id INTEGER NOT NULL,
-    location TEXT NOT NULL CHECK(location IN ('Main Cellar','Service Bar','Guest Cabins','Chef Prep')),
-    quantity INTEGER NOT NULL DEFAULT 0 CHECK(quantity >= 0),
-    bin_number TEXT,
-    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE CASCADE,
+    location TEXT NOT NULL, -- Standard locations: main-cellar, service-bar, deck-storage, private-reserve
+    quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    reserved_quantity INTEGER NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
+    cost_per_bottle DECIMAL(10,2),
+    current_value DECIMAL(10,2),
+    storage_conditions TEXT, -- JSON: temperature, humidity, etc.
+    last_inventory_date DATE,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_by TEXT DEFAULT 'system',
+    op_id TEXT UNIQUE,
+    origin TEXT DEFAULT 'server',
+    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE RESTRICT,
     UNIQUE(vintage_id, location)
 );
-CREATE INDEX idx_stock_location ON Stock(location);
 ```
 
 **Ledger** (transaction history for audit trail)
@@ -235,20 +257,17 @@ CREATE INDEX idx_stock_location ON Stock(location);
 CREATE TABLE Ledger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     vintage_id INTEGER NOT NULL,
-    transaction_type TEXT NOT NULL CHECK(transaction_type IN ('consume','reserve','move','purchase','return')),
-    quantity INTEGER NOT NULL,
-    from_location TEXT,
-    to_location TEXT,
-    user_id INTEGER,
-    guest_name TEXT,
-    occasion TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    location TEXT NOT NULL,
+    transaction_type TEXT NOT NULL CHECK (transaction_type IN ('IN', 'OUT', 'MOVE', 'ADJUST', 'RESERVE', 'UNRESERVE')),
+    quantity INTEGER NOT NULL CHECK (quantity >= 0),
+    unit_cost DECIMAL(10,2),
+    total_cost DECIMAL(10,2),
+    reference_id TEXT, -- Order ID, invoice number, etc.
     notes TEXT,
-    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE SET NULL
+    created_by TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (vintage_id) REFERENCES Vintages(id) ON DELETE RESTRICT
 );
-CREATE INDEX idx_ledger_vintage ON Ledger(vintage_id);
-CREATE INDEX idx_ledger_timestamp ON Ledger(timestamp);
 ```
 
 **WeatherVintage** (historical weather impact)
@@ -256,17 +275,16 @@ CREATE INDEX idx_ledger_timestamp ON Ledger(timestamp);
 ```sql
 CREATE TABLE WeatherVintage (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    wine_id INTEGER NOT NULL,
-    vintage_year INTEGER NOT NULL,
-    avg_temp REAL, -- celsius
-    total_precip REAL, -- mm
-    sunshine_hours INTEGER,
-    frost_days INTEGER,
-    heat_days INTEGER, -- days >30C
-    weather_quality TEXT CHECK(weather_quality IN ('Excellent','Good','Average','Poor','Challenging')),
-    fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (wine_id) REFERENCES Wines(id) ON DELETE CASCADE,
-    UNIQUE(wine_id, vintage_year)
+    region TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    growing_season_temp_avg REAL,
+    growing_season_rainfall REAL,
+    harvest_conditions TEXT,
+    weather_events TEXT, -- JSON array of significant events
+    quality_impact_score INTEGER CHECK (quality_impact_score >= -50 AND quality_impact_score <= 50),
+    vintage_rating TEXT CHECK (vintage_rating IN ('Exceptional', 'Excellent', 'Very Good', 'Good', 'Average', 'Below Average', 'Poor')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(region, year)
 );
 ```
 
@@ -276,34 +294,16 @@ CREATE TABLE WeatherVintage (
 CREATE TABLE Users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    name TEXT NOT NULL,
-    role TEXT NOT NULL CHECK(role IN ('admin','crew','guest')),
+    password_hash TEXT,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'crew', 'guest')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_login DATETIME
 );
-CREATE INDEX idx_users_email ON Users(email);
 ```
 
-**GuestInvites** (temporary access codes)
+**Additional Core Tables**: Suppliers, PriceBook, Aliases, RegionCalendar, GrapeProfiles, Memories, Explainability, LearningPairingSessions, LearningConsumptionEvents, InventoryIntakeOrders, InventoryIntakeItems
 
-```sql
-CREATE TABLE GuestInvites (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_code TEXT NOT NULL UNIQUE,
-    pin TEXT, -- optional
-    created_by INTEGER NOT NULL,
-    expires_at DATETIME NOT NULL,
-    max_uses INTEGER DEFAULT 1,
-    uses_count INTEGER DEFAULT 0,
-    notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE CASCADE
-);
-CREATE INDEX idx_invites_code ON GuestInvites(event_code);
-```
-
-*Additional Tables*: Suppliers, PriceBook, Aliases, RegionCalendar, GrapeProfiles, Memories (conversation history), Explainability (AI decision tracking)
+*Advanced Tables*: WeatherCache, WineFeatures, DishFeatures, RefreshTokens, Invites, RumSessions, RumMetrics, RumErrors
 
 ### 3.2 API Endpoints (RESTful)
 
@@ -543,7 +543,8 @@ SommOS/
 ├── .github/                    # CI/CD workflows
 │   └── workflows/
 │       ├── tests.yml          # Jest unit tests
-│       └── ci.yml             # Full CI pipeline
+│       ├── ci.yml             # Full CI pipeline
+│       └── deploy.yml         # Deployment workflow
 │
 ├── backend/                    # Node.js API server
 │   ├── server.js              # Express app entry point
@@ -552,7 +553,8 @@ SommOS/
 │   │   ├── inventory.js       # Inventory CRUD
 │   │   ├── pairing.js         # AI pairing engine
 │   │   ├── procurement.js     # Procurement routes
-│   │   └── vintage.js         # Vintage intelligence
+│   │   ├── vintage.js         # Vintage intelligence
+│   │   └── system.js          # Health and stats
 │   ├── core/                  # Business logic (engines)
 │   │   ├── pairing_engine.js  # AI wine matching
 │   │   ├── inventory_manager.js # Stock calculations
@@ -614,18 +616,33 @@ SommOS/
 │   └── test-flaky.sh          # Flakiness detection
 │
 ├── docs/                       # Documentation
-│   ├── API.md                 # API reference
-│   ├── DEPLOYMENT.md          # Deployment guide
-│   ├── GUEST_ACCESS.md        # Guest system docs
-│   └── FLAKINESS_DETECTION.md # Testing docs
+│   ├── guides/                # Detailed guides
+│   │   ├── SOMMOS_MCD.md      # This document
+│   │   ├── GUEST_ACCESS.md    # Guest system docs
+│   │   └── FLAKINESS_DETECTION.md # Testing docs
+│   ├── features/              # Feature documentation
+│   ├── deployment/             # Deployment guides
+│   └── README.md              # Main documentation (consolidated)
+│
+├── Agent-MCP/                  # Agent-MCP suite (external)
+│   ├── agent_mcp/             # MCP server implementation
+│   │   └── dashboard/         # Web dashboard (port 3847)
+│   └── .venv/                  # Python virtual environment
+│
+├── monitoring/                 # Grafana/Prometheus monitoring
+│   ├── grafana/               # Dashboards
+│   └── prometheus.yml         # Metrics configuration
+│
+├── reports/                    # Analysis and reports
+│   └── model_comparison.json  # AI model evaluations
 │
 ├── .env.example               # Environment template
-├── .env.production            # Production env vars
+├── .env.secrets-template      # Secrets template
 ├── package.json               # Root dependencies
 ├── jest.config.js             # Jest configuration
-├── README.md                  # Project overview
-├── QUICK_START_GUIDE.md       # Quick start docs
-└── SOMMOS_MCD.md              # This document
+├── README.md                  # Comprehensive project documentation
+├── compose.yaml               # Docker Compose orchestration
+└── Dockerfile                 # Main container definition
 
 # Key Conventions:
 # - All API routes prefix with /api
@@ -1201,42 +1218,56 @@ npm run test:e2e:flaky   # Playwright tests 3x
 
 ### Design & Planning Documents
 
-- **Project README**: `README.md` - System overview and quick start
-- **Quick Start Guide**: `QUICK_START_GUIDE.md` - Docker deployment
-- **Project Workflow**: `PROJECT_WORKFLOW.md` - Development history
-- **API Documentation**: `AB_TESTING_API_DOCUMENTATION.md` - API specs
-- **Deployment Guide**: `DEPLOYMENT.md` - Production deployment
+- **Project README**: `README.md` - Comprehensive project documentation (consolidated)
+  - System overview, architecture, and quick start
+  - Complete API reference with examples
+  - User guide and usage instructions
+  - Testing and development guidelines
+  - Deployment instructions for multiple platforms
+  - Contributing guidelines and support information
+
+- **Main Context Document**: `docs/guides/SOMMOS_MCD.md` - This technical blueprint
+- **Project Workflow**: `docs/archive/PROJECT_WORKFLOW.md` - Development history
 - **Guest Access Guide**: `docs/GUEST_ACCESS.md` - Event code system
 - **Flakiness Detection**: `docs/FLAKINESS_DETECTION.md` - Test quality
+- **AB Testing Documentation**: `docs/features/AB_TESTING_API_DOCUMENTATION.md` - API specs
 
 ### Database Documentation
 
 - **Schema Definition**: `backend/database/schema.sql`
-- **Setup Guide**: `DATABASE_SETUP.md`
 - **Migration Scripts**: `backend/database/migrations/`
+- **Database Setup**: `docs/guides/DATABASE_SETUP.md`
+- **Import Tools**: `scripts/add-diverse-wines.js`
 
 ### Docker & Deployment
 
-- **Docker Compose**: `deployment/production.yml`
+- **Docker Compose**: `compose.yaml` (updated from production.yml)
 - **Deployment Script**: `deployment/deploy.sh`
-- **Docker Success Report**: `DOCKER_DEPLOYMENT_SUCCESS.md`
+- **Docker Success Report**: `docs/archive/DOCKER_DEPLOYMENT_SUCCESS.md`
 - **Nginx Configuration**: `deployment/nginx.conf`
 
 ### Testing Resources
 
-- **Playwright Deliverables**: `PLAYWRIGHT_DELIVERABLES.md`
-- **Pagination Testing**: `PAGINATION_TESTING_GUIDE.md`
+- **Test Coverage Analysis**: `docs/TEST_COVERAGE_ANALYSIS_PLAN.md`
+- **Playwright Configuration**: `playwright.config.ts`
 - **Jest Configuration**: `jest.config.js`
 
-### Code Quality
+### Agent-MCP Integration
+
+- **Agent Setup**: `docs/guides/AGENT_SETUP_VERIFICATION_UPDATED.md`
+- **Agent Activation**: `docs/guides/AGENT_ACTIVATION_GUIDE.md`
+- **DevOps Agent**: `docs/guides/DEVOPS_AGENT_ACTIVATION_GUIDE.md`
+- **Agent-MCP Dashboard**: `Agent-MCP/agent_mcp/dashboard/` (port 3847)
+
+### Code Quality & Standards
 
 - **Cursor Rules**: `.cursor/rules/` - AI-assisted coding guidelines
-  - `architecture-patterns.mdc`
-  - `database-patterns.mdc`
-  - `frontend-pwa.mdc`
-  - `security-auth.mdc`
-  - `testing-quality.mdc`
-  - `wine-domain.mdc`
+  - `architecture-patterns.mdc` - System architecture patterns
+  - `database-patterns.mdc` - Database development rules
+  - `frontend-pwa.mdc` - PWA development standards
+  - `security-auth.mdc` - Security and authentication
+  - `testing-quality.mdc` - Testing standards
+  - `wine-domain.mdc` - Wine industry domain knowledge
 
 ### External Resources
 
@@ -1270,22 +1301,28 @@ PORT=3001
 FRONTEND_PORT=3000
 
 # Database
+DATABASE_PATH=./data/sommos.db
 DATABASE_URL=./data/sommos.db
 
 # AI Services (Optional - for pairing)
-DEEPSEEK_API_KEY=sk-your-deepseek-key    # Primary
-OPENAI_API_KEY=sk-your-openai-key        # Fallback
+DEEPSEEK_API_KEY=sk-your-deepseek-key    # Primary AI provider
+OPENAI_API_KEY=sk-your-openai-key        # Fallback AI provider
 
 # Weather Service (Optional - FREE)
-OPEN_METEO_API_KEY=                       # Leave empty for free tier
+OPEN_METEO_BASE=https://archive-api.open-meteo.com/v1
 
 # Security
 JWT_SECRET=your_jwt_secret_here           # Generate with: openssl rand -base64 32
+SESSION_SECRET=your_session_secret_here
 SESSION_TIMEOUT=86400                     # 24 hours in seconds
 
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=60000               # 1 minute
 RATE_LIMIT_MAX_REQUESTS=100              # 100 requests per minute
+
+# Agent-MCP Integration
+SOMMOS_ALLOW_CLAUDE=true                 # Enable Claude integration
+MCP_SERVER_URL=http://localhost:8080     # Agent-MCP HTTP API
 
 # Docker
 COMPOSE_PROJECT_NAME=sommos
@@ -1294,6 +1331,34 @@ COMPOSE_PROJECT_NAME=sommos
 ---
 
 ## Implementation Notes for Agent-MCP
+
+### Current Agent-MCP Deployment Status
+
+**Agent-MCP Suite**: ✅ **Deployed and Active** (as of October 8, 2025)
+
+#### Deployment Details
+- **MCP Server**: Running on port 8080 via uv (Agent-MCP project)
+- **Active Sessions**: 5 specialized tmux sessions
+  - `backend-specialist-sommos` - API and database optimization
+  - `frontend-specialist-sommos` - PWA and UI enhancements
+  - `ai-integration-specialist-sommos` - DeepSeek/OpenAI integration
+  - `devops-specialist-sommos` - Deployment and monitoring
+  - `test-specialist-sommos` - Testing and quality assurance
+
+#### Integration Points
+- **HTTP API**: Agent-MCP HTTP API at `http://localhost:8080/api/`
+  - Agent registration: `POST /api/create-agent`
+  - Agent termination: `POST /api/terminate-agent`
+  - Token management: `GET /api/tokens` (admin access)
+- **Database Path**: `/Users/thijs/Documents/SommOS/.agent/mcp_state.db`
+- **Dashboard**: Web interface at `Agent-MCP/agent_mcp/dashboard/` (port 3847)
+
+#### Monitoring Scripts
+- **Health Check**: `scripts/health_check_agents.sh`
+- **Enhanced Monitoring**: `scripts/monitor_agents_enhanced.sh`
+- **Agent Watching**: `scripts/watch_agents.sh`
+- **Startup Scripts**: `scripts/start_all_agents.sh`, `scripts/restart_agent.sh`
+- **Backup**: `scripts/backup_agent_state.sh`
 
 ### For Admin Agent
 
@@ -1309,12 +1374,12 @@ This MCD represents a **production-ready** system with:
 **Key Strengths**:
 
 1. **Offline-first architecture** - Works without internet for 72+ hours
-2. **AI integration** - DeepSeek/OpenAI for wine pairing
+2. **AI integration** - DeepSeek/OpenAI for wine pairing with fallback
 3. **Comprehensive testing** - Jest + Playwright + flakiness detection
 4. **Production-ready deployment** - Docker + nginx + CI/CD
 5. **Security-hardened** - CSP, rate limiting, input validation
 
-**Suggested Agent Team Structure**:
+**Current Agent Team Structure**:
 
 1. **Backend Specialist** - API optimization, database tuning
 2. **Frontend Specialist** - PWA enhancements, UI polish
@@ -1340,11 +1405,38 @@ Use this MCD as your **single source of truth**. Key sections:
 4. Understand database schema before making changes
 5. Follow existing patterns (e.g., error handling, logging)
 
+### Agent-MCP Integration Guidelines
+
+#### API Usage
+```bash
+# Register a new agent
+curl -X POST http://localhost:8080/api/create-agent \
+  -H "Authorization: Bearer $(cat admin_token.txt)" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "specialist-name",
+    "role": "backend|frontend|ai|devops|test",
+    "capabilities": ["api-development", "database-optimization"]
+  }'
+
+# Terminate existing agent
+curl -X POST http://localhost:8080/api/terminate-agent \
+  -H "Authorization: Bearer $(cat admin_token.txt)" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "agent-id-to-terminate"}'
+```
+
+#### Development Workflow
+1. **Check Agent Status**: Use monitoring scripts to verify active sessions
+2. **Coordinate Changes**: Reference existing implementations before modifying
+3. **Test Integration**: Ensure changes work with existing agent capabilities
+4. **Update Documentation**: Keep this MCD current with any architectural changes
+
 ### Project Maturity: Production-Ready ✅
 
-- **Current State**: Deployed, tested, documented
-- **Next Phase**: Enhancements, monitoring, optimization
-- **Recommended Work**: Focus on observability, performance tuning, user feedback
+- **Current State**: Deployed, tested, documented, agent-enhanced
+- **Next Phase**: Performance optimization, user feedback integration
+- **Recommended Work**: Focus on observability, AI model improvements, user experience enhancements
 
 ---
 
